@@ -1,0 +1,42 @@
+# Tests
+__tests__/
+*.test.ts
+*.spec.ts
+
+# Source code (since we're publishing the compiled version)
+src/
+tsconfig.json
+
+# Git and GitHub
+.git/
+.github/
+.gitignore
+
+# CI configuration
+.travis.yml
+azure-pipelines.yml
+.gitlab-ci.yml
+
+# Editor configurations
+.vscode/
+.idea/
+*.sublime-*
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Development configurations
+.eslintrc*
+.prettierrc*
+jest.config.js
+tsconfig.*.json
+
+# Examples and documentation source
+examples/
+docs/

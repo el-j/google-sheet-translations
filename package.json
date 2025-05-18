@@ -1,0 +1,36 @@
+{
+	"name": "google-sheet-translations",
+	"version": "1.0.0",
+	"description": "A package to manage translations stored in Google Sheets",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"files": ["dist", "LICENSE", "README.md"],
+	"scripts": {
+		"build": "tsc",
+		"clean": "rimraf dist",
+		"prebuild": "npm run clean",
+		"prepare": "npm run build",
+		"test": "jest",
+		"lint": "eslint . --ext .ts",
+		"dev": "tsc --watch"
+	},
+	"keywords": ["google-sheets", "translations", "i18n"],
+	"author": "",
+	"license": "MIT",
+	"dependencies": {
+		"google-auth-library": "^9.15.1",
+		"google-spreadsheet": "^4.1.4"
+	},
+	"peerDependencies": {
+		"typescript": ">=4.0.0"
+	},
+	"devDependencies": {
+		"@types/node": "^20.8.0",
+		"rimraf": "^5.0.1",
+		"typescript": "^5.2.2",
+		"ts-node": "^10.9.1"
+	},
+	"engines": {
+		"node": ">=14.0.0"
+	}
+}
