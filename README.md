@@ -11,7 +11,11 @@ npm install google-sheet-translations
 ## Prepare Google Spreadsheet
 1. Create Google Spreadsheet(s) with the following structure:
    - **First Row**: Header Row with Key | [language(-country)] | [language(-country)] | ... 
-   - **Subsequent Rows**: Translation Rows with Key used as variable name and corresponding translations. autotranslations is done for new keys by useing the `=GOOGLETRANSLATE` function in the spreadsheet.
+   - **Subsequent Rows**: Translation Rows with Key used as variable name and corresponding translations.
+   
+2. Auto-translation for missing translations can be managed in two ways:
+   - Manually, by using the `=GOOGLETRANSLATE()` function in the spreadsheet
+   - Automatically, by enabling the `autoTranslate` option when using this package (see API Reference)
 
 ## Environment Variables
 
@@ -85,6 +89,7 @@ Fetches and processes data from a Google Spreadsheet.
   - `localesOutputPath`: Path for locales.ts file (default: 'src/i18n/locales.ts')
   - `translationsOutputDir`: Directory for translations output (default: 'translations')
   - `syncLocalChanges`: Whether to sync local changes back to the spreadsheet (default: true)
+  - `autoTranslate`: Whether to auto-generate Google Translate formulas for missing translations (default: false)
 
 #### Returns
 
@@ -114,12 +119,34 @@ This package supports bidirectional synchronization between local translation fi
 1. The system checks if `data.json` has been modified more recently than the translation output files.
 2. If so, it compares the local `data.json` content with the data fetched from the spreadsheet.
 3. Any new keys found in the local data that don't exist in the spreadsheet will be added to the spreadsheet.
+4. If auto-translation is enabled, Google Translate formulas will be automatically added for missing translations when new keys are added.
 
 This workflow allows developers to:
 
 1. Add new translation keys in local files during development.
 2. Run `getSpreadSheetData()` to push those new keys to the shared spreadsheet.
 3. Run it again later to pull the completed translations once they're filled in by translators.
+
+### Auto-Translation Feature
+
+When enabled, the auto-translation feature automatically adds Google Translate formulas for missing translations when new keys are added to the spreadsheet. This helps translators by providing initial machine translations as a starting point.
+
+The formula follows this format:
+```
+=GOOGLETRANSLATE(originalCell, "sourceLocale", "targetLocale")
+```
+
+For example, if you add a new key with an English translation but no German translation, the system will automatically add:
+```
+=GOOGLETRANSLATE(B23, "en-us", "de")
+```
+
+Where:
+- `B23` references the cell containing the English text
+- `"en-us"` is the source language code
+- `"de"` is the target language code
+
+[View the complete Auto-Translation Guide](docs/auto-translation-guide.md) for more details and best practices.
 
 ### Example Workflow
 
@@ -133,7 +160,18 @@ await getSpreadSheetData(['sheet1'], {
 
 // Later, run again to pull completed translations
 await getSpreadSheetData(['sheet1']);
+
+// Example with auto-translation enabled
+await getSpreadSheetData(['sheet1'], {
+  autoTranslate: true  // Automatically generate Google Translate formulas for missing translations
+});
 ```
+
+For more detailed examples, check out the [examples directory](examples) where you'll find working code samples for all features including:
+- Basic usage
+- Bidirectional sync
+- Auto-translation
+- Next.js integration
 
 ## License
 

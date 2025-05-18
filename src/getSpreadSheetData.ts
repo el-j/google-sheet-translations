@@ -20,6 +20,14 @@ export const DEFAULT_WAIT_SECONDS = 5;
  * @param range - The range to fetch (currently not used but kept for API compatibility)
  * @param _docTitle - Array of sheet titles to process
  * @param options - Additional options for fetching data
+ *   - rowLimit: Maximum number of rows to fetch (kept for API compatibility)
+ *   - waitSeconds: Time to wait between API calls (default: 5)
+ *   - dataJsonPath: Path for data.json file (default: 'src/lib/data.json')
+ *   - localesOutputPath: Path for locales.ts file (default: 'src/i18n/locales.ts')
+ *   - translationsOutputDir: Directory for translations output (default: 'translations')
+ *   - syncLocalChanges: Whether to sync local changes back to the spreadsheet (default: true)
+ *   - autoTranslate: Whether to auto-generate Google Translate formulas for missing translations 
+ *                   when new keys are added to the spreadsheet (default: false)
  * @returns Processed translation data
  */
 export async function getSpreadSheetData(
@@ -31,6 +39,7 @@ export async function getSpreadSheetData(
 		localesOutputPath?: string;
 		translationsOutputDir?: string;
 		syncLocalChanges?: boolean;
+		autoTranslate?: boolean;
 	} = {},
 ): Promise<TranslationData> {
 	// Set defaults
@@ -40,6 +49,7 @@ export async function getSpreadSheetData(
 	const localesOutputPath = options.localesOutputPath || "src/i18n/locales.ts";
 	const translationsOutputDir = options.translationsOutputDir || "translations";
 	const syncLocalChanges = options.syncLocalChanges !== false; // Default to true
+	const autoTranslate = options.autoTranslate === true; // Default to false
 
 	// Get spreadsheet ID from environment variables
 	const { GOOGLE_SPREADSHEET_ID } = validateEnv();
@@ -180,8 +190,8 @@ export async function getSpreadSheetData(
 			console.log("Found local changes to sync to the spreadsheet:");
 			console.log(JSON.stringify(changes, null, 2));
 			
-			// Update the spreadsheet with the changes
-			await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds);
+			// Update the spreadsheet with the changes, passing the autoTranslate option
+			await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate);
 			
 			// Refresh the spreadsheet data to include the changes
 			return getSpreadSheetData(_docTitle, {

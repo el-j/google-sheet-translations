@@ -1,9 +1,13 @@
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
 import { mock } from 'jest-mock-extended';
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
+import updateSpreadsheetWithLocalChanges from '../src/utils/spreadsheetUpdater';
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { isDataJsonNewer } from '../src/utils/isDataJsonNewer';
+import { readDataJson } from '../src/utils/readDataJson';
+import { findLocalChanges } from '../src/utils/dataConverter/findLocalChanges';
 
 // Mock dependencies
 jest.mock('google-spreadsheet');
@@ -32,21 +36,26 @@ jest.mock('../src/utils/dataConverter/convertToDataJsonFormat', () => ({
 jest.mock('../src/utils/dataConverter/findLocalChanges', () => ({
   findLocalChanges: jest.fn().mockReturnValue({})
 }));
-jest.mock('../src/utils/spreadsheetUpdater', () => ({
-  __esModule: true,
-  default: jest.fn().mockResolvedValue(undefined)
-}));
+jest.mock('../src/utils/spreadsheetUpdater', () => {
+  const mockFn = jest.fn().mockResolvedValue(undefined);
+  return {
+    __esModule: true,
+    default: mockFn
+  };
+});
 
 describe('getSpreadSheetData', () => {
   // Mock GoogleSpreadsheet
   const mockDoc = mock<GoogleSpreadsheet>();
+  // Define mock sheet with proper typings for Jest mock functions
   const mockSheet = {
-    getRows: jest.fn(),
-    addRows: jest.fn()
-  } as unknown as any;
+    getRows: jest.fn().mockResolvedValue([]),
+    addRows: jest.fn().mockResolvedValue([])
+  };
+  // Define proper type for mock row to avoid TypeScript errors
   const mockRow = {
     toObject: jest.fn()
-  } as unknown as any;
+  };
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -54,7 +63,7 @@ describe('getSpreadSheetData', () => {
     // Set up mock implementations
     (mockDoc.loadInfo as jest.Mock) = jest.fn().mockResolvedValue(undefined);
     // Use type assertion to deal with readonly property
-    (mockDoc as any).sheetsByTitle = { 'home': mockSheet };
+    (mockDoc as unknown as Record<string, unknown>).sheetsByTitle = { 'home': mockSheet };
     
     // Make sure path.join includes 'translations' in one of its calls
     (path.join as jest.Mock).mockImplementation((...args) => {
@@ -136,7 +145,7 @@ describe('getSpreadSheetData', () => {
 
   test('should warn when sheet is not found', async () => {
     // Use type assertion to handle readonly property
-    (mockDoc as any).sheetsByTitle = {};
+    (mockDoc as unknown as Record<string, unknown>).sheetsByTitle = {};
     
     await getSpreadSheetData(['nonexistent']);
     
@@ -158,6 +167,55 @@ describe('getSpreadSheetData', () => {
     
     expect(fs.mkdirSync).toHaveBeenCalled();
     expect(fs.mkdirSync).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ recursive: true }));
+  });
+
+  test('should pass autoTranslate option to spreadsheetUpdater when local changes exist', async () => {
+    // Mock the necessary values to trigger the spreadsheet update flow
+    const mockLocalData = { en: { home: { welcome: 'Welcome' } } };
+    (readDataJson as jest.Mock).mockReturnValue(mockLocalData);
+    (isDataJsonNewer as jest.Mock).mockReturnValue(true);
+    
+    const mockChanges = {
+      en: {
+        home: {
+          new_key: 'New Value'
+        }
+      }
+    };
+    (findLocalChanges as jest.Mock).mockReturnValue(mockChanges);
+    
+    // Import the actual mock function directly to avoid reference issues
+    const spreadsheetUpdater = require('../src/utils/spreadsheetUpdater').default;
+    
+    // Call with autoTranslate = true
+    await getSpreadSheetData(['home'], { autoTranslate: true });
+    
+    // Log the mock calls for debugging
+    console.log('Mock calls:', spreadsheetUpdater.mock.calls);
+    
+    // Check that the function was called
+    expect(spreadsheetUpdater).toHaveBeenCalled();
+    
+    // Verify the arguments individually
+    const firstCall = spreadsheetUpdater.mock.calls[0];
+    expect(firstCall[1]).toEqual(mockChanges); // changes
+    expect(firstCall[3]).toBe(true); // autoTranslate
+    
+    // Reset and test with autoTranslate = false (default)
+    jest.clearAllMocks();
+    (readDataJson as jest.Mock).mockReturnValue(mockLocalData);
+    (isDataJsonNewer as jest.Mock).mockReturnValue(true);
+    (findLocalChanges as jest.Mock).mockReturnValue(mockChanges);
+    
+    await getSpreadSheetData(['home']);
+    
+    // Check that the function was called again
+    expect(spreadsheetUpdater).toHaveBeenCalled();
+    
+    // Verify the arguments individually for the second call
+    const secondCall = spreadsheetUpdater.mock.calls[0];
+    expect(secondCall[1]).toEqual(mockChanges); // changes
+    expect(secondCall[3]).toBe(false); // autoTranslate (default)
   });
 });
 
