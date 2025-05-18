@@ -19,7 +19,8 @@
 		"prepare": "npm run build",
 		"test": "jest",
 		"lint": "eslint . --ext .ts",
-		"dev": "tsc --watch"
+		"dev": "tsc --watch",
+		"prerelease": "npm version prerelease --preid=alpha"
 	},
 	"keywords": [
 		"google-sheets",

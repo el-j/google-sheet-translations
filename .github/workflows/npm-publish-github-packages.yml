@@ -32,6 +32,43 @@ jobs:
           registry-url: https://npm.pkg.github.com/
           scope: '@el-j'
       - run: npm ci
-      - run: npm publish
+      
+      # Extract info from GitHub release event
+      - name: Get release info
+        id: release_info
+        run: |
+          RELEASE_ID=$(jq --raw-output '.release.id' $GITHUB_EVENT_PATH)
+          RELEASE_TAG=$(jq --raw-output '.release.tag_name' $GITHUB_EVENT_PATH)
+          IS_PRERELEASE=$(jq --raw-output '.release.prerelease' $GITHUB_EVENT_PATH)
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_ENV
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            echo "NPM_TAG=prerelease" >> $GITHUB_ENV
+          else
+            echo "NPM_TAG=latest" >> $GITHUB_ENV
+          fi
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+
+      # Set version from tag (strip 'v' prefix if exists)
+      - name: Update package version
+        run: |
+          VERSION=${RELEASE_TAG#v}
+          npm version $VERSION --no-git-tag-version
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          
+      # Try to unpublish prerelease version if it exists
+      - name: Try unpublish existing prerelease (if applicable)
+        if: env.IS_PRERELEASE == 'true'
+        continue-on-error: true
+        run: npm unpublish --force
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+      
+      # Publish with appropriate tag
+      - name: Publish package
+        run: npm publish --tag ${{ env.NPM_TAG }}
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
