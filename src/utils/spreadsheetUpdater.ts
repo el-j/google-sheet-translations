@@ -8,13 +8,13 @@ import { wait } from "./wait";
  * When autoTranslate is enabled:
  * - For each new key added to the spreadsheet, the system checks which languages have translations
  * - For languages missing translations, it automatically adds Google Translate formulas
- * - The formula format is: =GOOGLETRANSLATE(sourceCell, "sourceLocale", "targetLocale")
+ * - The formula format is: =GOOGLETRANSLATE(sourceCell; "sourceLocale"; "targetLocale")
  * - The source is the first available translation for that key
  * 
  * Example:
  * If a new key "welcome" has an English translation but no German translation,
  * and autoTranslate is enabled, the system will add:
- * =GOOGLETRANSLATE(B23, "en-us", "de") to the German column
+ * =GOOGLETRANSLATE(B23; "en-us"; "de") to the German column
  * 
  * @param doc - The Google Spreadsheet instance
  * @param changes - Object containing new keys to add to the spreadsheet
@@ -173,12 +173,12 @@ export async function updateSpreadsheetWithLocalChanges(
                                 const sourceColumnLetter = String.fromCharCode(65 + sourceHeaderIndex); // Convert index to letter (A, B, C...)
                                 
                                 // Extract locale part (e.g., 'en', 'fr', 'de') - assumes headerRow contains locale codes
-                                // This creates formulas like =GOOGLETRANSLATE(B2, "en", "fr") for translating from English to French
-                                const sourceLocaleCode = sourceLocale.split('-')[0] || sourceLocale;
+                                // This creates formulas like =GOOGLETRANSLATE(B2; "en-us"; "fr") for translating from English to French
+                                const sourceLocaleCode = sourceLocale
                                 const targetLocaleCode = localeLower.split('-')[0] || localeLower;
                                 
                                 // Create the formula with a special placeholder for the row number
-                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(${sourceColumnLetter}{{ROW_NUMBER}}, "${sourceLocaleCode}", "${targetLocaleCode}")`;
+                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(${sourceColumnLetter}{{ROW_NUMBER}}; "${sourceLocaleCode}"; "${targetLocaleCode}")`;
                             }
                         }
                     }

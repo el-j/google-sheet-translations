@@ -27,7 +27,7 @@ When enabled through the `autoTranslate: true` option:
 If you add a new key "welcome_message" with an English translation but no German translation, the system will add something like:
 
 ```
-=GOOGLETRANSLATE(B23, "en-us", "de")
+=GOOGLETRANSLATE(B23; "en-us"; "de")
 ```
 
 Where:

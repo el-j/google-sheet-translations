@@ -58,7 +58,7 @@ async function autoTranslationExample() {
     console.log('1. New keys found locally were added to the spreadsheet');
     console.log('2. For each new key with a translation in at least one language:');
     console.log('   - Google Translate formulas were added for all missing languages');
-    console.log('   - Formula format: =GOOGLETRANSLATE(sourceCell, "sourceLocale", "targetLocale")');
+    console.log('   - Formula format: =GOOGLETRANSLATE(sourceCell; "sourceLocale"; "targetLocale")');
     console.log('3. These auto-translations serve as a starting point for translators');
     console.log('   who can review and refine them in the spreadsheet');
     

@@ -133,12 +133,12 @@ When enabled, the auto-translation feature automatically adds Google Translate f
 
 The formula follows this format:
 ```
-=GOOGLETRANSLATE(originalCell, "sourceLocale", "targetLocale")
+=GOOGLETRANSLATE(originalCell; "sourceLocale"; "targetLocale")
 ```
 
 For example, if you add a new key with an English translation but no German translation, the system will automatically add:
 ```
-=GOOGLETRANSLATE(B23, "en-us", "de")
+=GOOGLETRANSLATE(B23; "en-us"; "de")
 ```
 
 Where:
