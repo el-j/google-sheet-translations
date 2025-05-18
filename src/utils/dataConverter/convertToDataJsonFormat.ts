@@ -1,4 +1,4 @@
-import type { TranslationData, TranslationValue } from "../types";
+import type { TranslationData, TranslationValue } from "../../types";
 
 /**
  * Converts the translation object to the expected data.json format
@@ -37,7 +37,7 @@ export function convertToDataJsonFormat(
 		// For each locale, add all key-value pairs
 		for (const locale of locales) {
 			const localeKey = locale.toLowerCase();
-			if (translationObj?.localeKey && translationObj[localeKey][sheetTitle]) {
+			if (translationObj?.[localeKey]?.[sheetTitle]) { // Fixed bug with optional chaining
 				// Create the locale object
 				projectData[sheetTitle][localeKey] = {};
 

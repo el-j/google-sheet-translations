@@ -5,7 +5,12 @@ import type { SheetRow, TranslationData } from "./types";
 import { wait } from "./utils/wait";
 import { createAuthClient } from "./utils/auth";
 import { validateEnv } from "./utils/validateEnv";
-import { convertToDataJsonFormat } from "./utils/dataConverter";
+import { 
+	convertToDataJsonFormat} from "./utils/dataConverter/convertToDataJsonFormat";
+import { findLocalChanges } from "./utils/dataConverter/findLocalChanges";
+import updateSpreadsheetWithLocalChanges from "./utils/spreadsheetUpdater";
+import { isDataJsonNewer } from "./utils/isDataJsonNewer";
+import { readDataJson } from "./utils/readDataJson";
 
 // Default wait time between API calls (in seconds)
 export const DEFAULT_WAIT_SECONDS = 5;
@@ -25,6 +30,7 @@ export async function getSpreadSheetData(
 		dataJsonPath?: string;
 		localesOutputPath?: string;
 		translationsOutputDir?: string;
+		syncLocalChanges?: boolean;
 	} = {},
 ): Promise<TranslationData> {
 	// Set defaults
@@ -33,6 +39,7 @@ export async function getSpreadSheetData(
 		options.dataJsonPath || path.join(process.cwd(), "src/lib/data.json");
 	const localesOutputPath = options.localesOutputPath || "src/i18n/locales.ts";
 	const translationsOutputDir = options.translationsOutputDir || "translations";
+	const syncLocalChanges = options.syncLocalChanges !== false; // Default to true
 
 	// Get spreadsheet ID from environment variables
 	const { GOOGLE_SPREADSHEET_ID } = validateEnv();
@@ -48,15 +55,14 @@ export async function getSpreadSheetData(
 	let locales: string[] = [];
 	let docTitle: string[] = _docTitle || [];
 
-	// Check if data.json exists
-	let dataJsonExists = false;
-	try {
-		if (fs.existsSync(dataJsonPath)) {
-			dataJsonExists = true;
-		}
-	} catch (error) {
-		console.warn("Error reading data.json:", error);
-	}
+	// Check if data.json exists and read it
+	const localData = readDataJson(dataJsonPath);
+	const dataJsonExists = localData !== null;
+	
+	// Check if we need to sync local changes to the spreadsheet
+	const shouldSyncToSheet = syncLocalChanges && 
+		dataJsonExists && 
+		isDataJsonNewer(dataJsonPath, translationsOutputDir);
 
 	// Start downloading and processing sheet data
 	if (!docTitle || docTitle.length === 0) {
@@ -156,6 +162,36 @@ export async function getSpreadSheetData(
 			await wait(waitSeconds, `after processing sheet: ${title}`);
 		}),
 	);
+
+	// If we need to sync local changes to the spreadsheet, do it before writing files
+	if (shouldSyncToSheet && localData) {
+		console.log("Local data.json is newer than translation files. Checking for changes...");
+		
+		// Find differences between local data and spreadsheet data
+		const changes = findLocalChanges(localData, obj);
+		
+		// If there are changes, update the spreadsheet
+		if (
+			Object.keys(changes).length > 0 && 
+			Object.keys(changes).some(locale => 
+				Object.keys(changes[locale]).length > 0
+			)
+		) {
+			console.log("Found local changes to sync to the spreadsheet:");
+			console.log(JSON.stringify(changes, null, 2));
+			
+			// Update the spreadsheet with the changes
+			await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds);
+			
+			// Refresh the spreadsheet data to include the changes
+			return getSpreadSheetData(_docTitle, {
+				...options,
+				syncLocalChanges: false, // Prevent infinite loop
+			});
+		}
+		
+		console.log("No local changes found that need to be synced to the spreadsheet.");
+	}
 
 	// Make sure the translations directory exists
 	if (!fs.existsSync(translationsOutputDir)) {

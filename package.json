@@ -1,10 +1,14 @@
 {
 	"name": "google-sheet-translations",
-	"version": "1.0.0",
-	"description": "A package to manage translations stored in Google Sheets",
+	"version": "0.0.1",
+	"description": "A package to manage translations stored in Google Spreadsheets",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
-	"files": ["dist", "LICENSE", "README.md"],
+	"files": [
+		"dist",
+		"LICENSE",
+		"README.md"
+	],
 	"scripts": {
 		"build": "tsc",
 		"clean": "rimraf dist",
@@ -14,7 +18,18 @@
 		"lint": "eslint . --ext .ts",
 		"dev": "tsc --watch"
 	},
-	"keywords": ["google-sheets", "translations", "i18n"],
+	"keywords": [
+		"google-sheets",
+		"translations",
+		"i18n",
+		"nextjs",
+		"typescript",
+		"localization",
+		"internationalization",
+		"spreadsheet",
+		"google-api",
+		"google-spreadsheet"
+	],
 	"author": "",
 	"license": "MIT",
 	"dependencies": {
@@ -25,10 +40,15 @@
 		"typescript": ">=4.0.0"
 	},
 	"devDependencies": {
+		"@types/jest": "^29.5.14",
 		"@types/node": "^20.8.0",
+		"dotenv": "16.5.0",
+		"jest": "^29.7.0",
+		"jest-mock-extended": "^4.0.0-beta1",
 		"rimraf": "^5.0.1",
-		"typescript": "^5.2.2",
-		"ts-node": "^10.9.1"
+		"ts-jest": "^29.3.4",
+		"ts-node": "^10.9.1",
+		"typescript": "^5.8.3"
 	},
 	"engines": {
 		"node": ">=14.0.0"
