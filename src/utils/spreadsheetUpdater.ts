@@ -178,7 +178,7 @@ export async function updateSpreadsheetWithLocalChanges(
                                 const targetLocaleCode = localeLower.split('-')[0] || localeLower;
                                 
                                 // Create the formula with a special placeholder for the row number
-                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(${sourceColumnLetter}{{ROW_NUMBER}}; "${sourceLocaleCode}"; "${targetLocaleCode}")`;
+                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(${sourceColumnLetter}{{ROW_NUMBER}}, "${sourceLocaleCode}", "${targetLocaleCode}")`;
                             }
                         }
                     }
@@ -201,13 +201,13 @@ export async function updateSpreadsheetWithLocalChanges(
                 if (autoTranslate) {
                     chunk.forEach((rowData, index) => {
                         const rowNumber = startingRowNumber + i + index;
-                        
-                        Object.keys(rowData).forEach(key => {
+                        for (const key in rowData) {
                             const value = rowData[key];
                             if (typeof value === 'string' && value.includes('{{ROW_NUMBER}}')) {
                                 rowData[key] = value.replace('{{ROW_NUMBER}}', rowNumber.toString());
                             }
-                        });
+                        }
+                        
                     });
                 }
                 
