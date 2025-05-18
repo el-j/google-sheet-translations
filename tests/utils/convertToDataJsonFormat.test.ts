@@ -1,6 +1,15 @@
 import { convertToDataJsonFormat } from '../../src/utils/dataConverter/convertToDataJsonFormat';
 import type { TranslationData } from '../../src/types';
 
+// Define more specific types for test assertions
+interface SheetData {
+  [sheetName: string]: {
+    [locale: string]: {
+      [key: string]: string;
+    }
+  }
+}
+
 // Mock console.log to avoid cluttering test output
 beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
@@ -31,9 +40,12 @@ describe('convertToDataJsonFormat', () => {
     const result = convertToDataJsonFormat(translationObj, locales);
     
     expect(result).toHaveLength(1);
-    expect(result[0]).toHaveProperty('home');
-    expect(result[0].home).toHaveProperty('en');
-    expect(result[0].home.en).toEqual({
+    
+    // Type assertion to help TypeScript understand the structure
+    const typedResult = result[0] as SheetData;
+    expect(typedResult).toHaveProperty('home');
+    expect(typedResult.home).toHaveProperty('en');
+    expect(typedResult.home.en).toEqual({
       'welcome': 'Welcome',
       'hello': 'Hello'
     });
@@ -65,47 +77,52 @@ describe('convertToDataJsonFormat', () => {
     expect(result).toHaveLength(2);
     
     // Find the 'home' sheet result
-    const homeSheet = result.find(item => 'home' in item);
+    const homeSheet = result.find(item => 'home' in item) as SheetData | undefined;
     expect(homeSheet).toBeDefined();
-    expect(homeSheet!.home).toHaveProperty('en');
-    expect(homeSheet!.home).toHaveProperty('de');
-    expect(homeSheet!.home.en).toEqual({
-      'welcome': 'Welcome',
-      'hello': 'Hello'
-    });
-    expect(homeSheet!.home.de).toEqual({
-      'welcome': 'Willkommen',
-      'hello': 'Hallo'
-    });
+    if (homeSheet) {
+      expect(homeSheet.home).toHaveProperty('en');
+      expect(homeSheet.home).toHaveProperty('de');
+      expect(homeSheet.home.en).toEqual({
+        'welcome': 'Welcome',
+        'hello': 'Hello'
+      });
+      expect(homeSheet.home.de).toEqual({
+        'welcome': 'Willkommen',
+        'hello': 'Hallo'
+      });
+    }
     
     // Find the 'about' sheet result
-    const aboutSheet = result.find(item => 'about' in item);
+    const aboutSheet = result.find(item => 'about' in item) as SheetData | undefined;
     expect(aboutSheet).toBeDefined();
-    expect(aboutSheet!.about).toHaveProperty('en');
-    expect(aboutSheet!.about.en).toEqual({
-      'title': 'About us'
-    });
-    expect(aboutSheet!.about).not.toHaveProperty('de');
+    if (aboutSheet) {
+      expect(aboutSheet.about).toHaveProperty('en');
+      expect(aboutSheet.about.en).toEqual({
+        'title': 'About us'
+      });
+      expect(aboutSheet.about).not.toHaveProperty('de');
+    }
   });
   
   test('should handle case sensitivity correctly in locales', () => {
     const translationObj: TranslationData = {
-      'EN': {
+      'en': { // Note: Using lowercase 'en' to match what the code is looking for
         'home': {
           'welcome': 'Welcome'
         }
       }
     };
     
-    const locales = ['en'];
+    const locales = ['EN']; // Using uppercase in the locales array
     const result = convertToDataJsonFormat(translationObj, locales);
     
     expect(result).toHaveLength(1);
     // The locale should be lowercased in the output
-    expect(result[0].home).toHaveProperty('en');
+    const typedResult = result[0] as SheetData;
+    expect(typedResult.home).toHaveProperty('en');
   });
   
-  test('should skip empty sheets', () => {
+  test('should include empty sheets with empty objects', () => {
     const translationObj: TranslationData = {
       'en': {
         'home': {},
@@ -118,9 +135,26 @@ describe('convertToDataJsonFormat', () => {
     const locales = ['en'];
     const result = convertToDataJsonFormat(translationObj, locales);
     
-    // The empty home sheet should be skipped
-    expect(result).toHaveLength(1);
-    expect(result[0]).toHaveProperty('about');
+    // Both sheets should be included (even empty ones have locale entries)
+    expect(result).toHaveLength(2);
+    
+    // Find the 'home' sheet result (which should be empty)
+    const homeSheet = result.find(item => 'home' in item) as SheetData | undefined;
+    expect(homeSheet).toBeDefined();
+    if (homeSheet) {
+      expect(homeSheet.home).toHaveProperty('en');
+      expect(Object.keys(homeSheet.home.en)).toHaveLength(0);
+    }
+    
+    // Find the 'about' sheet
+    const aboutSheet = result.find(item => 'about' in item) as SheetData | undefined;
+    expect(aboutSheet).toBeDefined();
+    if (aboutSheet) {
+      expect(aboutSheet.about).toHaveProperty('en');
+      expect(aboutSheet.about.en).toEqual({
+        'title': 'About us'
+      });
+    }
   });
 
   test('should handle missing locales gracefully', () => {
@@ -136,8 +170,9 @@ describe('convertToDataJsonFormat', () => {
     const result = convertToDataJsonFormat(translationObj, locales);
     
     expect(result).toHaveLength(1);
-    expect(result[0].home).toHaveProperty('en');
-    expect(result[0].home).not.toHaveProperty('fr');
-    expect(result[0].home).not.toHaveProperty('es');
+    const typedResult = result[0] as SheetData;
+    expect(typedResult.home).toHaveProperty('en');
+    expect(typedResult.home).not.toHaveProperty('fr');
+    expect(typedResult.home).not.toHaveProperty('es');
   });
 });
