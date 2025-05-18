@@ -1,9 +1,12 @@
 {
-	"name": "google-sheet-translations",
+	"name": "@el-j/google-sheet-translations",
 	"version": "0.0.1",
 	"description": "A package to manage translations stored in Google Spreadsheets",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"publishConfig": {
+		"registry": "https://npm.pkg.github.com"
+	},
 	"files": [
 		"dist",
 		"LICENSE",
