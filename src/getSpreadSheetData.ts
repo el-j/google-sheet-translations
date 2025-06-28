@@ -13,7 +13,7 @@ import { isDataJsonNewer } from "./utils/isDataJsonNewer";
 import { readDataJson } from "./utils/readDataJson";
 
 // Default wait time between API calls (in seconds)
-export const DEFAULT_WAIT_SECONDS = 5;
+export const DEFAULT_WAIT_SECONDS = 1;
 
 /**
  * Fetches and processes data from a Google Spreadsheet
