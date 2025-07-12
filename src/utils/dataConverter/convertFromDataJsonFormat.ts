@@ -1,8 +1,8 @@
 import type { TranslationData, TranslationValue } from "../../types";
 
 /**
- * Converts data.json format back to the translation object structure
- * @param dataJson - Data in the data.json format
+ * Converts languageData.json format back to the translation object structure
+ * @param dataJson - Data in the languageData.json format
  * @returns Converted data in the TranslationData format
  */
 

@@ -1,8 +1,8 @@
 import type { TranslationData } from "../../types";
 
 /**
- * Compares local data.json with spreadsheet data to find new keys
- * @param localData - Data from local data.json file
+ * Compares local languageData.json with spreadsheet data to find new keys
+ * @param localData - Data from local languageData.json file
  * @param spreadsheetData - Data fetched from the spreadsheet
  * @returns Object with new keys that are in localData but not in spreadsheetData
  */

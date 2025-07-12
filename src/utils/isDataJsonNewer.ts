@@ -3,10 +3,10 @@ import path from "node:path";
 import { getFileLastModified } from "./getFileLastModified";
 
 /**
- * Checks if data.json has been modified more recently than the translation files
- * @param dataJsonPath - Path to data.json
+ * Checks if languageData.json has been modified more recently than the translation files
+ * @param dataJsonPath - Path to languageData.json
  * @param translationsOutputDir - Directory containing translation files
- * @returns True if data.json is newer than the translation files
+ * @returns True if languageData.json is newer than the translation files
  */
 export function isDataJsonNewer(dataJsonPath: string, translationsOutputDir: string): boolean {
 	const dataJsonMtime = getFileLastModified(dataJsonPath);

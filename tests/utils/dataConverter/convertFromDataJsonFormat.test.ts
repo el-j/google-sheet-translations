@@ -2,7 +2,7 @@ import { convertFromDataJsonFormat } from '../../../src/utils/dataConverter/conv
 import type { TranslationData } from '../../../src/types';
 
 describe('convertFromDataJsonFormat', () => {
-  test('should convert empty data.json to empty translation data', () => {
+  test('should convert empty languageData.json to empty translation data', () => {
     const dataJson: Record<string, unknown>[] = [];
     const result = convertFromDataJsonFormat(dataJson);
     expect(result).toEqual({});

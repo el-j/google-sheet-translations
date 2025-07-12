@@ -16,17 +16,17 @@ describe('readDataJson', () => {
     jest.restoreAllMocks();
   });
 
-  test('should return null if data.json does not exist', () => {
+  test('should return null if languageData.json does not exist', () => {
     // Mock existsSync to return false (file doesn't exist)
     (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
-    expect(fs.existsSync).toHaveBeenCalledWith('/path/to/data.json');
+    expect(fs.existsSync).toHaveBeenCalledWith('/path/to/languageData.json');
     expect(result).toBeNull();
   });
 
-  test('should read and parse data.json successfully', () => {
+  test('should read and parse languageData.json successfully', () => {
     // Mock file existence and content
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     
@@ -45,9 +45,9 @@ describe('readDataJson', () => {
     };
     (convertFromDataJsonFormat as jest.Mock).mockReturnValue(mockConversionResult);
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
-    expect(fs.readFileSync).toHaveBeenCalledWith('/path/to/data.json', 'utf8');
+    expect(fs.readFileSync).toHaveBeenCalledWith('/path/to/languageData.json', 'utf8');
     expect(convertFromDataJsonFormat).toHaveBeenCalledWith(mockData);
     expect(result).toEqual(mockConversionResult);
   });
@@ -57,7 +57,7 @@ describe('readDataJson', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.readFileSync as jest.Mock).mockReturnValue('Invalid JSON');
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
@@ -70,7 +70,7 @@ describe('readDataJson', () => {
       throw new Error('Permission denied');
     });
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
@@ -86,7 +86,7 @@ describe('readDataJson', () => {
       throw new Error('Invalid format');
     });
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
@@ -103,17 +103,17 @@ describe('readDataJson', () => {
     jest.restoreAllMocks();
   });
 
-  test('should return null if data.json does not exist', () => {
+  test('should return null if languageData.json does not exist', () => {
     // Mock existsSync to return false (file doesn't exist)
     (fs.existsSync as jest.Mock).mockReturnValue(false);
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
-    expect(fs.existsSync).toHaveBeenCalledWith('/path/to/data.json');
+    expect(fs.existsSync).toHaveBeenCalledWith('/path/to/languageData.json');
     expect(result).toBeNull();
   });
 
-  test('should read and parse data.json successfully', () => {
+  test('should read and parse languageData.json successfully', () => {
     // Mock file existence and content
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     
@@ -132,9 +132,9 @@ describe('readDataJson', () => {
     };
     (convertFromDataJsonFormat as jest.Mock).mockReturnValue(mockConversionResult);
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
-    expect(fs.readFileSync).toHaveBeenCalledWith('/path/to/data.json', 'utf8');
+    expect(fs.readFileSync).toHaveBeenCalledWith('/path/to/languageData.json', 'utf8');
     expect(convertFromDataJsonFormat).toHaveBeenCalledWith(mockData);
     expect(result).toEqual(mockConversionResult);
   });
@@ -144,7 +144,7 @@ describe('readDataJson', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(true);
     (fs.readFileSync as jest.Mock).mockReturnValue('Invalid JSON');
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
@@ -157,7 +157,7 @@ describe('readDataJson', () => {
       throw new Error('Permission denied');
     });
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
@@ -173,7 +173,7 @@ describe('readDataJson', () => {
       throw new Error('Invalid format');
     });
 
-    const result = readDataJson('/path/to/data.json');
+    const result = readDataJson('/path/to/languageData.json');
     
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();

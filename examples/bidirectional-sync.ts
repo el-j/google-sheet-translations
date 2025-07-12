@@ -20,7 +20,7 @@ const sheetTitles = ['Index'];
 
 // Output directories
 const translationsDir = path.join(__dirname, 'translations');
-const dataJsonPath = path.join(__dirname, 'data.json');
+const dataJsonPath = path.join(__dirname, 'languageData.json');
 
 async function bidirectionalSyncExample() {
   console.log('Step 1: Pulling initial data from Google Sheets...');
@@ -37,7 +37,7 @@ async function bidirectionalSyncExample() {
   // Wait a moment to ensure file timestamps will be different
   await new Promise(resolve => setTimeout(resolve, 1000));
   
-  // Read the data.json file
+  // Read the languageData.json file
   const dataJsonContent = fs.readFileSync(dataJsonPath, 'utf8');
   const dataJson = JSON.parse(dataJsonContent);
   
@@ -51,7 +51,7 @@ async function bidirectionalSyncExample() {
   const timestamp = new Date().toISOString();
   dataJson[0][firstSheet][firstLocale][`test_key_${timestamp}`] = `This is a test value added at ${timestamp}`;
   
-  // Write the modified data back to data.json
+  // Write the modified data back to languageData.json
   fs.writeFileSync(dataJsonPath, JSON.stringify(dataJson, null, 2), 'utf8');
   
   console.log('\nStep 3: Syncing local changes back to Google Sheets...');

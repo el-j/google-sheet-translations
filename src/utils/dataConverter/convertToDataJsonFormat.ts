@@ -1,17 +1,17 @@
 import type { TranslationData, TranslationValue } from "../../types";
 
 /**
- * Converts the translation object to the expected data.json format
+ * Converts the translation object to the expected languageData.json format
  * @param translationObj - The translation object with locale->sheet->key->value structure
  * @param locales - Array of locale identifiers
- * @returns Converted data in the format expected for data.json
+ * @returns Converted data in the format expected for languageData.json
  */
 export function convertToDataJsonFormat(
 	translationObj: TranslationData,
 	locales: string[],
 ): Record<string, unknown>[] {
 	const result: Record<string, unknown>[] = [];
-	console.log("Converting translation object to data.json format...");
+	console.log("Converting translation object to languageData.json format...");
 
 	// Get all sheet names from all locales to make sure we don't miss any
 	const allSheets = new Set<string>();
@@ -62,7 +62,7 @@ export function convertToDataJsonFormat(
 		}
 	}
 
-	console.log(`Created ${result.length} sheet entries for data.json`);
+	console.log(`Created ${result.length} sheet entries for languageData.json`);
 	return result;
 }
 

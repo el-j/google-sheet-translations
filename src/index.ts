@@ -6,6 +6,19 @@
 // Main functionality
 export { getSpreadSheetData, DEFAULT_WAIT_SECONDS } from './getSpreadSheetData';
 
+// Configuration and options
+export { normalizeConfig, type SpreadsheetOptions, type NormalizedConfig } from './utils/configurationHandler';
+
+// Processing utilities
+export { processSheet, type SheetProcessingResult } from './utils/sheetProcessor';
+export { handleBidirectionalSync, type SyncResult } from './utils/syncManager';
+
+// File writing utilities
+export { writeTranslationFiles, writeLocalesFile, writeLanguageDataFile } from './utils/fileWriter';
+
+// Locale validation
+export { isValidLocale, filterValidLocales } from './utils/localeFilter';
+
 // Utils
 export { wait } from './utils/wait';
 export { validateEnv } from './utils/validateEnv';

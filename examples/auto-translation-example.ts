@@ -17,7 +17,7 @@ dotenv.config();
 
 // Output directories and files
 const translationsDir = path.join(__dirname, 'translations');
-const dataJsonPath = path.join(__dirname, 'data.json');
+const dataJsonPath = path.join(__dirname, 'languageData.json');
 const localesOutputPath = path.join(__dirname, 'locales.ts');
 
 // Sheet titles to process (update these to match your actual sheets)
@@ -72,7 +72,7 @@ async function autoTranslationExample() {
  * This would typically be done by developers during development
  */
 async function simulateAddingNewTranslations() {
-  // Read the existing data.json if it exists
+  // Read the existing languageData.json if it exists
   let data = {};
   try {
     if (fs.existsSync(dataJsonPath)) {
@@ -80,7 +80,7 @@ async function simulateAddingNewTranslations() {
       data = JSON.parse(content);
     }
   } catch (error) {
-    console.error('Error reading data.json:', error);
+    console.error('Error reading languageData.json:', error);
     data = {};
   }
   
@@ -96,9 +96,9 @@ async function simulateAddingNewTranslations() {
     // Note: Partial translations, missing languages will be auto-translated
   };
   
-  // Write back to data.json
+  // Write back to languageData.json
   fs.writeFileSync(dataJsonPath, JSON.stringify(data, null, 2), 'utf8');
-  console.log('New translation keys added to local data.json file');
+  console.log('New translation keys added to local languageData.json file');
 }
 
 // Run the example

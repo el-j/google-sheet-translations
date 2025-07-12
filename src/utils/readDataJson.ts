@@ -3,9 +3,9 @@ import type { TranslationData } from "../types";
 import { convertFromDataJsonFormat } from "../utils/dataConverter/convertFromDataJsonFormat";
 
 /**
- * Reads and parses the data.json file
- * @param dataJsonPath - Path to data.json
- * @returns Parsed data.json contents, or null if file doesn't exist or is invalid
+ * Reads and parses the languageData.json file
+ * @param dataJsonPath - Path to languageData.json
+ * @returns Parsed languageData.json contents, or null if file doesn't exist or is invalid
  */
 export function readDataJson(dataJsonPath: string): TranslationData | null {
 	try {
@@ -16,10 +16,10 @@ export function readDataJson(dataJsonPath: string): TranslationData | null {
 		const dataJsonContent = fs.readFileSync(dataJsonPath, 'utf8');
 		const dataJson = JSON.parse(dataJsonContent);
 
-		// Convert from data.json format to TranslationData
+		// Convert from languageData.json format to TranslationData
 		return convertFromDataJsonFormat(dataJson);
 	} catch (error) {
-		console.warn("Error reading or parsing data.json:", error);
+		console.warn("Error reading or parsing languageData.json:", error);
 		return null;
 	}
 }

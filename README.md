@@ -2,10 +2,20 @@
 
 A Node.js package for managing translations stored in Google Sheets.
 
+## Features
+
+- ✅ **Bidirectional Sync**: Sync changes from local files back to Google Sheets
+- ✅ **Auto-Translation**: Automatic Google Translate formula generation for missing translations
+- ✅ **Smart Locale Filtering**: Only valid locale identifiers are included in output files
+- ✅ **TypeScript Support**: Full TypeScript definitions included
+- ✅ **Modular Architecture**: Well-tested, maintainable codebase with clear separation of concerns
+- ✅ **Next.js Integration**: Built-in support for Next.js static export workflows
+- ✅ **Flexible Configuration**: Customizable paths, wait times, and processing options
+
 ## Installation
 
 ```bash
-npm install google-sheet-translations
+npm install @el-j/google-sheet-translations
 ```
 
 ## Prepare Google Spreadsheet
@@ -28,7 +38,7 @@ Make sure to set the following environment variables:
 ## Usage
 
 ```typescript
-import { getSpreadSheetData, validateEnv } from 'google-sheet-translations';
+import { getSpreadSheetData, validateEnv } from '@el-j/google-sheet-translations';
 
 // Ensure environment variables are set
 validateEnv();
@@ -39,9 +49,9 @@ async function fetchTranslations() {
     const translations = await getSpreadSheetData(
       ['sheet1', 'sheet2'], // Array of sheet names to process
       {
-        rowLimit: 100, // Optional: rowLimit parameter (standard is 100 if not set)
-        waitSeconds: 3, // Optional: Time to wait between API calls
-        dataJsonPath: 'path/to/data.json', // Optional: Custom path for data.json
+        rowLimit: 100, // Optional: rowLimit parameter (default is 100)
+        waitSeconds: 3, // Optional: Time to wait between API calls (default is 1)
+        dataJsonPath: 'path/to/languageData.json', // Optional: Custom path for languageData.json
         localesOutputPath: 'path/to/locales.ts', // Optional: Custom path for locales.ts
         translationsOutputDir: 'path/to/translations', // Optional: Custom translations output directory
       }
@@ -56,7 +66,7 @@ async function fetchTranslations() {
 fetchTranslations();
 ```
 
-### Useage with NEXTJS 
+### Usage with NEXTJS 
 
 for nextjs, you can use the package in your `instrumentation.ts` file. This is useful for pre-fetching translations during the build process
 and storing them in a JSON file. Practically for `static:export` in `next build`
@@ -64,32 +74,32 @@ and storing them in a JSON file. Practically for `static:export` in `next build`
 ```typescript:instrumentation.ts
 export async function register() {
 	if (process.env.NEXT_RUNTIME === "nodejs") {
-		const getData = await import("google-sheet-translations");
+		const getData = await import("@el-j/google-sheet-translations");
 		await getData.getSpreadSheetData(["Index"]);
 		console.log("register done");
 	}
 }
 ```
 
-read more (internationalization with nextjs)[https://nextjs.org/docs/pages/building-your-application/routing/internationalization]
+read more [internationalization with nextjs](https://nextjs.org/docs/pages/building-your-application/routing/internationalization)
 
 ## API Reference
 
-### `getSpreadSheetData(range, sheetTitles, options?)`
+### `getSpreadSheetData(sheetTitles?, options?)`
 
 Fetches and processes data from a Google Spreadsheet.
 
 #### Parameters
 
-- `sheetTitles`: Array of sheet titles to process
+- `sheetTitles`: (Optional) Array of sheet titles to process. If not provided, only the "i18n" sheet will be processed.
 - `options`: (Optional) Configuration object
-  - `rowLimit`: String (not used but kept for API compatibility)
-  - `waitSeconds`: Time to wait between API calls (default: 5)
-  - `dataJsonPath`: Path for data.json file (default: 'src/lib/data.json')
-  - `localesOutputPath`: Path for locales.ts file (default: 'src/i18n/locales.ts')
-  - `translationsOutputDir`: Directory for translations output (default: 'translations')
-  - `syncLocalChanges`: Whether to sync local changes back to the spreadsheet (default: true)
-  - `autoTranslate`: Whether to auto-generate Google Translate formulas for missing translations (default: false)
+  - `rowLimit`: Number - Maximum number of rows to fetch (default: 100)
+  - `waitSeconds`: Number - Time to wait between API calls (default: 1)
+  - `dataJsonPath`: String - Path for languageData.json file (default: 'src/lib/languageData.json')
+  - `localesOutputPath`: String - Path for locales.ts file (default: 'src/i18n/locales.ts')
+  - `translationsOutputDir`: String - Directory for translations output (default: 'translations')
+  - `syncLocalChanges`: Boolean - Whether to sync local changes back to the spreadsheet (default: true)
+  - `autoTranslate`: Boolean - Whether to auto-generate Google Translate formulas for missing translations (default: false)
 
 #### Returns
 
@@ -107,6 +117,54 @@ An object containing the validated environment variables.
 
 Error if any required environment variable is missing.
 
+## Locale Filtering
+
+The package now includes intelligent locale filtering to ensure only valid locale identifiers are included in the generated `locales.ts` file. This prevents common spreadsheet column names like 'key', 'description', 'status', etc., from being treated as locales.
+
+### Supported Locale Formats
+
+- Two-letter language codes: `en`, `de`, `fr`, `ja`
+- Language-country codes with hyphens: `en-us`, `de-de`, `fr-ca`
+- Language-country codes with underscores: `en_us`, `de_de`, `zh_cn`
+- Extended locale codes: `en-us-traditional`, `zh-cn-simplified`
+
+### Filtered Keywords
+
+The following common spreadsheet column names are automatically filtered out:
+- `key`, `keys`, `id`, `identifier`, `name`, `title`, `label`
+- `description`, `comment`, `note`, `context`, `category`, `type`
+- `status`, `updated`, `created`, `modified`, `version`, `source`
+- `i18n`, `translation`, `namespace`, `section`
+
+## Additional Utilities
+
+The package exports several utility functions that can be used independently:
+
+```typescript
+import { 
+  validateEnv,
+  isValidLocale,
+  filterValidLocales,
+  normalizeConfig,
+  processSheet,
+  writeTranslationFiles,
+  convertToDataJsonFormat,
+  convertFromDataJsonFormat,
+  findLocalChanges
+} from '@el-j/google-sheet-translations';
+
+// Validate locale identifiers
+console.log(isValidLocale('en-us')); // true
+console.log(isValidLocale('description')); // false
+
+// Filter valid locales from header row
+const validLocales = filterValidLocales(['key', 'en', 'description', 'de'], 'key');
+console.log(validLocales); // ['en', 'de']
+
+// Normalize configuration with defaults
+const config = normalizeConfig({ waitSeconds: 2 });
+```
+
 ## Bidirectional Sync Feature
 
 This package supports bidirectional synchronization between local translation files and the Google Spreadsheet:
@@ -116,8 +174,8 @@ This package supports bidirectional synchronization between local translation fi
 
 ### How Bidirectional Sync Works
 
-1. The system checks if `data.json` has been modified more recently than the translation output files.
-2. If so, it compares the local `data.json` content with the data fetched from the spreadsheet.
+1. The system checks if `languageData.json` has been modified more recently than the translation output files.
+2. If so, it compares the local `languageData.json` content with the data fetched from the spreadsheet.
 3. Any new keys found in the local data that don't exist in the spreadsheet will be added to the spreadsheet.
 4. If auto-translation is enabled, Google Translate formulas will be automatically added for missing translations when new keys are added.
 

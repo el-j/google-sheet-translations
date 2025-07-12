@@ -115,14 +115,14 @@ describe('getSpreadSheetData', () => {
     await getSpreadSheetData(['home']);
     
     // Check paths are using defaults
-    expect(path.join).toHaveBeenCalledWith(expect.anything(), 'src/lib/data.json');
+    expect(path.join).toHaveBeenCalledWith(expect.anything(), 'src/lib/languageData.json');
     // Instead of checking for path.join with translations, check for mkdir call
     expect(fs.mkdirSync).toHaveBeenCalled();
   });
 
   test('should use custom options when provided', async () => {
     await getSpreadSheetData(['home'], {
-      dataJsonPath: '/custom/data.json',
+      dataJsonPath: '/custom/languageData.json',
       translationsOutputDir: '/custom/translations',
       localesOutputPath: '/custom/locales.ts',
       waitSeconds: 2
