@@ -1,6 +1,7 @@
 import type { GoogleSpreadsheet } from "google-spreadsheet";
 import type { TranslationData } from "../types";
 import { wait } from "./wait";
+import { getOriginalHeaderForLocale } from "./localeNormalizer";
 
 /**
  * Updates the Google Spreadsheet with new keys from local data
@@ -8,25 +9,27 @@ import { wait } from "./wait";
  * When autoTranslate is enabled:
  * - For each new key added to the spreadsheet, the system checks which languages have translations
  * - For languages missing translations, it automatically adds Google Translate formulas
- * - The formula format is: =GOOGLETRANSLATE(sourceCell; "sourceLocale"; "targetLocale")
- * - The source is the first available translation for that key
+ * - The formula format is: =GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());$sourceColumn$1;targetColumn$1)
+ * - This dynamic formula uses cell references for language codes and automatically adapts to the correct row
  * 
  * Example:
- * If a new key "welcome" has an English translation but no German translation,
+ * If a new key "welcome" has an English translation in column B but no German translation in column C,
  * and autoTranslate is enabled, the system will add:
- * =GOOGLETRANSLATE(B23; "en-us"; "de") to the German column
+ * =GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1) to the German column
  * 
  * @param doc - The Google Spreadsheet instance
  * @param changes - Object containing new keys to add to the spreadsheet
  * @param waitSeconds - Number of seconds to wait between API calls
  * @param autoTranslate - Whether to add Google Translate formulas for missing translations (default: false)
+ * @param localeMapping - Mapping from normalized locale codes to original spreadsheet headers
  * @returns Promise that resolves when the update is complete
  */
 export async function updateSpreadsheetWithLocalChanges(
     doc: GoogleSpreadsheet,
     changes: TranslationData,
     waitSeconds: number,
-    autoTranslate = false
+    autoTranslate = false,
+    localeMapping: Record<string, string> = {}
 ): Promise<void> {
     console.log("Updating spreadsheet with local changes...");
     
@@ -92,8 +95,14 @@ export async function updateSpreadsheetWithLocalChanges(
                         keyLocalesMap.set(keyLower, new Map<string, string>());
                     }
                     
-                    // Find the exact header for this locale (preserving case)
-                    const localeHeader = headerRow.find(h => h.toLowerCase() === locale.toLowerCase());
+                    // Find the exact header for this locale using the mapping
+                    let localeHeader = getOriginalHeaderForLocale(locale, localeMapping);
+                    
+                    // Fallback to case-insensitive search in headerRow if mapping lookup fails
+                    if (!localeHeader) {
+                        localeHeader = headerRow.find(h => h.toLowerCase() === locale.toLowerCase());
+                    }
+                    
                     if (localeHeader) {
                         const theKey = newKeys.get(keyLower);
                         if (!theKey) {
@@ -117,10 +126,15 @@ export async function updateSpreadsheetWithLocalChanges(
                     const rowIndex = existingKeys.get(keyLower) as number;
                     const row = rows[rowIndex];
                     
-                    // Find the exact header for this locale (preserving case)
-                    const localeHeader = Object.keys(row.toObject()).find(
-                        h => h.toLowerCase() === locale.toLowerCase()
-                    );
+                    // Find the exact header for this locale using the mapping
+                    let localeHeader = getOriginalHeaderForLocale(locale, localeMapping);
+                    
+                    // Fallback to case-insensitive search if mapping lookup fails
+                    if (!localeHeader) {
+                        localeHeader = Object.keys(row.toObject()).find(
+                            h => h.toLowerCase() === locale.toLowerCase()
+                        );
+                    }
                     
                     if (localeHeader) {
                         // Use set() method instead of direct property assignment to avoid TS errors
@@ -172,13 +186,16 @@ export async function updateSpreadsheetWithLocalChanges(
                                 const sourceHeaderIndex = headerRow.indexOf(sourceHeader);
                                 const sourceColumnLetter = String.fromCharCode(65 + sourceHeaderIndex); // Convert index to letter (A, B, C...)
                                 
-                                // Extract locale part (e.g., 'en', 'fr', 'de') - assumes headerRow contains locale codes
-                                // This creates formulas like =GOOGLETRANSLATE(B2; "en-us"; "fr") for translating from English to French
-                                const sourceLocaleCode = sourceLocale
-                                const targetLocaleCode = localeLower.split('-')[0] || localeLower;
+                                // Get the column index for the target locale
+                                const targetHeaderIndex = headerRow.indexOf(exactHeaderName);
+                                const targetColumnLetter = String.fromCharCode(65 + targetHeaderIndex); // Convert index to letter (A, B, C...)
                                 
-                                // Create the formula with a special placeholder for the row number
-                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(${sourceColumnLetter}{{ROW_NUMBER}}; "${sourceLocaleCode}"; "${targetLocaleCode}")`;
+                                // Create improved Google Translate formula using INDIRECT and cell references
+                                // This formula dynamically references:
+                                // - INDIRECT(sourceColumn&ROW()) for the source text
+                                // - $sourceColumn$1 for the source language code from header
+                                // - targetColumn$1 for the target language code from header
+                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());$${sourceColumnLetter}$1;${targetColumnLetter}$1)`;
                             }
                         }
                     }
@@ -191,25 +208,8 @@ export async function updateSpreadsheetWithLocalChanges(
             // Add new rows in chunks to avoid rate limiting
             const CHUNK_SIZE = 5;
             
-            // Calculate the starting row number for GOOGLETRANSLATE formulas
-            const startingRowNumber = rows.length + 2; // +2 because Google Sheets is 1-indexed and we need to account for the header row
-            
             for (let i = 0; i < newRows.length; i += CHUNK_SIZE) {
                 const chunk = newRows.slice(i, i + CHUNK_SIZE);
-                
-                // Replace the {{ROW_NUMBER}} placeholder with actual row numbers
-                if (autoTranslate) {
-                    chunk.forEach((rowData, index) => {
-                        const rowNumber = startingRowNumber + i + index;
-                        for (const key in rowData) {
-                            const value = rowData[key];
-                            if (typeof value === 'string' && value.includes('{{ROW_NUMBER}}')) {
-                                rowData[key] = value.replace('{{ROW_NUMBER}}', rowNumber.toString());
-                            }
-                        }
-                        
-                    });
-                }
                 
                 await sheet.addRows(chunk);
                 
@@ -224,5 +224,3 @@ export async function updateSpreadsheetWithLocalChanges(
     
     console.log("Finished updating spreadsheet with local changes.");
 }
-
-export default updateSpreadsheetWithLocalChanges;

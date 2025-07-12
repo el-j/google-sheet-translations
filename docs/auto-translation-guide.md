@@ -24,16 +24,21 @@ When enabled through the `autoTranslate: true` option:
 
 ## Example Formula
 
-If you add a new key "welcome_message" with an English translation but no German translation, the system will add something like:
+If you add a new key "welcome_message" with an English translation in column B but no German translation in column C, the system will add:
 
 ```
-=GOOGLETRANSLATE(B23; "en-us"; "de")
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
 ```
 
 Where:
-- `B23` references the cell containing the English text
-- `"en-us"` is the source language code
-- `"de"` is the target language code
+- `INDIRECT("B"&ROW())` dynamically references the cell containing the source text in the same row
+- `$B$1` references the header cell containing the source language code
+- `C$1` references the header cell containing the target language code
+
+This improved formula is more flexible because:
+- It automatically adapts to any row position
+- It uses the actual language codes from your spreadsheet headers
+- It's more maintainable if you reorganize your columns
 
 ## How to Enable
 

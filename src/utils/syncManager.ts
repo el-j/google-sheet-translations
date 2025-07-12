@@ -1,7 +1,7 @@
 import type { GoogleSpreadsheet } from "google-spreadsheet";
 import type { TranslationData } from "../types";
 import { findLocalChanges } from "./dataConverter/findLocalChanges";
-import updateSpreadsheetWithLocalChanges from "./spreadsheetUpdater";
+import { updateSpreadsheetWithLocalChanges } from "./spreadsheetUpdater";
 import { isDataJsonNewer } from "./isDataJsonNewer";
 import { readDataJson } from "./readDataJson";
 
@@ -22,6 +22,7 @@ export interface SyncResult {
  * @param autoTranslate Whether to auto-generate Google Translate formulas
  * @param spreadsheetData Current data from the spreadsheet
  * @param waitSeconds Time to wait between API calls
+ * @param localeMapping Mapping from normalized locale codes to original spreadsheet headers
  * @returns Sync operation result
  */
 export async function handleBidirectionalSync(
@@ -31,7 +32,8 @@ export async function handleBidirectionalSync(
 	syncLocalChanges: boolean,
 	autoTranslate: boolean,
 	spreadsheetData: TranslationData,
-	waitSeconds: number
+	waitSeconds: number,
+	localeMapping: Record<string, string> = {}
 ): Promise<SyncResult> {
 	const result: SyncResult = {
 		shouldRefresh: false,
@@ -70,8 +72,8 @@ export async function handleBidirectionalSync(
 	console.log("Found local changes to sync to the spreadsheet:");
 	console.log(JSON.stringify(changes, null, 2));
 	
-	// Update the spreadsheet with the changes, passing the autoTranslate option
-	await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate);
+	// Update the spreadsheet with the changes, passing the autoTranslate option and locale mapping
+	await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate, localeMapping);
 	
 	result.shouldRefresh = true;
 	result.hasChanges = true;

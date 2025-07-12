@@ -223,8 +223,8 @@ describe('updateSpreadsheetWithLocalChanges', () => {
       expect.objectContaining({
         'key': 'new_key',
         'en': 'New Value',
-        'fr': expect.stringMatching(/^=GOOGLETRANSLATE\(B\d+; "en"; "fr"\)$/),
-        'de': expect.stringMatching(/^=GOOGLETRANSLATE\(B\d+; "en"; "de"\)$/)
+        'fr': '=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)',
+        'de': '=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;D$1)'
       })
     ]);
   });
@@ -286,9 +286,9 @@ describe('updateSpreadsheetWithLocalChanges', () => {
       expect.objectContaining({
         'key': 'new_key1',
         'fr': 'Nouvelle Valeur',
-        'en': expect.stringMatching(/^=GOOGLETRANSLATE\(C\d+; "fr"; "en"\)$/),
-        'de': expect.stringMatching(/^=GOOGLETRANSLATE\(C\d+; "fr"; "de"\)$/),
-        'es': expect.stringMatching(/^=GOOGLETRANSLATE\(C\d+; "fr"; "es"\)$/)
+        'en': '=GOOGLETRANSLATE(INDIRECT("C"&ROW());$C$1;B$1)',
+        'de': '=GOOGLETRANSLATE(INDIRECT("C"&ROW());$C$1;D$1)',
+        'es': '=GOOGLETRANSLATE(INDIRECT("C"&ROW());$C$1;E$1)'
       })
     );
     
@@ -297,9 +297,9 @@ describe('updateSpreadsheetWithLocalChanges', () => {
       expect.objectContaining({
         'key': 'new_key2',
         'de': 'Neuer Wert',
-        'en': expect.stringMatching(/^=GOOGLETRANSLATE\(D\d+; "de"; "en"\)$/),
-        'fr': expect.stringMatching(/^=GOOGLETRANSLATE\(D\d+; "de"; "fr"\)$/),
-        'es': expect.stringMatching(/^=GOOGLETRANSLATE\(D\d+; "de"; "es"\)$/)
+        'en': '=GOOGLETRANSLATE(INDIRECT("D"&ROW());$D$1;B$1)',
+        'fr': '=GOOGLETRANSLATE(INDIRECT("D"&ROW());$D$1;C$1)',
+        'es': '=GOOGLETRANSLATE(INDIRECT("D"&ROW());$D$1;E$1)'
       })
     );
   });

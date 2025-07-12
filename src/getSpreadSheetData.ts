@@ -51,6 +51,9 @@ export async function getSpreadSheetData(
 	// Initialize result containers
 	const finalTranslations: TranslationData = {};
 	const allLocales = new Set<string>();
+	const localesWithContent = new Set<string>(); // Track locales with actual translations in non-i18n sheets
+	const globalLocaleMapping: Record<string, string> = {}; // normalized -> original header
+	const globalOriginalMapping: Record<string, string> = {}; // original header -> normalized
 
 	// Process each sheet in parallel
 	await Promise.all(
@@ -66,6 +69,18 @@ export async function getSpreadSheetData(
 			const result = await processSheet(sheet, title, config.rowLimit, config.waitSeconds);
 			
 			if (result.success) {
+				// Merge locale mappings - prioritize first occurrence for consistency
+				for (const [normalized, original] of Object.entries(result.localeMapping)) {
+					if (!globalLocaleMapping[normalized]) {
+						globalLocaleMapping[normalized] = original;
+					}
+				}
+				for (const [original, normalized] of Object.entries(result.originalMapping)) {
+					if (!globalOriginalMapping[original]) {
+						globalOriginalMapping[original] = normalized;
+					}
+				}
+
 				// Merge translations from this sheet into final result
 				for (const locale of result.locales) {
 					if (finalTranslations[locale]) {
@@ -77,12 +92,25 @@ export async function getSpreadSheetData(
 						finalTranslations[locale] = result.translations[locale];
 					}
 					allLocales.add(locale);
+					
+					// Only track locales with content from non-i18n sheets
+					if (title !== "i18n" && result.translations[locale] && Object.keys(result.translations[locale]).length > 0) {
+						// Check if this locale actually has translation content (not just empty objects)
+						const hasActualTranslations = Object.values(result.translations[locale]).some(sheetTranslations => 
+							Object.keys(sheetTranslations).length > 0
+						);
+						if (hasActualTranslations) {
+							localesWithContent.add(locale);
+						}
+					}
 				}
 			}
 		})
 	);
 
-	const locales = Array.from(allLocales);
+	// Use locales with actual content for the locales file, fall back to all locales if none found
+	const localesForOutput = localesWithContent.size > 0 ? Array.from(localesWithContent) : Array.from(allLocales);
+	const allLocalesArray = Array.from(allLocales);
 
 	// Handle bidirectional sync if needed
 	const syncResult = await handleBidirectionalSync(
@@ -92,7 +120,8 @@ export async function getSpreadSheetData(
 		config.syncLocalChanges,
 		config.autoTranslate,
 		finalTranslations,
-		config.waitSeconds
+		config.waitSeconds,
+		globalLocaleMapping
 	);
 
 	// If sync requested a refresh, recursively call with updated data
@@ -103,14 +132,16 @@ export async function getSpreadSheetData(
 		});
 	}
 
-	// Write output files
-	writeTranslationFiles(finalTranslations, locales, config.translationsOutputDir);
-	writeLocalesFile(locales, config.localesOutputPath);
+	// Write output files - use all locales for translation files but filtered locales for locales.ts
+	writeTranslationFiles(finalTranslations, allLocalesArray, config.translationsOutputDir);
+	writeLocalesFile(localesForOutput, globalLocaleMapping, config.localesOutputPath);
+	
+	console.log(`Writing locales file with ${localesForOutput.length} locales that have actual translations:`, localesForOutput);
 	
 	// Write languageData.json if we have fresh data or it doesn't exist
 	const hasData = Object.keys(finalTranslations).length > 0;
 	if (hasData) {
-		writeLanguageDataFile(finalTranslations, locales, config.dataJsonPath);
+		writeLanguageDataFile(finalTranslations, allLocalesArray, config.dataJsonPath);
 	}
 
 	return finalTranslations;

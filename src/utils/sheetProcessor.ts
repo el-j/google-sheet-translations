@@ -2,6 +2,7 @@ import type { GoogleSpreadsheetWorksheet } from "google-spreadsheet";
 import type { SheetRow, TranslationData } from "../types";
 import { wait } from "./wait";
 import { filterValidLocales } from "./localeFilter";
+import { createLocaleMapping } from "./localeNormalizer";
 
 /**
  * Result of processing a single sheet
@@ -9,6 +10,8 @@ import { filterValidLocales } from "./localeFilter";
 export interface SheetProcessingResult {
 	translations: TranslationData;
 	locales: string[];
+	localeMapping: Record<string, string>; // normalized -> original header
+	originalMapping: Record<string, string>; // original header -> normalized
 	success: boolean;
 }
 
@@ -29,6 +32,8 @@ export async function processSheet(
 	const result: SheetProcessingResult = {
 		translations: {},
 		locales: [],
+		localeMapping: {},
+		originalMapping: {},
 		success: false
 	};
 
@@ -46,12 +51,20 @@ export async function processSheet(
 		console.log(`Header row for sheet "${sheetTitle}":`, headerRow);
 		
 		const keyColumn = headerRow[0];
-		const locales = filterValidLocales(headerRow, keyColumn);
+		const validLocales = filterValidLocales(headerRow, keyColumn);
 		
-		if (locales.length === 0) {
+		if (validLocales.length === 0) {
 			console.warn(`No valid locale columns found in sheet "${sheetTitle}"`);
 			return result;
 		}
+
+		// Create locale mapping for normalization
+		const originalHeaders = Object.keys(rowObject); // Keep original case
+		const { normalizedLocales, localeMapping, originalMapping } = createLocaleMapping(originalHeaders, keyColumn);
+		
+		// Store the mappings in the result
+		result.localeMapping = localeMapping;
+		result.originalMapping = originalMapping;
 
 		// Convert rows to data objects
 		const cells = rows.map(row => row.toObject());
@@ -61,24 +74,25 @@ export async function processSheet(
 			return result;
 		}
 
-		// Process each locale
-		for (const locale of locales) {
+		// Process each normalized locale
+		for (const normalizedLocale of normalizedLocales) {
+			// Find the original header for this normalized locale
+			const originalHeader = localeMapping[normalizedLocale];
+			if (!originalHeader) continue;
+
 			const languageCells = cells.map((row: SheetRow) => {
 				// Look for the key column (case-insensitive)
 				const keyField = Object.keys(row).find(
 					k => k.toLowerCase() === keyColumn
 				);
-				const localeField = Object.keys(row).find(
-					k => k.toLowerCase() === locale
-				);
 
-				if (!keyField || !localeField || !row[keyField] || !row[localeField]) {
+				if (!keyField || !row[keyField] || !row[originalHeader]) {
 					return {}; // Skip rows without key or translation
 				}
 
 				const rowLocal: SheetRow = {};
 				// Convert key to lowercase
-				rowLocal[row[keyField].toString().toLowerCase()] = row[localeField];
+				rowLocal[row[keyField].toString().toLowerCase()] = row[originalHeader];
 				return rowLocal;
 			});
 
@@ -91,14 +105,15 @@ export async function processSheet(
 			const prepareObj: Record<string, Record<string, string>> = {};
 			prepareObj[sheetTitle] = Object.assign({}, ...nonEmptyLanguageCells);
 
-			if (result.translations[locale]) {
-				result.translations[locale] = { ...result.translations[locale], ...prepareObj };
+			// Use normalized locale as the key in translations
+			if (result.translations[normalizedLocale]) {
+				result.translations[normalizedLocale] = { ...result.translations[normalizedLocale], ...prepareObj };
 			} else {
-				result.translations[locale] = { ...prepareObj };
+				result.translations[normalizedLocale] = { ...prepareObj };
 			}
 		}
 
-		result.locales = locales;
+		result.locales = normalizedLocales;
 		result.success = true;
 
 		await wait(waitSeconds, `after processing sheet: ${sheetTitle}`);

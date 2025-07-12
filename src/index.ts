@@ -32,7 +32,7 @@ export {
 export { 
   findLocalChanges
 } from './utils/dataConverter/findLocalChanges';
-export { default as updateSpreadsheetWithLocalChanges } from './utils/spreadsheetUpdater';
+export { updateSpreadsheetWithLocalChanges } from './utils/spreadsheetUpdater';
 
 // Types
 export type { 

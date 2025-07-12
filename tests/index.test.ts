@@ -6,7 +6,7 @@ import { createAuthClient } from '../src/utils/auth';
 import { convertToDataJsonFormat } from '../src/utils/dataConverter/convertToDataJsonFormat';
 import { convertFromDataJsonFormat } from '../src/utils/dataConverter/convertFromDataJsonFormat';
 import { findLocalChanges } from '../src/utils/dataConverter/findLocalChanges';
-import updateSpreadsheetWithLocalChanges from '../src/utils/spreadsheetUpdater';
+import { updateSpreadsheetWithLocalChanges } from '../src/utils/spreadsheetUpdater';
 
 describe('Package exports', () => {
   test('should export getSpreadSheetData as default export', () => {

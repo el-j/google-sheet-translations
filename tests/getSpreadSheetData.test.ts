@@ -1,7 +1,7 @@
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
 import { mock } from 'jest-mock-extended';
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
-import updateSpreadsheetWithLocalChanges from '../src/utils/spreadsheetUpdater';
+import { updateSpreadsheetWithLocalChanges } from '../src/utils/spreadsheetUpdater';
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -36,13 +36,9 @@ jest.mock('../src/utils/dataConverter/convertToDataJsonFormat', () => ({
 jest.mock('../src/utils/dataConverter/findLocalChanges', () => ({
   findLocalChanges: jest.fn().mockReturnValue({})
 }));
-jest.mock('../src/utils/spreadsheetUpdater', () => {
-  const mockFn = jest.fn().mockResolvedValue(undefined);
-  return {
-    __esModule: true,
-    default: mockFn
-  };
-});
+jest.mock('../src/utils/spreadsheetUpdater', () => ({
+  updateSpreadsheetWithLocalChanges: jest.fn().mockResolvedValue(undefined)
+}));
 
 describe('getSpreadSheetData', () => {
   // Mock GoogleSpreadsheet
@@ -184,20 +180,15 @@ describe('getSpreadSheetData', () => {
     };
     (findLocalChanges as jest.Mock).mockReturnValue(mockChanges);
     
-    // Import the actual mock function directly to avoid reference issues
-    const spreadsheetUpdater = require('../src/utils/spreadsheetUpdater').default;
-    
     // Call with autoTranslate = true
     await getSpreadSheetData(['home'], { autoTranslate: true });
     
-    // Log the mock calls for debugging
-    console.log('Mock calls:', spreadsheetUpdater.mock.calls);
-    
     // Check that the function was called
-    expect(spreadsheetUpdater).toHaveBeenCalled();
+    expect(updateSpreadsheetWithLocalChanges).toHaveBeenCalled();
     
     // Verify the arguments individually
-    const firstCall = spreadsheetUpdater.mock.calls[0];
+    const mockFn = updateSpreadsheetWithLocalChanges as jest.Mock;
+    const firstCall = mockFn.mock.calls[0];
     expect(firstCall[1]).toEqual(mockChanges); // changes
     expect(firstCall[3]).toBe(true); // autoTranslate
     
@@ -210,10 +201,10 @@ describe('getSpreadSheetData', () => {
     await getSpreadSheetData(['home']);
     
     // Check that the function was called again
-    expect(spreadsheetUpdater).toHaveBeenCalled();
+    expect(updateSpreadsheetWithLocalChanges).toHaveBeenCalled();
     
     // Verify the arguments individually for the second call
-    const secondCall = spreadsheetUpdater.mock.calls[0];
+    const secondCall = (updateSpreadsheetWithLocalChanges as jest.Mock).mock.calls[0];
     expect(secondCall[1]).toEqual(mockChanges); // changes
     expect(secondCall[3]).toBe(false); // autoTranslate (default)
   });

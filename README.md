@@ -6,7 +6,7 @@ A Node.js package for managing translations stored in Google Sheets.
 
 - ✅ **Bidirectional Sync**: Sync changes from local files back to Google Sheets
 - ✅ **Auto-Translation**: Automatic Google Translate formula generation for missing translations
-- ✅ **Smart Locale Filtering**: Only valid locale identifiers are included in output files
+- ✅ **Smart Locale Filtering**: Only locales with actual translations in content sheets are included in output files
 - ✅ **TypeScript Support**: Full TypeScript definitions included
 - ✅ **Modular Architecture**: Well-tested, maintainable codebase with clear separation of concerns
 - ✅ **Next.js Integration**: Built-in support for Next.js static export workflows
@@ -119,7 +119,29 @@ Error if any required environment variable is missing.
 
 ## Locale Filtering
 
-The package now includes intelligent locale filtering to ensure only valid locale identifiers are included in the generated `locales.ts` file. This prevents common spreadsheet column names like 'key', 'description', 'status', etc., from being treated as locales.
+The package includes intelligent locale filtering to ensure only valid locale identifiers with actual translation content are included in the generated `locales.ts` file. 
+
+### Smart Content-Based Filtering
+
+The `locales.ts` file will **only include locales that have actual translations in non-i18n sheets**. This means:
+
+- ✅ Locales with translations in content sheets (like 'home', 'products', etc.) are included
+- ❌ Locales that only exist in the 'i18n' configuration sheet are excluded
+- ❌ Locales with empty translations in content sheets are excluded
+- ❌ Common spreadsheet column names are filtered out
+
+**Example:**
+```
+Spreadsheet structure:
+- Sheet "content": key | en | de | fr | es
+  - Row: "welcome" | "Welcome" | "Willkommen" | "" | ""
+- Sheet "i18n": key | en | de | fr | es  
+  - Row: "config" | "Config" | "Konfiguration" | "Configuration" | "Configuración"
+
+Result: locales.ts will only contain ["en", "de"]
+```
+
+This ensures your application only includes locales that have meaningful content for users.
 
 ### Supported Locale Formats
 
@@ -191,18 +213,18 @@ When enabled, the auto-translation feature automatically adds Google Translate f
 
 The formula follows this format:
 ```
-=GOOGLETRANSLATE(originalCell; "sourceLocale"; "targetLocale")
+=GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());$sourceColumn$1;targetColumn$1)
 ```
 
-For example, if you add a new key with an English translation but no German translation, the system will automatically add:
+For example, if you add a new key with an English translation in column B but no German translation in column C, the system will automatically add:
 ```
-=GOOGLETRANSLATE(B23; "en-us"; "de")
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
 ```
 
 Where:
-- `B23` references the cell containing the English text
-- `"en-us"` is the source language code
-- `"de"` is the target language code
+- `INDIRECT("B"&ROW())` dynamically references the source text cell in the same row
+- `$B$1` references the header cell containing the source language code
+- `C$1` references the header cell containing the target language code
 
 [View the complete Auto-Translation Guide](docs/auto-translation-guide.md) for more details and best practices.
 

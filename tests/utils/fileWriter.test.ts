@@ -61,40 +61,48 @@ describe('fileWriter', () => {
 	describe('writeLocalesFile', () => {
 		it('should create directory and write locales file', () => {
 			const locales = ['en', 'de', 'fr'];
+			const localeMapping = { 'en': 'en', 'de': 'de', 'fr': 'fr' };
 			const outputPath = 'src/i18n/locales.ts';
 
-			writeLocalesFile(locales, outputPath);
+			writeLocalesFile(locales, localeMapping, outputPath);
 
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('src/i18n', { recursive: true });
 			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
 				outputPath,
-				'export const locales = ["en","de","fr"];\nexport default locales;',
+				expect.stringContaining('export const locales = ["en","de","fr"];'),
+				'utf8'
+			);
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+				outputPath,
+				expect.stringContaining('export const localeHeaderMapping'),
 				'utf8'
 			);
 		});
 
 		it('should filter out empty locale strings', () => {
 			const locales = ['en', '', 'de', '   ', 'fr'];
+			const localeMapping = { 'en': 'en', 'de': 'de', 'fr': 'fr' };
 			const outputPath = 'src/i18n/locales.ts';
 
-			writeLocalesFile(locales, outputPath);
+			writeLocalesFile(locales, localeMapping, outputPath);
 
 			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
 				outputPath,
-				'export const locales = ["en","de","fr"];\nexport default locales;',
+				expect.stringContaining('export const locales = ["en","de","fr"];'),
 				'utf8'
 			);
 		});
 
 		it('should handle empty locales array', () => {
 			const locales: string[] = [];
+			const localeMapping = {};
 			const outputPath = 'src/i18n/locales.ts';
 
-			writeLocalesFile(locales, outputPath);
+			writeLocalesFile(locales, localeMapping, outputPath);
 
 			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
 				outputPath,
-				'export const locales = [];\nexport default locales;',
+				expect.stringContaining('export const locales = [];'),
 				'utf8'
 			);
 		});
