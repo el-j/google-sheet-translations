@@ -37,12 +37,12 @@ export function convertToDataJsonFormat(
 		// For each locale, add all key-value pairs
 		for (const locale of locales) {
 			const localeKey = locale.toLowerCase();
-			if (translationObj?.[localeKey]?.[sheetTitle]) { // Fixed bug with optional chaining
+			if (translationObj?.[locale]?.[sheetTitle]) { // Use original locale case for lookup
 				// Create the locale object
 				projectData[sheetTitle][localeKey] = {};
 
 				// Add all translations for this locale
-				const translations = translationObj[localeKey][sheetTitle];
+				const translations = translationObj[locale][sheetTitle];
 				for (const key of Object.keys(translations)) {
 					projectData[sheetTitle][localeKey][key] = translations[key];
 				}

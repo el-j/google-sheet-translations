@@ -106,7 +106,7 @@ describe('convertToDataJsonFormat', () => {
   
   test('should handle case sensitivity correctly in locales', () => {
     const translationObj: TranslationData = {
-      'en': { // Note: Using lowercase 'en' to match what the code is looking for
+      'EN': { // The translationObj keys should match the case passed in the locales array
         'home': {
           'welcome': 'Welcome'
         }
