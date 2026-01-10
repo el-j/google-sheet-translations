@@ -36,22 +36,21 @@ export function convertToDataJsonFormat(
 
 		// For each locale, add all key-value pairs
 		for (const locale of locales) {
-			const localeKey = locale.toLowerCase();
-			if (translationObj?.[localeKey]?.[sheetTitle]) { // Fixed bug with optional chaining
+			if (translationObj?.[locale]?.[sheetTitle]) { // Fixed bug with optional chaining
 				// Create the locale object
-				projectData[sheetTitle][localeKey] = {};
+				projectData[sheetTitle][locale] = {};
 
 				// Add all translations for this locale
-				const translations = translationObj[localeKey][sheetTitle];
+				const translations = translationObj[locale][sheetTitle];
 				for (const key of Object.keys(translations)) {
-					projectData[sheetTitle][localeKey][key] = translations[key];
+					projectData[sheetTitle][locale][key] = translations[key];
 				}
 
 				// Log how many translations we found for debugging
 				console.log(
 					`Found ${
 						Object.keys(translations).length
-					} keys for locale ${localeKey} in sheet ${sheetTitle}`,
+					} keys for locale ${locale} in sheet ${sheetTitle}`,
 				);
 			}
 		}
