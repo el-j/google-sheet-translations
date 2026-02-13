@@ -1,0 +1,65 @@
+# This workflow will run tests using node and then publish a package to npm registry when a release is created
+# For more information see: https://docs.github.com/en/actions/publishing-packages/publishing-nodejs-packages
+
+name: Publish to npm
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm test
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org/
+      - run: npm ci
+      
+      # Extract info from GitHub release event
+      - name: Get release info
+        id: release_info
+        run: |
+          RELEASE_ID=$(jq --raw-output '.release.id' $GITHUB_EVENT_PATH)
+          RELEASE_TAG=$(jq --raw-output '.release.tag_name' $GITHUB_EVENT_PATH)
+          IS_PRERELEASE=$(jq --raw-output '.release.prerelease' $GITHUB_EVENT_PATH)
+          echo "RELEASE_ID=$RELEASE_ID" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "IS_PRERELEASE=$IS_PRERELEASE" >> $GITHUB_ENV
+          if [[ "$IS_PRERELEASE" == "true" ]]; then
+            echo "NPM_TAG=next" >> $GITHUB_ENV
+          else
+            echo "NPM_TAG=latest" >> $GITHUB_ENV
+          fi
+          echo "release_id=$RELEASE_ID" >> $GITHUB_OUTPUT
+          echo "release_tag=$RELEASE_TAG" >> $GITHUB_OUTPUT
+          echo "is_prerelease=$IS_PRERELEASE" >> $GITHUB_OUTPUT
+
+      # Set version from tag (strip 'v' prefix if exists)
+      - name: Update package version
+        run: |
+          VERSION=${RELEASE_TAG#v}
+          npm version $VERSION --no-git-tag-version
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+      
+      # Publish with appropriate tag
+      - name: Publish package
+        run: npm publish --provenance --access public --tag ${{ env.NPM_TAG }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
