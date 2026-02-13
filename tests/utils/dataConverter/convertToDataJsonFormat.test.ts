@@ -106,8 +106,8 @@ describe('convertToDataJsonFormat', () => {
   
   test('should preserve locale case exactly as provided', () => {
     const translationObj: TranslationData = {
-      // Use exact case matching
-      'en-GB': {
+      // The translationObj keys should match the case passed in the locales array
+      'EN': {
         'home': {
           'welcome': 'Welcome'
         }
@@ -253,5 +253,58 @@ describe('convertToDataJsonFormat', () => {
     expect(homeData).toHaveProperty('en');
     expect(homeData).not.toHaveProperty('fr');
     expect(homeData).not.toHaveProperty('es');
+  });
+
+  test('should handle normalized locale codes with mixed case (e.g., en-GB, pl-PL)', () => {
+    // This test verifies the bug fix where translationObj has keys in normalized format
+    // (e.g., "en-GB", "pl-PL") but the function was lowercasing the lookup key
+    const translationObj: TranslationData = {
+      'en-GB': {
+        'home': {
+          'welcome': 'Welcome',
+          'hello': 'Hello'
+        }
+      },
+      'pl-PL': {
+        'home': {
+          'welcome': 'Witaj',
+          'hello': 'Cześć'
+        }
+      },
+      'de-DE': {
+        'home': {
+          'welcome': 'Willkommen',
+          'hello': 'Hallo'
+        }
+      }
+    };
+    
+    const locales = ['en-GB', 'pl-PL', 'de-DE'];
+    const result = convertToDataJsonFormat(translationObj, locales);
+    
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('home');
+    
+    // Type assertion for the home sheet
+    const homeSheet = result[0] as { home: Record<string, Record<string, string>> };
+    
+    // The output should have lowercase locale keys
+    expect(homeSheet.home).toHaveProperty('en-gb');
+    expect(homeSheet.home).toHaveProperty('pl-pl');
+    expect(homeSheet.home).toHaveProperty('de-de');
+    
+    // Verify the translations are correctly copied
+    expect(homeSheet.home['en-gb']).toEqual({
+      'welcome': 'Welcome',
+      'hello': 'Hello'
+    });
+    expect(homeSheet.home['pl-pl']).toEqual({
+      'welcome': 'Witaj',
+      'hello': 'Cześć'
+    });
+    expect(homeSheet.home['de-de']).toEqual({
+      'welcome': 'Willkommen',
+      'hello': 'Hallo'
+    });
   });
 });
