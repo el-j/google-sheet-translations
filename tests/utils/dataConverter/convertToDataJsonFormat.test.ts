@@ -107,7 +107,7 @@ describe('convertToDataJsonFormat', () => {
   test('should preserve locale case exactly as provided', () => {
     const translationObj: TranslationData = {
       // The translationObj keys should match the case passed in the locales array
-      'EN': {
+      'en-GB': {
         'home': {
           'welcome': 'Welcome'
         }
@@ -288,21 +288,21 @@ describe('convertToDataJsonFormat', () => {
     // Type assertion for the home sheet
     const homeSheet = result[0] as { home: Record<string, Record<string, string>> };
     
-    // The output should have lowercase locale keys
-    expect(homeSheet.home).toHaveProperty('en-gb');
-    expect(homeSheet.home).toHaveProperty('pl-pl');
-    expect(homeSheet.home).toHaveProperty('de-de');
+    // The output should preserve the case from the locales array
+    expect(homeSheet.home).toHaveProperty('en-GB');
+    expect(homeSheet.home).toHaveProperty('pl-PL');
+    expect(homeSheet.home).toHaveProperty('de-DE');
     
     // Verify the translations are correctly copied
-    expect(homeSheet.home['en-gb']).toEqual({
+    expect(homeSheet.home['en-GB']).toEqual({
       'welcome': 'Welcome',
       'hello': 'Hello'
     });
-    expect(homeSheet.home['pl-pl']).toEqual({
+    expect(homeSheet.home['pl-PL']).toEqual({
       'welcome': 'Witaj',
       'hello': 'Cześć'
     });
-    expect(homeSheet.home['de-de']).toEqual({
+    expect(homeSheet.home['de-DE']).toEqual({
       'welcome': 'Willkommen',
       'hello': 'Hallo'
     });
