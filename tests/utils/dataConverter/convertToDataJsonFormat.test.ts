@@ -104,7 +104,7 @@ describe('convertToDataJsonFormat', () => {
     }
   });
   
-  test('should handle case sensitivity correctly in locales', () => {
+  test('should preserve locale case exactly as provided', () => {
     const translationObj: TranslationData = {
       // The translationObj keys should match the case passed in the locales array
       'EN': {
@@ -114,16 +114,87 @@ describe('convertToDataJsonFormat', () => {
       }
     };
     
-    // This test is checking if the output locales are lowercase
-    const locales = ['EN']; // Use uppercase here
+    // The locale case should be preserved exactly
+    const locales = ['en-GB'];
     const result = convertToDataJsonFormat(translationObj, locales);
     
     expect(result).toHaveLength(1);
     
     // Type assertion to help TypeScript understand the structure
     const homeSheet = result[0] as { home: Record<string, unknown> };
-    // The locale should be lowercased in the output
-    expect(homeSheet.home).toHaveProperty('en');
+    // The locale should be exactly as provided, not lowercased
+    expect(homeSheet.home).toHaveProperty('en-GB');
+  });
+
+  test('should handle normalized locales with mixed case (LANGUAGE_TO_COUNTRY_MAP format)', () => {
+    const translationObj: TranslationData = {
+      'en-GB': {
+        'home': {
+          'welcome': 'Welcome',
+          'hello': 'Hello'
+        },
+        'about': {
+          'title': 'About us'
+        }
+      },
+      'de-DE': {
+        'home': {
+          'welcome': 'Willkommen',
+          'hello': 'Hallo'
+        }
+      },
+      'pl-PL': {
+        'home': {
+          'welcome': 'Witaj'
+        }
+      }
+    };
+    
+    const locales = ['en-GB', 'de-DE', 'pl-PL'];
+    const result = convertToDataJsonFormat(translationObj, locales);
+    
+    // Should have 2 entries (home and about sheets)
+    expect(result).toHaveLength(2);
+    
+    // Find the 'home' sheet result
+    const homeSheet = result.find(item => 'home' in item) as Record<string, Record<string, Record<string, string>>> | undefined;
+    expect(homeSheet).toBeDefined();
+    
+    if (homeSheet) {
+      const homeData = homeSheet.home;
+      // Verify all locales are preserved with exact case
+      expect(homeData).toHaveProperty('en-GB');
+      expect(homeData).toHaveProperty('de-DE');
+      expect(homeData).toHaveProperty('pl-PL');
+      
+      // Verify content
+      expect(homeData['en-GB']).toEqual({
+        'welcome': 'Welcome',
+        'hello': 'Hello'
+      });
+      expect(homeData['de-DE']).toEqual({
+        'welcome': 'Willkommen',
+        'hello': 'Hallo'
+      });
+      expect(homeData['pl-PL']).toEqual({
+        'welcome': 'Witaj'
+      });
+    }
+    
+    // Find the 'about' sheet result
+    const aboutSheet = result.find(item => 'about' in item) as Record<string, Record<string, Record<string, string>>> | undefined;
+    expect(aboutSheet).toBeDefined();
+    
+    if (aboutSheet) {
+      const aboutData = aboutSheet.about;
+      expect(aboutData).toHaveProperty('en-GB');
+      expect(aboutData['en-GB']).toEqual({
+        'title': 'About us'
+      });
+      // Should not have de-DE or pl-PL as they don't have 'about' translations
+      expect(aboutData).not.toHaveProperty('de-DE');
+      expect(aboutData).not.toHaveProperty('pl-PL');
+    }
   });
   
   test('should include empty sheets with empty objects', () => {

@@ -104,9 +104,9 @@ describe('convertToDataJsonFormat', () => {
     }
   });
   
-  test('should handle case sensitivity correctly in locales', () => {
+  test('should preserve locale case exactly as provided', () => {
     const translationObj: TranslationData = {
-      'EN': { // The translationObj keys should match the case passed in the locales array
+      'EN': { // Using uppercase to match what is in locales array
         'home': {
           'welcome': 'Welcome'
         }
@@ -117,9 +117,9 @@ describe('convertToDataJsonFormat', () => {
     const result = convertToDataJsonFormat(translationObj, locales);
     
     expect(result).toHaveLength(1);
-    // The locale should be lowercased in the output
+    // The locale should be preserved exactly as provided
     const typedResult = result[0] as SheetData;
-    expect(typedResult.home).toHaveProperty('en');
+    expect(typedResult.home).toHaveProperty('EN');
   });
   
   test('should include empty sheets with empty objects', () => {

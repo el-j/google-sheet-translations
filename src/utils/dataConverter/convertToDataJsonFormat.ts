@@ -38,20 +38,21 @@ export function convertToDataJsonFormat(
 		for (const locale of locales) {
 			const localeKey = locale.toLowerCase();
 			if (translationObj?.[locale]?.[sheetTitle]) { // Use original locale case for lookup
+
 				// Create the locale object
-				projectData[sheetTitle][localeKey] = {};
+				projectData[sheetTitle][locale] = {};
 
 				// Add all translations for this locale
 				const translations = translationObj[locale][sheetTitle];
 				for (const key of Object.keys(translations)) {
-					projectData[sheetTitle][localeKey][key] = translations[key];
+					projectData[sheetTitle][locale][key] = translations[key];
 				}
 
 				// Log how many translations we found for debugging
 				console.log(
 					`Found ${
 						Object.keys(translations).length
-					} keys for locale ${localeKey} in sheet ${sheetTitle}`,
+					} keys for locale ${locale} in sheet ${sheetTitle}`,
 				);
 			}
 		}
