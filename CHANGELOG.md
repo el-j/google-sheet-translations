@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/el-j/google-sheet-translations/compare/v1.0.0...v1.0.1) (2026-03-07)
+
+### 🐛 Bug Fixes
+
+* add ESM export conditions to package.json (fixes "No exports main defined" for .mjs consumers) ([893a9b9](https://github.com/el-j/google-sheet-translations/commit/893a9b9cb2d73c42ba278cecf8df01e919cccd20))
+
 ## 1.0.0 (2026-03-07)
 
 ### 🚀 Features
