@@ -1,3 +1,20 @@
+## [1.2.0](https://github.com/el-j/google-sheet-translations/compare/v1.1.0...v1.2.0) (2026-03-07)
+
+### 🚀 Features
+
+* add integration test suite, exclude from normal runs, write v1.1.0 audit ([cebc378](https://github.com/el-j/google-sheet-translations/commit/cebc37820f07ae9a43907f99e4ecc7d5261db6db))
+* CI integration test gate, audit doc, type-safety fixes, 171 tests ([7bd5ba5](https://github.com/el-j/google-sheet-translations/commit/7bd5ba5bf7c22944ac31f7a44ab7176e1e61bf7a))
+* update demo spreadsheet ID, add VitePress integration, and auto-create spreadsheet ([7631f10](https://github.com/el-j/google-sheet-translations/commit/7631f10f8fd20c2236c039c6fbee9b200453cffb))
+
+### 🐛 Bug Fixes
+
+* address code review - non-greedy regex, readable colLetter, rateLimiter comment ([79467df](https://github.com/el-j/google-sheet-translations/commit/79467df3e1c83f4b7d83a95bc099a5fb67d8d4f2))
+* gitignore website/public/translations/ (auto-generated at docs build time) ([df1da6e](https://github.com/el-j/google-sheet-translations/commit/df1da6e4e75ea03ecb046c17d588e6ce55afbf4a))
+* npm audit --omit=dev to skip devDependency vulnerabilities in CI ([af33c49](https://github.com/el-j/google-sheet-translations/commit/af33c49c506482675c7853e67ce8a5c148ff3e95))
+* reindent getSpreadSheetData.ts and improve CI/docs workflows ([2c508b2](https://github.com/el-j/google-sheet-translations/commit/2c508b26b62f9e493fd77643326056071b63a659))
+* remove timer unref to prevent exit code 13; add GitHub Action ([e71d603](https://github.com/el-j/google-sheet-translations/commit/e71d60347134894f0eb3b7b5d7480aa0eadbf5a9))
+* update Jest CLI to use --testPathPatterns and enable integration tests ([d3117fd](https://github.com/el-j/google-sheet-translations/commit/d3117fd30ad48f6dcc7d79ee26b4514d8c4f672a))
+
 ## [1.1.0](https://github.com/el-j/google-sheet-translations/compare/v1.0.2...v1.1.0) (2026-03-07)
 
 ### 🚀 Features
