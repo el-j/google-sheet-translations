@@ -3,7 +3,7 @@
   "name": "@el-j/google-sheet-translations",
   "version": "1.0.0",
   "description": "A package to manage translations stored in Google Spreadsheets",
-  "repository": "google-sheet-translations/google-sheet-translations",
+  "repository": "el-j/google-sheet-translations",
   "techStack": {
     "language": "TypeScript",
     "runtime": "Node.js >=14.0.0",
