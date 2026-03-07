@@ -52,7 +52,7 @@ const LANGUAGE_TO_COUNTRY_MAP: Record<string, string> = {
  */
 export function normalizeLocaleCode(locale: string): string {
 	if (!locale || typeof locale !== 'string') {
-		return locale;
+		return '';
 	}
 
 	const normalized = locale.toLowerCase().trim();
@@ -84,7 +84,14 @@ export function normalizeLocaleCode(locale: string): string {
  * @param keyColumn The key column name to exclude
  * @returns Object with normalized locales and header mapping
  */
-export function createLocaleMapping(originalHeaders: string[], keyColumn: string) {
+export function createLocaleMapping(
+	originalHeaders: string[],
+	keyColumn: string
+): {
+	normalizedLocales: string[];
+	localeMapping: Record<string, string>;
+	originalMapping: Record<string, string>;
+} {
 	const localeMapping: Record<string, string> = {}; // normalized -> original
 	const originalMapping: Record<string, string> = {}; // original -> normalized
 	const normalizedLocales: string[] = [];
@@ -148,6 +155,7 @@ export function getOriginalHeaderForLocale(
 
 /**
  * Finds the normalized locale for a given original header
+ * @public
  * @param originalHeader The original header name (e.g., 'pl')
  * @param originalMapping Mapping from original headers to normalized locales
  * @returns Normalized locale code or undefined if not found
