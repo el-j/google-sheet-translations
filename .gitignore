@@ -38,3 +38,7 @@ coverage/
 
 # semantic-release
 .releaserc.local.json
+
+# VitePress build output
+website/.vitepress/dist
+website/.vitepress/cache
