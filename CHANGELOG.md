@@ -1,3 +1,9 @@
+## [1.0.2](https://github.com/el-j/google-sheet-translations/compare/v1.0.1...v1.0.2) (2026-03-07)
+
+### 🐛 Bug Fixes
+
+* normalize GOOGLE_PRIVATE_KEY newlines to resolve ERR_OSSL_UNSUPPORTED in CI ([ead2716](https://github.com/el-j/google-sheet-translations/commit/ead27161fc661051298c4935ef1e8bbcba077fd4))
+
 ## [1.0.1](https://github.com/el-j/google-sheet-translations/compare/v1.0.0...v1.0.1) (2026-03-07)
 
 ### 🐛 Bug Fixes
