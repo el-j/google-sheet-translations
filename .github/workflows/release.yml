@@ -1,0 +1,54 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - next
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write      # create tags + commits
+      issues: write        # comment on issues
+      pull-requests: write # comment on PRs
+      id-token: write      # npm provenance
+
+    steps:
+      - name: Checkout (full history required by semantic-release)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
