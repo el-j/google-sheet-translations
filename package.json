@@ -1,9 +1,15 @@
 {
 	"name": "@el-j/google-sheet-translations",
-	"version": "1.0.0",
+	"version": "2.0.0",
 	"description": "A package to manage translations stored in Google Spreadsheets",
 	"main": "dist/index.js",
 	"types": "dist/index.d.ts",
+	"exports": {
+		".": {
+			"require": "./dist/index.js",
+			"types": "./dist/index.d.ts"
+		}
+	},
 	"publishConfig": {
 		"access": "public"
 	},
@@ -37,7 +43,7 @@
 		"google-api",
 		"google-spreadsheet"
 	],
-	"author": "",
+	"author": "el-j",
 	"license": "MIT",
 	"dependencies": {
 		"google-auth-library": "^10.1.0",
@@ -58,7 +64,7 @@
 		"typescript": "^5.8.3"
 	},
 	"engines": {
-		"node": ">=14.0.0"
+		"node": ">=14.18.0"
 	},
 	"overrides": {
 		"google-spreadsheet": {
