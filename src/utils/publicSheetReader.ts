@@ -71,7 +71,7 @@ function fetchUrl(url: string): Promise<string> {
  *   `/*O_o*\/\ngoogle.visualization.Query.setResponse({...});`
  */
 function parseGvizResponse(raw: string): GvizResponse {
-	const match = raw.match(/google\.visualization\.Query\.setResponse\((\{[\s\S]*\})\)/);
+	const match = raw.match(/google\.visualization\.Query\.setResponse\((\{[\s\S]*?\})\)/);
 	if (!match) {
 		throw new Error(
 			'Unexpected response format from Google Visualization API. ' +

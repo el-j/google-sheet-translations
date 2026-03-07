@@ -51,7 +51,10 @@ export async function withRetry<T>(
 			await delay(backoff);
 		}
 	}
-	/* c8 ignore next -- unreachable; loop always returns or throws */
+	// The loop above always returns (on success) or throws (on exhausted retries or
+	// non-rate-limit errors).  This line is here solely to satisfy TypeScript's
+	// control-flow analysis — it cannot actually be reached at runtime.
+	/* c8 ignore next */
 	throw new Error('withRetry: unreachable');
 }
 

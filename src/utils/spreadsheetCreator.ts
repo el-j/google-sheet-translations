@@ -2,12 +2,17 @@ import type { JWT } from "google-auth-library";
 import { GoogleSpreadsheet } from "google-spreadsheet";
 import { withRetry } from "./rateLimiter";
 
-/** Column index (0-based) to spreadsheet letter (A, B, C…, Z, AA…) */
+/** Column index (0-based) → spreadsheet letter (A, B…Z, AA, AB…). */
 function colLetter(index: number): string {
-	let r = '';
+	let result = '';
 	let i = index;
-	do { r = String.fromCharCode(65 + (i % 26)) + r; i = Math.floor(i / 26) - 1; } while (i >= 0);
-	return r;
+	do {
+		// Each digit in base-26 maps to a letter A–Z
+		result = String.fromCharCode(65 + (i % 26)) + result;
+		// Move to the next more-significant "digit", adjusting for 1-based indexing
+		i = Math.floor(i / 26) - 1;
+	} while (i >= 0);
+	return result;
 }
 
 export interface CreateSpreadsheetOptions {

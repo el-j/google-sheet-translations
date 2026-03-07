@@ -5,7 +5,7 @@ title: Live Demo
 # Live Demo
 
 This page is generated at **build time** by running the package against our
-[demo spreadsheet](https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/edit?usp=sharing).
+[demo spreadsheet](https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/edit).
 
 If you can read the translation data below, the package is working end-to-end. ✅
 
