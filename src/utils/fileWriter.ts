@@ -19,7 +19,7 @@ export function writeTranslationFiles(
 		try {
 			fs.mkdirSync(translationsOutputDir, { recursive: true });
 		} catch (err) {
-			throw new Error(`Failed to create translations directory "${translationsOutputDir}": ${(err as Error).message}`);
+			throw new Error(`Failed to create translations directory "${translationsOutputDir}"`, { cause: err });
 		}
 	}
 
@@ -69,7 +69,7 @@ export function writeLocalesFile(
 		try {
 			fs.mkdirSync(localesOutputDir, { recursive: true });
 		} catch (err) {
-			throw new Error(`Failed to create directory "${localesOutputDir}": ${(err as Error).message}`);
+			throw new Error(`Failed to create directory "${localesOutputDir}"`, { cause: err });
 		}
 	}
 	const validLocales = locales.filter(locale => locale && locale.trim().length > 0);
@@ -95,7 +95,7 @@ export default locales;
 	try {
 		fs.writeFileSync(localesOutputPath, content, "utf8");
 	} catch (err) {
-		throw new Error(`Failed to write locales file at "${localesOutputPath}": ${(err as Error).message}`);
+		throw new Error(`Failed to write locales file at "${localesOutputPath}"`, { cause: err });
 	}
 	console.log(`Successfully wrote locales file with ${validLocales.length} locales:`, validLocales);
 	console.log('Header mapping includes:', Object.keys(localeMapping).length, 'mappings');
@@ -118,7 +118,7 @@ export function writeLanguageDataFile(
 		try {
 			fs.mkdirSync(dataJsonDir, { recursive: true });
 		} catch (err) {
-			throw new Error(`Failed to create directory "${dataJsonDir}": ${(err as Error).message}`);
+			throw new Error(`Failed to create directory "${dataJsonDir}"`, { cause: err });
 		}
 	}
 
@@ -132,7 +132,7 @@ export function writeLanguageDataFile(
 			"utf8"
 		);
 	} catch (err) {
-		throw new Error(`Failed to write language data file at "${dataJsonPath}": ${(err as Error).message}`);
+		throw new Error(`Failed to write language data file at "${dataJsonPath}"`, { cause: err });
 	}
 	console.log("Successfully updated languageData.json with fresh spreadsheet data");
 }

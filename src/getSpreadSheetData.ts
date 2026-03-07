@@ -36,9 +36,7 @@ export async function getSpreadSheetData(
 	try {
 		await doc.loadInfo(true);
 	} catch (err) {
-		throw new Error(
-			`Failed to load spreadsheet "${GOOGLE_SPREADSHEET_ID}": ${(err as Error).message}`
-		);
+		throw new Error(`Failed to load spreadsheet "${GOOGLE_SPREADSHEET_ID}"`, { cause: err });
 	}
 
 	// Prepare sheet titles to process
