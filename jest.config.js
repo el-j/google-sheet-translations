@@ -34,6 +34,7 @@ module.exports = {
     }]
   },
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/dist/', '<rootDir>/tests/integration/'],
   verbose: true,
   testTimeout: 10000
 };
