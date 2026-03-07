@@ -39,6 +39,6 @@ jobs:
           echo "Publishing version: $VERSION"
 
       - name: Publish to GitHub Packages
-        run: npm publish --tag ${{ github.event.release.prerelease && 'next' || 'latest' }}
+        run: npm publish --tag ${{ github.event.release.prerelease == true && 'next' || 'latest' }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
