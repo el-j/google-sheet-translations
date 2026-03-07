@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --audit-level=high
+
       - name: Lint
         run: npm run lint
 
@@ -45,21 +48,7 @@ jobs:
 
       - name: Integration test (public spreadsheet connectivity)
         if: matrix.node-version == '22'
-        run: node -e "
-          const { getSpreadSheetData } = require('./dist/index.js');
-          getSpreadSheetData(['landingPage'], {
-            spreadsheetId: '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0',
-            publicSheet: true,
-            syncLocalChanges: false,
-            translationsOutputDir: '/tmp/ci-translations',
-            localesOutputPath: '/tmp/ci-translations/locales.ts',
-            dataJsonPath: '/tmp/ci-translations/languageData.json',
-          }).then(t => {
-            const locales = Object.keys(t);
-            if (locales.length === 0) { console.error('FAIL: no locales returned'); process.exit(1); }
-            console.log('PASS: got', locales.length, 'locale(s):', locales.join(', '));
-          }).catch(e => { console.error('FAIL:', e.message); process.exit(1); });
-        "
+        run: npm run test:integration
 
       - name: Upload coverage
         if: matrix.node-version == '22'

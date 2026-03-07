@@ -79,8 +79,8 @@ export function normalizeConfig(options: SpreadsheetOptions = {}): NormalizedCon
 		rowLimit: options.rowLimit ?? 100,
 		waitSeconds: options.waitSeconds ?? DEFAULT_WAIT_SECONDS,
 		dataJsonPath: options.dataJsonPath ?? path.join(process.cwd(), "src/lib/languageData.json"),
-		localesOutputPath: options.localesOutputPath ?? "src/i18n/locales.ts",
-		translationsOutputDir: options.translationsOutputDir ?? "translations",
+		localesOutputPath: options.localesOutputPath ?? path.join(process.cwd(), "src/i18n/locales.ts"),
+		translationsOutputDir: options.translationsOutputDir ?? path.join(process.cwd(), "translations"),
 		syncLocalChanges: options.syncLocalChanges !== false, // Default to true
 		autoTranslate: options.autoTranslate === true, // Default to false
 		spreadsheetId: options.spreadsheetId,
