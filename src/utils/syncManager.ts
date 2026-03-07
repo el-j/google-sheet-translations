@@ -69,14 +69,21 @@ export async function handleBidirectionalSync(
 		return result;
 	}
 
-	console.log("Found local changes to sync to the spreadsheet:");
-	console.log(JSON.stringify(changes, null, 2));
+	const localesCount = Object.keys(changes).length;
+	const keysCount = Object.values(changes)
+		.flatMap(l => Object.values(l))
+		.flatMap(s => Object.keys(s)).length;
+	console.log(`Found local changes: ${localesCount} locale(s), ~${keysCount} key(s) to sync to the spreadsheet.`);
 	
 	// Update the spreadsheet with the changes, passing the autoTranslate option and locale mapping
-	await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate, localeMapping);
-	
-	result.shouldRefresh = true;
-	result.hasChanges = true;
-	
+	try {
+		await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate, localeMapping);
+		result.shouldRefresh = true;
+		result.hasChanges = true;
+	} catch (err) {
+		console.error("Failed to sync local changes to spreadsheet:", err);
+		// Do not set shouldRefresh; return unchanged result to avoid stale refresh loop
+	}
+
 	return result;
 }

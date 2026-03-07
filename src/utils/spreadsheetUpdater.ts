@@ -3,6 +3,17 @@ import type { TranslationData } from "../types";
 import { wait } from "./wait";
 import { getOriginalHeaderForLocale } from "./localeNormalizer";
 
+/** Converts a 0-based column index to a spreadsheet column letter (A, B, ..., Z, AA, AB, ...) */
+function columnIndexToLetter(index: number): string {
+    let result = '';
+    let i = index;
+    do {
+        result = String.fromCharCode(65 + (i % 26)) + result;
+        i = Math.floor(i / 26) - 1;
+    } while (i >= 0);
+    return result;
+}
+
 /**
  * Updates the Google Spreadsheet with new keys from local data
  * 
@@ -110,7 +121,7 @@ export async function updateSpreadsheetWithLocalChanges(
                             continue;
                         }
                         
-                        const value = localeData[key] as string;
+                        const value = String(localeData[key]);
                         
                         // Use the correct header name for the locale value
                         theKey[localeHeader] = value;
@@ -123,7 +134,7 @@ export async function updateSpreadsheetWithLocalChanges(
                     }
                 } else {
                     // Update existing key with new translation
-                    const rowIndex = existingKeys.get(keyLower) as number;
+                    const rowIndex = existingKeys.get(keyLower)!;
                     const row = rows[rowIndex];
                     
                     // Find the exact header for this locale using the mapping
@@ -138,9 +149,16 @@ export async function updateSpreadsheetWithLocalChanges(
                     
                     if (localeHeader) {
                         // Use set() method instead of direct property assignment to avoid TS errors
-                        row.set(localeHeader, localeData[key] as string);
+                        row.set(localeHeader, String(localeData[key]));
                         await wait(waitSeconds / 2, `before updating row ${rowIndex}`);
-                        await row.save();
+                        try {
+                            await row.save();
+                        } catch (err) {
+                            console.error(
+                                `Failed to save row for key "${keyLower}" in sheet "${sheetTitle}":`,
+                                err
+                            );
+                        }
                     }
                 }
             }
@@ -158,7 +176,7 @@ export async function updateSpreadsheetWithLocalChanges(
                     
                     if (localesWithValues && localesWithValues.size > 0) {
                         // Pick the first locale with a value as the source for translation
-                        const [sourceLocale, sourceHeader] = [...localesWithValues.entries()][0];
+                        const [, sourceHeader] = [...localesWithValues.entries()][0];
                         
                         // Find the cell reference for the source value
                         // In Google Sheets formulas, we need to use column letters (A, B, C...) and row numbers
@@ -184,11 +202,14 @@ export async function updateSpreadsheetWithLocalChanges(
                                 
                                 // Get the column index for the source locale to build the reference
                                 const sourceHeaderIndex = headerRow.indexOf(sourceHeader);
-                                const sourceColumnLetter = String.fromCharCode(65 + sourceHeaderIndex); // Convert index to letter (A, B, C...)
-                                
                                 // Get the column index for the target locale
                                 const targetHeaderIndex = headerRow.indexOf(exactHeaderName);
-                                const targetColumnLetter = String.fromCharCode(65 + targetHeaderIndex); // Convert index to letter (A, B, C...)
+                                // Guard against unexpected out-of-range indices
+                                if (sourceHeaderIndex < 0 || targetHeaderIndex < 0) {
+                                    continue;
+                                }
+                                const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
+                                const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                                 
                                 // Create improved Google Translate formula using INDIRECT and cell references
                                 // This formula dynamically references:
