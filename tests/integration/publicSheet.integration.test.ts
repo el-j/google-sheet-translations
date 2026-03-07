@@ -1,6 +1,6 @@
 /**
  * Integration tests that hit the real demo Google Spreadsheet.
- * Run with: INTEGRATION=true npx jest --testPathPattern=integration
+ * Run with: INTEGRATION=true npx jest --testPathPatterns=integration
  * Skipped in normal CI (no env var needed - uses public sheet).
  */
 import { readPublicSheet } from '../../src/utils/publicSheetReader';
