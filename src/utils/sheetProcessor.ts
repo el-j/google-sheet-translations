@@ -1,6 +1,6 @@
 import type { GoogleSpreadsheetWorksheet } from "google-spreadsheet";
 import type { SheetRow, TranslationData } from "../types";
-import { wait } from "./wait";
+import { withRetry } from "./rateLimiter";
 import { filterValidLocales } from "./localeFilter";
 import { createLocaleMapping } from "./localeNormalizer";
 
@@ -16,18 +16,18 @@ export interface SheetProcessingResult {
 }
 
 /**
- * Processes a single Google Sheet and extracts translation data
- * @param sheet The Google Spreadsheet worksheet to process
+ * Processes a single Google Sheet and extracts translation data.
+ * API calls are automatically retried on rate-limit responses (HTTP 429 / 503).
+ *
+ * @param sheet      The Google Spreadsheet worksheet to process
  * @param sheetTitle The title of the sheet being processed
- * @param rowLimit Maximum number of rows to fetch
- * @param waitSeconds Time to wait after processing
+ * @param rowLimit   Maximum number of rows to fetch
  * @returns Processing result containing translations and locales
  */
 export async function processSheet(
 	sheet: GoogleSpreadsheetWorksheet,
 	sheetTitle: string,
 	rowLimit: number,
-	waitSeconds: number
 ): Promise<SheetProcessingResult> {
 	const result: SheetProcessingResult = {
 		translations: {},
@@ -38,7 +38,10 @@ export async function processSheet(
 	};
 
 	try {
-		const rows = await sheet.getRows({ limit: rowLimit });
+		const rows = await withRetry(
+			() => sheet.getRows({ limit: rowLimit }),
+			`getRows: ${sheetTitle}`,
+		);
 
 		if (!rows || rows.length === 0) {
 			console.warn(`No rows found in sheet "${sheetTitle}"`);
@@ -113,8 +116,6 @@ export async function processSheet(
 
 		result.locales = normalizedLocales;
 		result.success = true;
-
-		await wait(waitSeconds, `after processing sheet: ${sheetTitle}`);
 		
 	} catch (error) {
 		console.error(`Error processing sheet "${sheetTitle}":`, error);

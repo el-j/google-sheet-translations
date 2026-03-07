@@ -1,12 +1,12 @@
 import { GoogleSpreadsheet } from "google-spreadsheet";
 import type { TranslationData } from "./types";
-import { wait } from "./utils/wait";
 import { createAuthClient } from "./utils/auth";
 import { validateEnv } from "./utils/validateEnv";
 import { normalizeConfig, type SpreadsheetOptions } from "./utils/configurationHandler";
 import { processSheet } from "./utils/sheetProcessor";
 import { writeTranslationFiles, writeLocalesFile, writeLanguageDataFile } from "./utils/fileWriter";
 import { handleBidirectionalSync } from "./utils/syncManager";
+import { withRetry } from "./utils/rateLimiter";
 import { DEFAULT_WAIT_SECONDS } from "./constants";
 export { DEFAULT_WAIT_SECONDS };
 
@@ -34,7 +34,11 @@ export async function getSpreadSheetData(
 	const doc = new GoogleSpreadsheet(GOOGLE_SPREADSHEET_ID, serviceAuthClient);
 
 	try {
-		await doc.loadInfo(true);
+		await withRetry(
+			() => doc.loadInfo(true),
+			'loadInfo',
+			config.waitSeconds * 1000,
+		);
 	} catch (err) {
 		throw new Error(`Failed to load spreadsheet "${GOOGLE_SPREADSHEET_ID}"`, { cause: err });
 	}
@@ -64,7 +68,6 @@ export async function getSpreadSheetData(
 	// Process each sheet in parallel
 	await Promise.all(
 		docTitle.map(async (title) => {
-			await wait(config.waitSeconds, `before get cells for sheet: ${title}`);
 			const sheet = doc.sheetsByTitle[title];
 
 			if (!sheet) {
@@ -72,7 +75,7 @@ export async function getSpreadSheetData(
 				return;
 			}
 
-			const result = await processSheet(sheet, title, config.rowLimit, config.waitSeconds);
+			const result = await processSheet(sheet, title, config.rowLimit);
 			
 			if (result.success) {
 				// Merge locale mappings - prioritize first occurrence for consistency

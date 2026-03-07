@@ -1,6 +1,6 @@
 import type { GoogleSpreadsheet } from "google-spreadsheet";
 import type { TranslationData } from "../types";
-import { wait } from "./wait";
+import { withRetry } from "./rateLimiter";
 import { getOriginalHeaderForLocale } from "./localeNormalizer";
 
 /** Converts a 0-based column index to a spreadsheet column letter (A, B, ..., Z, AA, AB, ...) */
@@ -30,7 +30,7 @@ function columnIndexToLetter(index: number): string {
  * 
  * @param doc - The Google Spreadsheet instance
  * @param changes - Object containing new keys to add to the spreadsheet
- * @param waitSeconds - Number of seconds to wait between API calls
+ * @param waitSeconds - Base back-off delay in seconds for retrying rate-limited API calls
  * @param autoTranslate - Whether to add Google Translate formulas for missing translations (default: false)
  * @param localeMapping - Mapping from normalized locale codes to original spreadsheet headers
  * @returns Promise that resolves when the update is complete
@@ -43,6 +43,7 @@ export async function updateSpreadsheetWithLocalChanges(
     localeMapping: Record<string, string> = {}
 ): Promise<void> {
     console.log("Updating spreadsheet with local changes...");
+    const baseDelayMs = waitSeconds * 1000;
     
     // Process each sheet in the changes object
     for (const sheetTitle of new Set(
@@ -56,9 +57,12 @@ export async function updateSpreadsheetWithLocalChanges(
             continue;
         }
         
-        // Get all rows from the sheet
-        await wait(waitSeconds, `before getting rows for sheet: ${sheetTitle}`);
-        const rows = await sheet.getRows();
+        // Get all rows from the sheet (retries automatically on rate-limit)
+        const rows = await withRetry(
+            () => sheet.getRows(),
+            `getRows: ${sheetTitle}`,
+            baseDelayMs,
+        );
         
         if (!rows || rows.length === 0) {
             console.warn(`No rows found in sheet "${sheetTitle}", cannot update`);
@@ -150,9 +154,12 @@ export async function updateSpreadsheetWithLocalChanges(
                     if (localeHeader) {
                         // Use set() method instead of direct property assignment to avoid TS errors
                         row.set(localeHeader, String(localeData[key]));
-                        await wait(waitSeconds / 2, `before updating row ${rowIndex}`);
                         try {
-                            await row.save();
+                            await withRetry(
+                                () => row.save(),
+                                `save row ${rowIndex} in ${sheetTitle}`,
+                                baseDelayMs,
+                            );
                         } catch (err) {
                             console.error(
                                 `Failed to save row for key "${keyLower}" in sheet "${sheetTitle}":`,
@@ -224,23 +231,19 @@ export async function updateSpreadsheetWithLocalChanges(
             }
             
             const newRows = Array.from(newKeys.values());
-            await wait(waitSeconds, `before adding ${newRows.length} new rows`);
             
-            // Add new rows in chunks to avoid rate limiting
+            // Add new rows in chunks to keep individual requests manageable
             const CHUNK_SIZE = 5;
             
             for (let i = 0; i < newRows.length; i += CHUNK_SIZE) {
                 const chunk = newRows.slice(i, i + CHUNK_SIZE);
-                
-                await sheet.addRows(chunk);
-                
-                if (i + CHUNK_SIZE < newRows.length) {
-                    await wait(waitSeconds, `after adding ${chunk.length} rows (chunk ${i / CHUNK_SIZE + 1})`);
-                }
+                await withRetry(
+                    () => sheet.addRows(chunk),
+                    `addRows chunk ${Math.floor(i / CHUNK_SIZE) + 1} in ${sheetTitle}`,
+                    baseDelayMs,
+                );
             }
         }
-        
-        await wait(waitSeconds, `after updating sheet: ${sheetTitle}`);
     }
     
     console.log("Finished updating spreadsheet with local changes.");

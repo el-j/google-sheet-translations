@@ -95,7 +95,7 @@ Fetches and processes data from a Google Spreadsheet.
 - `sheetTitles`: (Optional) Array of sheet titles to process. If not provided, only the "i18n" sheet will be processed.
 - `options`: (Optional) Configuration object
   - `rowLimit`: Number - Maximum number of rows to fetch (default: 100)
-  - `waitSeconds`: Number - Time to wait between API calls (default: 1)
+  - `waitSeconds`: Number - Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503). Actual delay per retry is `waitSeconds × 2^attempt`, capped at 30 s. (default: 1)
   - `dataJsonPath`: String - Path for languageData.json file (default: 'src/lib/languageData.json')
   - `localesOutputPath`: String - Path for locales.ts file (default: 'src/i18n/locales.ts')
   - `translationsOutputDir`: String - Directory for translations output (default: 'translations')
@@ -282,7 +282,7 @@ Add the following step to your workflow after checking out your repository:
 | `google-spreadsheet-id` | ✅ | — | Spreadsheet ID from the sheet URL (`GOOGLE_SPREADSHEET_ID`) |
 | `sheet-titles` | ✅ | — | Comma-separated list of sheet tab names to process |
 | `row-limit` | ❌ | `100` | Maximum rows to read per sheet |
-| `wait-seconds` | ❌ | `1` | Seconds to wait between API calls |
+| `wait-seconds` | ❌ | `1` | Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503) |
 | `translations-output-dir` | ❌ | `translations` | Directory for per-locale JSON files |
 | `locales-output-path` | ❌ | `src/i18n/locales.ts` | Path for the generated `locales.ts` |
 | `data-json-path` | ❌ | `src/lib/languageData.json` | Path for the `languageData.json` snapshot |

@@ -28,7 +28,7 @@ inputs:
     required: false
     default: '100'
   wait-seconds:
-    description: 'Seconds to wait between Google Sheets API calls'
+    description: 'Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503)'
     required: false
     default: '1'
   translations-output-dir:

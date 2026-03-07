@@ -13,8 +13,8 @@ import { findLocalChanges } from '../src/utils/dataConverter/findLocalChanges';
 jest.mock('google-spreadsheet');
 jest.mock('node:fs');
 jest.mock('node:path');
-jest.mock('../src/utils/wait', () => ({
-  wait: jest.fn().mockResolvedValue(undefined)
+jest.mock('../src/utils/rateLimiter', () => ({
+  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 jest.mock('../src/utils/auth', () => ({
   createAuthClient: jest.fn().mockReturnValue({})

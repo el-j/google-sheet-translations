@@ -11,6 +11,7 @@ export type { SpreadsheetOptions } from './utils/configurationHandler';
 
 // Utility functions required by dependents
 export { wait } from './utils/wait';
+export { withRetry } from './utils/rateLimiter';
 export { validateEnv } from './utils/validateEnv';
 export { createAuthClient } from './utils/auth';
 export { convertToDataJsonFormat } from './utils/dataConverter/convertToDataJsonFormat';

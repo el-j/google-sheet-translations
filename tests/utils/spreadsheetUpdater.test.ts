@@ -3,9 +3,9 @@ import { updateSpreadsheetWithLocalChanges } from '../../src/utils/spreadsheetUp
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
 import type { TranslationData } from '../../src/types';
 
-// Mock the wait function to speed up tests
-jest.mock('../../src/utils/wait', () => ({
-  wait: jest.fn().mockResolvedValue(undefined)
+// Mock the rateLimiter to speed up tests
+jest.mock('../../src/utils/rateLimiter', () => ({
+  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 
 describe('updateSpreadsheetWithLocalChanges', () => {
