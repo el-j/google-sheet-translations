@@ -1,3 +1,32 @@
+## 1.0.0 (2026-03-07)
+
+### 🚀 Features
+
+* add comprehensive package audit document for @el-j/google-sheet-translations ([1362e7c](https://github.com/el-j/google-sheet-translations/commit/1362e7c72324a7ead9fdbae0594158eb6658750c))
+* add orchestrator manifest and agent definitions ([5cab7e0](https://github.com/el-j/google-sheet-translations/commit/5cab7e08df690f25e16358f966a43d8cf58c7388))
+* add semantic-release pipeline, VitePress docs site, and GitHub Pages workflow ([f402c09](https://github.com/el-j/google-sheet-translations/commit/f402c090fcbec899cae8182a1d3c6941194677f1))
+* **api:** trim index.ts to clean public API for v2.0.0 ([3bc51cb](https://github.com/el-j/google-sheet-translations/commit/3bc51cbfaf38da17213c51845db8b534f9ffa01d))
+* **docs:** add VitePress documentation site and GitHub Pages deployment ([ce08a15](https://github.com/el-j/google-sheet-translations/commit/ce08a15039969808e2d165de7409eb11115ca586))
+* Enhance locale handling and spreadsheet synchronization ([7025928](https://github.com/el-j/google-sheet-translations/commit/7025928f012dc11347d9f7312e253d4f339272b8))
+* **lint:** add ESLint + TypeScript plugin, fix all violations in src/ ([9997723](https://github.com/el-j/google-sheet-translations/commit/9997723ee189360215a456e70a49aed1039df619))
+* **release:** add semantic-release pipeline with conventional commits ([1164fd7](https://github.com/el-j/google-sheet-translations/commit/1164fd7e28d0d3b005e015db598d4a6a826869c5))
+
+### 🐛 Bug Fixes
+
+* **ci:** add explicit permissions block to CI test job ([77081b9](https://github.com/el-j/google-sheet-translations/commit/77081b9e71cd023ece86bca54f0c3103db962510))
+* **config:** strict tsconfig, exports field, coverage thresholds, version 2.0.0 ([211fb45](https://github.com/el-j/google-sheet-translations/commit/211fb45c41ba8521e3e21addc944ac304f8f5c92))
+* correct repository field in orchestrator.json to el-j/google-sheet-translations ([51f247b](https://github.com/el-j/google-sheet-translations/commit/51f247b94a768c091bc54189223ba6515a2795e5))
+* **deps:** add missing conventional-changelog-conventionalcommits dependency ([19e0e88](https://github.com/el-j/google-sheet-translations/commit/19e0e88e0aa9b4a2cd3326c38a31dc75872f573c))
+* **localeNormalizer:** explicit return type, empty-string early-return, [@public](https://github.com/public) tag ([4d7576f](https://github.com/el-j/google-sheet-translations/commit/4d7576f77ce27a79f9b2f03f3bbdea23b388e3bf))
+* reduce default wait time between API calls from 5 to 1 second ([8e36c5e](https://github.com/el-j/google-sheet-translations/commit/8e36c5e24b1d022dd97ff3ce4c798f4708d632bc))
+* **release:** address code review feedback ([5359164](https://github.com/el-j/google-sheet-translations/commit/53591646ac78688cfbf643a5b855ca487a65210d))
+* **security:** sanitize locale filename and wrap file I/O in try/catch ([f7859fe](https://github.com/el-j/google-sheet-translations/commit/f7859fea6120bff47b2584c29176e5c2472712a4))
+* update Node.js versions in CI workflows for semantic-release compatibility ([53a5f24](https://github.com/el-j/google-sheet-translations/commit/53a5f24c4dad2e43e81bd2d30ceb04b8f93f706b))
+
+### 📝 Documentation
+
+* update audit with v2.0.0 resolution status ([91a38e5](https://github.com/el-j/google-sheet-translations/commit/91a38e562ab14a34e99217d642c36f16d12a8c7e))
+
 # Changelog
 
 All notable changes to `@el-j/google-sheet-translations` will be documented in this file.
