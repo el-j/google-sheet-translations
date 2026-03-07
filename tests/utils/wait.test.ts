@@ -52,4 +52,19 @@ describe('wait', () => {
     // If we got here, the promise resolved successfully
     expect(true).toBe(true);
   });
+
+  test('timer should not be unref\'d (prevents Node.js exit code 13 in ESM consumers)', () => {
+    // Spy on setTimeout to capture the returned timer ID.
+    // afterEach's jest.restoreAllMocks() will clean this up automatically.
+    const mockTimerId = { unref: jest.fn() };
+    jest.spyOn(global, 'setTimeout').mockReturnValueOnce(mockTimerId as unknown as ReturnType<typeof setTimeout>);
+
+    wait(1, 'ref check');
+
+    // The timer's unref method must NOT have been called.
+    // Calling unref() on the only active timer causes Node.js to exit with
+    // code 13 ("Unfinished Top-Level Await") when the package is used from
+    // an ESM script (.mjs) with a top-level await.
+    expect(mockTimerId.unref).not.toHaveBeenCalled();
+  });
 });

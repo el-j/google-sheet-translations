@@ -7,12 +7,9 @@
 export function wait(seconds: number, reason: string): Promise<void> {
 	console.log("wait", seconds, reason);
 	return new Promise<void>((resolve) => {
-		const timeoutId = setTimeout(() => {
+		setTimeout(() => {
 			resolve();
 		}, seconds * 1000);
-
-		// This ensures the timeout is properly cleared if the promise is garbage collected
-		timeoutId.unref?.();
 	});
 }
 
