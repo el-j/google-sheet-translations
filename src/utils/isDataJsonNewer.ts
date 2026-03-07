@@ -23,10 +23,14 @@ export function isDataJsonNewer(dataJsonPath: string, translationsOutputDir: str
 
 		const mostRecentTranslationMtime = files
 			.map(file => getFileLastModified(file))
-			.filter(Boolean)
-			.sort((a, b) => (b as Date).getTime() - (a as Date).getTime())[0];
+			.filter((d): d is Date => d !== null)
+			.reduce<Date | null>(
+				(max, d) => (max === null || d > max ? d : max),
+				null
+			);
 
-		return dataJsonMtime.getTime() > (mostRecentTranslationMtime as Date).getTime();
+		if (!mostRecentTranslationMtime) return true;
+		return dataJsonMtime > mostRecentTranslationMtime;
 	} catch (error) {
 		console.warn("Error comparing file modification times:", error);
 		return false;

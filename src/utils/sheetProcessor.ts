@@ -69,11 +69,6 @@ export async function processSheet(
 		// Convert rows to data objects
 		const cells = rows.map(row => row.toObject());
 
-		if (!cells || cells.length === 0) {
-			console.warn(`No cells data found for sheet "${sheetTitle}"`);
-			return result;
-		}
-
 		// Process each normalized locale
 		for (const normalizedLocale of normalizedLocales) {
 			// Find the original header for this normalized locale
@@ -103,7 +98,10 @@ export async function processSheet(
 
 			// Combine all keys into one object
 			const prepareObj: Record<string, Record<string, string>> = {};
-			prepareObj[sheetTitle] = Object.assign({}, ...nonEmptyLanguageCells);
+			prepareObj[sheetTitle] = nonEmptyLanguageCells.reduce<Record<string, string>>(
+				(acc, cell) => Object.assign(acc, cell),
+				{}
+			);
 
 			// Use normalized locale as the key in translations
 			if (result.translations[normalizedLocale]) {
