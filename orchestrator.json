@@ -1,0 +1,310 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "@el-j/google-sheet-translations",
+  "version": "1.0.0",
+  "description": "A package to manage translations stored in Google Spreadsheets",
+  "repository": "google-sheet-translations/google-sheet-translations",
+  "techStack": {
+    "language": "TypeScript",
+    "runtime": "Node.js >=14.0.0",
+    "testFramework": "Jest + ts-jest",
+    "buildTool": "tsc",
+    "packageManager": "npm",
+    "keyDependencies": [
+      "google-spreadsheet@^4.1.5",
+      "google-auth-library@^10.1.0"
+    ]
+  },
+  "agents": [
+    {
+      "id": "code-auditor",
+      "name": "Code Auditor",
+      "description": "Deep static analysis of TypeScript source for quality, maintainability, and correctness issues.",
+      "definitionFile": "agents/code-auditor.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": ["read_file", "grep", "glob", "bash"],
+      "trigger": {
+        "events": ["push", "pull_request", "schedule"],
+        "schedule": "0 2 * * 1"
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": ["targetPaths"],
+        "properties": {
+          "targetPaths": { "type": "array", "items": { "type": "string" } },
+          "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"], "default": "medium" }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["issues", "summary"],
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["file", "line", "severity", "message", "rule"],
+              "properties": {
+                "file": { "type": "string" },
+                "line": { "type": "integer" },
+                "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+                "message": { "type": "string" },
+                "rule": { "type": "string" },
+                "suggestion": { "type": "string" }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "totalIssues": { "type": "integer" },
+              "bySeverity": { "type": "object" },
+              "score": { "type": "number", "minimum": 0, "maximum": 100 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "type-safety-enforcer",
+      "name": "Type Safety Enforcer",
+      "description": "Eliminates unsafe TypeScript patterns: any casts, as-casts, missing generics, and loose null checks.",
+      "definitionFile": "agents/type-safety-enforcer.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": ["read_file", "edit_file", "bash"],
+      "trigger": {
+        "events": ["pull_request"],
+        "conditions": ["code-auditor.issues[?severity=='high']"]
+      },
+      "parallel": false,
+      "inputSchema": {
+        "type": "object",
+        "required": ["auditIssues"],
+        "properties": {
+          "auditIssues": { "type": "array", "items": { "type": "object" } },
+          "dryRun": { "type": "boolean", "default": false }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["fixedFiles", "remainingIssues"],
+        "properties": {
+          "fixedFiles": { "type": "array", "items": { "type": "string" } },
+          "remainingIssues": { "type": "array", "items": { "type": "object" } },
+          "patchSummary": { "type": "string" }
+        }
+      }
+    },
+    {
+      "id": "test-coverage-improver",
+      "name": "Test Coverage Improver",
+      "description": "Writes missing Jest tests following ts-jest patterns; targets edge cases and error paths.",
+      "definitionFile": "agents/test-coverage-improver.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": ["read_file", "create_file", "bash"],
+      "trigger": {
+        "events": ["push"],
+        "conditions": ["coverage.lines < 80"]
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": ["coverageReport"],
+        "properties": {
+          "coverageReport": { "type": "object" },
+          "targetCoverage": { "type": "number", "default": 80 },
+          "focusPaths": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["createdFiles", "coverageDelta"],
+        "properties": {
+          "createdFiles": { "type": "array", "items": { "type": "string" } },
+          "coverageDelta": { "type": "number" },
+          "newCoverage": { "type": "number" }
+        }
+      }
+    },
+    {
+      "id": "security-auditor",
+      "name": "Security Auditor",
+      "description": "Reviews env var handling, path traversal risks, injection vectors, and accidental secret logging.",
+      "definitionFile": "agents/security-auditor.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": ["read_file", "grep", "bash"],
+      "trigger": {
+        "events": ["push", "pull_request", "schedule"],
+        "schedule": "0 3 * * *"
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": ["targetPaths"],
+        "properties": {
+          "targetPaths": { "type": "array", "items": { "type": "string" } },
+          "rulesets": { "type": "array", "items": { "type": "string" }, "default": ["owasp-top10", "cwe-top25"] }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["vulnerabilities", "passed"],
+        "properties": {
+          "vulnerabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["file", "line", "cwe", "severity", "description"],
+              "properties": {
+                "file": { "type": "string" },
+                "line": { "type": "integer" },
+                "cwe": { "type": "string" },
+                "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+                "description": { "type": "string" },
+                "remediation": { "type": "string" }
+              }
+            }
+          },
+          "passed": { "type": "boolean" }
+        }
+      }
+    },
+    {
+      "id": "documentation-generator",
+      "name": "Documentation Generator",
+      "description": "Generates and updates JSDoc comments, README sections, and API reference from source.",
+      "definitionFile": "agents/documentation-generator.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": ["read_file", "edit_file", "create_file"],
+      "trigger": {
+        "events": ["push"],
+        "conditions": ["branch == 'main'"]
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": ["changedFiles"],
+        "properties": {
+          "changedFiles": { "type": "array", "items": { "type": "string" } },
+          "outputFormat": { "type": "string", "enum": ["jsdoc", "markdown", "both"], "default": "both" }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["updatedFiles"],
+        "properties": {
+          "updatedFiles": { "type": "array", "items": { "type": "string" } },
+          "createdFiles": { "type": "array", "items": { "type": "string" } },
+          "changesSummary": { "type": "string" }
+        }
+      }
+    }
+  ],
+  "pipeline": {
+    "stages": [
+      {
+        "id": "audit",
+        "name": "Audit",
+        "description": "Parallel static analysis: code quality + security",
+        "parallel": true,
+        "agents": ["code-auditor", "security-auditor"],
+        "onFailure": "stop",
+        "outputArtifacts": ["audit-report.json", "security-report.json"]
+      },
+      {
+        "id": "fix",
+        "name": "Fix",
+        "description": "Apply type-safety and security fixes based on audit findings",
+        "parallel": false,
+        "agents": ["type-safety-enforcer"],
+        "dependsOn": ["audit"],
+        "conditions": ["audit.code-auditor.summary.totalIssues > 0"],
+        "onFailure": "continue",
+        "outputArtifacts": ["fix-report.json"]
+      },
+      {
+        "id": "test",
+        "name": "Test",
+        "description": "Run existing tests and improve coverage",
+        "parallel": false,
+        "agents": ["test-coverage-improver"],
+        "dependsOn": ["fix"],
+        "onFailure": "stop",
+        "outputArtifacts": ["coverage/lcov.info"]
+      },
+      {
+        "id": "document",
+        "name": "Document",
+        "description": "Regenerate docs for changed public API",
+        "parallel": true,
+        "agents": ["documentation-generator"],
+        "dependsOn": ["test"],
+        "onFailure": "continue",
+        "outputArtifacts": ["docs/api.md"]
+      },
+      {
+        "id": "release",
+        "name": "Release",
+        "description": "Version bump, changelog, and npm publish",
+        "parallel": false,
+        "agents": [],
+        "dependsOn": ["document"],
+        "commands": ["npm run build", "npm publish --access public"],
+        "onFailure": "stop",
+        "conditions": ["branch == 'main'", "test.coverage.lines >= 80"]
+      }
+    ]
+  },
+  "policies": {
+    "retries": {
+      "default": 2,
+      "perAgent": {
+        "code-auditor": 3,
+        "security-auditor": 3,
+        "type-safety-enforcer": 1,
+        "test-coverage-improver": 2,
+        "documentation-generator": 2
+      },
+      "backoffSeconds": 10
+    },
+    "timeouts": {
+      "defaultSeconds": 300,
+      "perAgent": {
+        "code-auditor": 180,
+        "security-auditor": 180,
+        "type-safety-enforcer": 300,
+        "test-coverage-improver": 600,
+        "documentation-generator": 120
+      }
+    },
+    "escalation": {
+      "onCriticalVulnerability": "block-merge",
+      "onAuditScoreBelow": 60,
+      "notifyChannel": "security-alerts",
+      "createIssue": true
+    },
+    "concurrency": {
+      "maxParallelAgents": 3
+    }
+  },
+  "notifications": {
+    "channels": {
+      "slack": {
+        "enabled": false,
+        "webhookUrl": "${SLACK_WEBHOOK_URL}",
+        "events": ["pipeline.failed", "security.critical"]
+      },
+      "github": {
+        "enabled": true,
+        "createCheckRun": true,
+        "commentOnPR": true
+      },
+      "email": {
+        "enabled": false,
+        "recipients": [],
+        "events": ["pipeline.failed"]
+      }
+    }
+  }
+}
