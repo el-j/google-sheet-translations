@@ -56,6 +56,7 @@ export default defineConfig({
           items: [
             { text: 'Bidirectional Sync', link: '/guide/bidirectional-sync' },
             { text: 'Auto-Translation', link: '/guide/auto-translation' },
+            { text: 'Public Sheets (No Auth)', link: '/guide/public-sheets' },
             { text: 'Next.js Integration', link: '/guide/nextjs' },
             { text: 'Locale Filtering', link: '/guide/locale-filtering' },
           ],

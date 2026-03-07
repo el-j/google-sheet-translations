@@ -3,8 +3,12 @@
 ## Prerequisites
 
 - Node.js **≥ 14.18.0**
-- A **Google Cloud service account** with the Sheets API enabled
-- A **Google Spreadsheet** shared with the service account (see [Spreadsheet Setup](/guide/spreadsheet-setup))
+- A **Google Spreadsheet** (see [Spreadsheet Setup](/guide/spreadsheet-setup))
+
+> [!TIP]
+> **No service account?** If your spreadsheet is shared publicly, jump straight
+> to the [Public Sheets (No Auth)](/guide/public-sheets) guide and skip all
+> the credential steps below.
 
 ## Install
 
@@ -20,9 +24,40 @@ pnpm add @el-j/google-sheet-translations
 
 :::
 
-## Set environment variables
+## Option A — Public spreadsheet (no credentials)
 
-The package reads three variables. Add them to `.env` (or your CI secrets):
+If the spreadsheet is shared as **"Anyone with link can view"**, no Google Cloud
+service account is required.  Use our [demo spreadsheet](https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit)
+or any publicly accessible sheet:
+
+```typescript
+import getSpreadSheetData from '@el-j/google-sheet-translations';
+
+const translations = await getSpreadSheetData(['home', 'common'], {
+  spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+  publicSheet: true,
+});
+```
+
+No `.env` file or environment variables are needed for this mode.
+
+See the full [Public Sheets guide](/guide/public-sheets) for details.
+
+---
+
+## Option B — Private spreadsheet (service account)
+
+For private spreadsheets, or when you need bidirectional sync or
+auto-translation, use a Google Cloud service account.
+
+### Additional prerequisites
+
+- A **Google Cloud service account** with the Sheets API enabled
+- The spreadsheet shared with the service account email
+
+### Set environment variables
+
+Add the three required variables to `.env` (or your CI secrets):
 
 ```dotenv
 GOOGLE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
@@ -34,7 +69,7 @@ GOOGLE_SPREADSHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
 > **Local `.env`**: wrap the key in quotes and use `\n` to represent newlines.  
 > **GitHub Secrets / CI**: paste the key as-is from the service-account JSON — the package automatically converts literal `\n` sequences to real newlines.
 
-## Basic usage
+### Basic usage
 
 ```typescript
 import getSpreadSheetData from '@el-j/google-sheet-translations';
