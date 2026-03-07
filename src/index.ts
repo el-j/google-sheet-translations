@@ -19,6 +19,9 @@ export { convertFromDataJsonFormat } from './utils/dataConverter/convertFromData
 export { findLocalChanges } from './utils/dataConverter/findLocalChanges';
 export { updateSpreadsheetWithLocalChanges } from './utils/spreadsheetUpdater';
 
+// Public (unauthenticated) sheet reader
+export { readPublicSheet } from './utils/publicSheetReader';
+
 // Locale validation utilities (useful standalone)
 export { isValidLocale, filterValidLocales } from './utils/localeFilter';
 

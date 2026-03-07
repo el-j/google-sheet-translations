@@ -210,4 +210,87 @@ describe('getSpreadSheetData', () => {
   });
 });
 
-// Add more focused integration tests if needed
+// ---------------------------------------------------------------------------
+// Public sheet path tests
+// ---------------------------------------------------------------------------
+
+jest.mock('../src/utils/publicSheetReader', () => ({
+  readPublicSheet: jest.fn(),
+}));
+
+import { readPublicSheet } from '../src/utils/publicSheetReader';
+
+describe('getSpreadSheetData (publicSheet mode)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Reset fs / path mocks that are already mocked at module level above
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.statSync as jest.Mock).mockReturnValue({ mtime: new Date() });
+    (fs.readdirSync as jest.Mock).mockReturnValue([]);
+    (fs.readFileSync as jest.Mock).mockReturnValue('{}');
+    (fs.writeFileSync as jest.Mock).mockReturnValue(undefined);
+    (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
+
+    (path.join as jest.Mock).mockImplementation((...args: string[]) => args.join('/'));
+    (path.dirname as jest.Mock).mockReturnValue('/mock/path');
+
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('uses readPublicSheet instead of the authenticated path when publicSheet=true', async () => {
+    (readPublicSheet as jest.Mock).mockResolvedValue([
+      { key: 'welcome', en: 'Welcome', de: 'Willkommen' },
+    ]);
+
+    await getSpreadSheetData(['home'], {
+      spreadsheetId: 'PUBLIC_SHEET_ID',
+      publicSheet: true,
+    });
+
+    expect(readPublicSheet).toHaveBeenCalled();
+    // createAuthClient / GoogleSpreadsheet should NOT be called
+    const { createAuthClient } = require('../src/utils/auth');
+    expect(createAuthClient).not.toHaveBeenCalled();
+  });
+
+  test('uses spreadsheetId from options instead of env var', async () => {
+    (readPublicSheet as jest.Mock).mockResolvedValue([]);
+
+    await getSpreadSheetData(['home'], {
+      spreadsheetId: 'OPTION_SHEET_ID',
+      publicSheet: true,
+    });
+
+    expect(readPublicSheet).toHaveBeenCalledWith('OPTION_SHEET_ID', expect.any(String));
+  });
+
+  test('warns and continues when a sheet cannot be fetched in public mode', async () => {
+    (readPublicSheet as jest.Mock).mockRejectedValue(new Error('Not public'));
+
+    const result = await getSpreadSheetData(['home'], {
+      spreadsheetId: 'PUBLIC_SHEET_ID',
+      publicSheet: true,
+    });
+
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('could not be fetched'));
+    expect(result).toEqual({});
+  });
+
+  test('throws when no spreadsheetId is available in public mode', async () => {
+    // Remove the env var for this test
+    const original = process.env.GOOGLE_SPREADSHEET_ID;
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+
+    await expect(
+      getSpreadSheetData(['home'], { publicSheet: true }),
+    ).rejects.toThrow(/No spreadsheet ID provided/);
+
+    process.env.GOOGLE_SPREADSHEET_ID = original;
+  });
+});

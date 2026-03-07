@@ -26,6 +26,12 @@ features:
     link: /guide/bidirectional-sync
     linkText: Learn more
 
+  - icon: 🌐
+    title: Open Access (No Auth)
+    details: Have a public spreadsheet? Pass spreadsheetId + publicSheet true and you're done — no service account, no API key, no invite by email. The link is enough.
+    link: /guide/public-sheets
+    linkText: Learn more
+
   - icon: 🤖
     title: Auto-Translation
     details: Missing a German translation? Enable autoTranslate and the package injects GOOGLETRANSLATE formulas automatically. Translators start from a draft, not a blank cell.

@@ -1,3 +1,9 @@
+## [1.1.0](https://github.com/el-j/google-sheet-translations/compare/v1.0.2...v1.1.0) (2026-03-07)
+
+### 🚀 Features
+
+* unauthenticated public sheet access + demo spreadsheet docs ([9ee0831](https://github.com/el-j/google-sheet-translations/commit/9ee0831497050c2f7ea9b6cf104834936973d85e))
+
 ## [1.0.2](https://github.com/el-j/google-sheet-translations/compare/v1.0.1...v1.0.2) (2026-03-07)
 
 ### 🐛 Bug Fixes

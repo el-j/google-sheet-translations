@@ -1,5 +1,21 @@
 # Spreadsheet Setup
 
+## Demo template
+
+Get started instantly with our ready-to-use demo spreadsheet:
+
+**[📄 Open demo spreadsheet →](https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit)**
+
+It is publicly accessible — no login required. You can:
+
+- **View it** and use it directly with `publicSheet: true` (see [Public Sheets guide](/guide/public-sheets))
+- **Copy it** to your own Google Drive via **File → Make a copy**
+
+Direct copy link:
+```
+https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/copy
+```
+
 ## Spreadsheet structure
 
 Each Google Sheet should follow this layout:
@@ -44,6 +60,9 @@ await getSpreadSheetData(['home', 'products', 'checkout']);
 A special `i18n` sheet (if it exists) is always included automatically.
 
 ## Google Cloud service account setup
+
+Only required for private spreadsheets or when you need write access
+(bidirectional sync, auto-translate).
 
 1. Go to [console.cloud.google.com](https://console.cloud.google.com)
 2. Create a project → enable the **Google Sheets API**

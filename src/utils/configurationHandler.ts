@@ -18,6 +18,20 @@ export interface SpreadsheetOptions {
 	translationsOutputDir?: string;
 	syncLocalChanges?: boolean;
 	autoTranslate?: boolean;
+	/**
+	 * Google Spreadsheet ID.
+	 * Overrides the `GOOGLE_SPREADSHEET_ID` environment variable when provided.
+	 */
+	spreadsheetId?: string;
+	/**
+	 * When `true`, the spreadsheet is read through the Google Visualization
+	 * API without any service-account credentials.
+	 *
+	 * The spreadsheet must be shared as **"Anyone with link can view"** (or
+	 * broader). Bidirectional sync and auto-translate are unavailable in
+	 * this mode because they require write access.
+	 */
+	publicSheet?: boolean;
 }
 
 /**
@@ -31,6 +45,8 @@ export interface NormalizedConfig {
 	translationsOutputDir: string;
 	syncLocalChanges: boolean;
 	autoTranslate: boolean;
+	spreadsheetId: string | undefined;
+	publicSheet: boolean;
 }
 
 /**
@@ -45,5 +61,7 @@ export function normalizeConfig(options: SpreadsheetOptions = {}): NormalizedCon
 		translationsOutputDir: options.translationsOutputDir ?? "translations",
 		syncLocalChanges: options.syncLocalChanges !== false, // Default to true
 		autoTranslate: options.autoTranslate === true, // Default to false
+		spreadsheetId: options.spreadsheetId,
+		publicSheet: options.publicSheet === true, // Default to false
 	};
 }

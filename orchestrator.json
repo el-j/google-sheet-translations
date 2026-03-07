@@ -4,6 +4,20 @@
   "version": "1.0.0",
   "description": "A package to manage translations stored in Google Spreadsheets",
   "repository": "el-j/google-sheet-translations",
+  "features": [
+    "Authenticated access via Google Cloud service account (JWT)",
+    "Unauthenticated public sheet access via Google Visualization API (gviz/tq)",
+    "Bidirectional sync (authenticated mode only)",
+    "Auto-translation via GOOGLETRANSLATE formulas (authenticated mode only)",
+    "Smart locale filtering and normalization",
+    "TypeScript strict mode"
+  ],
+  "publicSheetMode": {
+    "description": "Read public Google Spreadsheets without any credentials using the gviz/tq endpoint",
+    "requiredOptions": ["spreadsheetId or GOOGLE_SPREADSHEET_ID env var", "publicSheet: true"],
+    "limitations": ["read-only", "no bidirectional sync", "no auto-translate"],
+    "demoSpreadsheet": "https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit"
+  },
   "techStack": {
     "language": "TypeScript",
     "runtime": "Node.js >=14.0.0",
@@ -197,6 +211,37 @@
           "updatedFiles": { "type": "array", "items": { "type": "string" } },
           "createdFiles": { "type": "array", "items": { "type": "string" } },
           "changesSummary": { "type": "string" }
+        }
+      }
+    },
+    {
+      "id": "public-sheet-validator",
+      "name": "Public Sheet Validator",
+      "description": "Verifies that the demo spreadsheet is accessible, has the expected structure, and that the gviz endpoint returns valid data. Runs on schedule to alert if the demo link breaks.",
+      "definitionFile": "agents/public-sheet-validator.json",
+      "modelHint": "claude-haiku-4-5",
+      "tools": ["bash"],
+      "trigger": {
+        "events": ["schedule"],
+        "schedule": "0 6 * * 1"
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": ["spreadsheetId"],
+        "properties": {
+          "spreadsheetId": { "type": "string" },
+          "sheetNames": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": ["accessible", "hasCorrectStructure"],
+        "properties": {
+          "accessible": { "type": "boolean" },
+          "hasCorrectStructure": { "type": "boolean" },
+          "localesFound": { "type": "array", "items": { "type": "string" } },
+          "error": { "type": "string" }
         }
       }
     }
