@@ -1,5 +1,5 @@
 import path from "node:path";
-import { DEFAULT_WAIT_SECONDS } from "../getSpreadSheetData";
+import { DEFAULT_WAIT_SECONDS } from "../constants";
 
 /**
  * Configuration options for getSpreadSheetData
