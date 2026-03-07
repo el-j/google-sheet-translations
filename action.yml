@@ -15,8 +15,9 @@ inputs:
     description: 'Google service-account private key (GOOGLE_PRIVATE_KEY)'
     required: true
   google-spreadsheet-id:
-    description: 'ID of the Google Spreadsheet (GOOGLE_SPREADSHEET_ID)'
-    required: true
+    description: 'ID of the Google Spreadsheet (GOOGLE_SPREADSHEET_ID). If omitted and auto-create is true, a new spreadsheet is created automatically.'
+    required: false
+    default: ''
   sheet-titles:
     description: >
       Comma-separated list of sheet tab names to process
@@ -49,6 +50,24 @@ inputs:
       before fetching. Set to "false" to disable.
     required: false
     default: 'true'
+  auto-create:
+    description: >
+      Automatically create a new Google Spreadsheet when no spreadsheet ID is
+      provided. Requires google-client-email and google-private-key.
+    required: false
+    default: 'true'
+  spreadsheet-title:
+    description: 'Title for the auto-created spreadsheet'
+    required: false
+    default: 'google-sheet-translations'
+  source-locale:
+    description: 'Source locale for GOOGLETRANSLATE formulas in the auto-created spreadsheet'
+    required: false
+    default: 'en'
+  target-locales:
+    description: 'Comma-separated target locales for auto-translation (e.g. "de,fr,es")'
+    required: false
+    default: 'de,fr,es,it,pt,ja,zh'
   node-version:
     description: 'Node.js version used to run the fetch script'
     required: false
@@ -127,5 +146,10 @@ runs:
           localesOutputPath:     path.resolve(workspaceDir, '${{ inputs.locales-output-path }}'),
           dataJsonPath:          path.resolve(workspaceDir, '${{ inputs.data-json-path }}'),
           syncLocalChanges:     '${{ inputs.sync-local-changes }}' !== 'false',
+          spreadsheetId: '${{ inputs.google-spreadsheet-id }}' || undefined,
+          autoCreate: '${{ inputs.auto-create }}' !== 'false',
+          spreadsheetTitle: '${{ inputs.spreadsheet-title }}',
+          sourceLocale: '${{ inputs.source-locale }}',
+          targetLocales: '${{ inputs.target-locales }}'.split(',').map(s => s.trim()).filter(Boolean),
         });
         ENDOFSCRIPT

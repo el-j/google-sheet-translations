@@ -20,7 +20,7 @@ Public sheet mode fetches data through the
 
 We maintain a ready-to-use example spreadsheet you can open right now:
 
-**[📄 Open demo spreadsheet](https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit#gid=0)**
+**[📄 Open demo spreadsheet](https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/edit#gid=0)**
 
 It follows the [required structure](/guide/spreadsheet-setup) — `key` column
 followed by locale columns (`en`, `de`, `fr`, …).
@@ -29,7 +29,7 @@ To use it as your own starting point, click **File → Make a copy** in Google
 Sheets or use the direct copy link:
 
 ```
-https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/copy
+https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/copy
 ```
 
 ## Quick start
@@ -39,7 +39,7 @@ import getSpreadSheetData from '@el-j/google-sheet-translations';
 
 // No .env or service-account credentials required!
 const translations = await getSpreadSheetData(['home', 'common'], {
-  spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+  spreadsheetId: '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0',
   publicSheet: true,
 });
 

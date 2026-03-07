@@ -50,7 +50,7 @@ describe('getSpreadSheetData', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
-    
+    process.env.GOOGLE_SPREADSHEET_ID = 'test-spreadsheet-id';
     // Set up mock implementations
     (mockDoc.loadInfo as jest.Mock) = jest.fn().mockResolvedValue(undefined);
     // Use type assertion to deal with readonly property
@@ -87,6 +87,7 @@ describe('getSpreadSheetData', () => {
   });
   
   afterEach(() => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
     jest.restoreAllMocks();
   });
 

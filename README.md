@@ -188,6 +188,37 @@ console.log(validLocales); // ['en', 'de']
 const config = normalizeConfig({ waitSeconds: 2 });
 ```
 
+## Auto-Creating a Spreadsheet
+
+When no `GOOGLE_SPREADSHEET_ID` is set (and `autoCreate` is not `false`), the package automatically creates a new Google Spreadsheet on first run using your service-account credentials:
+
+```typescript
+// No spreadsheetId needed — the package creates one for you
+const translations = await getSpreadSheetData(['i18n'], {
+  spreadsheetTitle: 'MyProject Translations',
+  sourceLocale: 'en',
+  targetLocales: ['de', 'fr', 'es'],
+});
+```
+
+The created spreadsheet includes:
+- A **`__welcome__`** sheet with setup instructions and your spreadsheet ID.
+- An **`i18n`** starter sheet with common translation keys and `GOOGLETRANSLATE` formulas for each target locale.
+
+The new spreadsheet ID is printed prominently to the console and, if a `.env` file exists in your working directory, is written to it automatically:
+
+```
+✅ New spreadsheet created!
+   Title  : MyProject Translations
+   URL    : https://docs.google.com/spreadsheets/d/...
+   ID     : 1abc...xyz
+
+   Add this to your .env file (or environment):
+   GOOGLE_SPREADSHEET_ID=1abc...xyz
+```
+
+Set `autoCreate: false` to disable this behaviour and require an explicit ID.
+
 ## Bidirectional Sync Feature
 
 This package supports bidirectional synchronization between local translation files and the Google Spreadsheet:

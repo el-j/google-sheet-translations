@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js **≥ 14.18.0**
+- Node.js **≥ 18.0.0**
 - A **Google Spreadsheet** (see [Spreadsheet Setup](/guide/spreadsheet-setup))
 
 > [!TIP]
@@ -27,14 +27,14 @@ pnpm add @el-j/google-sheet-translations
 ## Option A — Public spreadsheet (no credentials)
 
 If the spreadsheet is shared as **"Anyone with link can view"**, no Google Cloud
-service account is required.  Use our [demo spreadsheet](https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit)
+service account is required.  Use our [demo spreadsheet](https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/edit)
 or any publicly accessible sheet:
 
 ```typescript
 import getSpreadSheetData from '@el-j/google-sheet-translations';
 
 const translations = await getSpreadSheetData(['home', 'common'], {
-  spreadsheetId: '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms',
+  spreadsheetId: '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0',
   publicSheet: true,
 });
 ```
@@ -62,7 +62,7 @@ Add the three required variables to `.env` (or your CI secrets):
 ```dotenv
 GOOGLE_CLIENT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIE…\n-----END RSA PRIVATE KEY-----\n"
-GOOGLE_SPREADSHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
+GOOGLE_SPREADSHEET_ID=1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0
 ```
 
 > [!TIP]

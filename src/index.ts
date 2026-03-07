@@ -22,6 +22,10 @@ export { updateSpreadsheetWithLocalChanges } from './utils/spreadsheetUpdater';
 // Public (unauthenticated) sheet reader
 export { readPublicSheet } from './utils/publicSheetReader';
 
+// Auto-create spreadsheet utility
+export { createSpreadsheet } from './utils/spreadsheetCreator';
+export { validateCredentials } from './utils/validateEnv';
+
 // Locale validation utilities (useful standalone)
 export { isValidLocale, filterValidLocales } from './utils/localeFilter';
 

@@ -16,8 +16,7 @@ const mockWriteLocalesFile = writeLocalesFile as jest.MockedFunction<typeof writ
 describe('Locale filtering for non-i18n sheets', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
-		
-		// Mock file system
+		process.env.GOOGLE_SPREADSHEET_ID = 'test-id';
 		mockFs.existsSync.mockReturnValue(false);
 		mockFs.mkdirSync.mockReturnValue(undefined);
 		mockFs.writeFileSync.mockReturnValue(undefined);
@@ -37,6 +36,10 @@ describe('Locale filtering for non-i18n sheets', () => {
 			shouldRefresh: false,
 			hasChanges: false
 		});
+	});
+
+	afterEach(() => {
+		delete process.env.GOOGLE_SPREADSHEET_ID;
 	});
 
 	it('should only include locales with actual translations in non-i18n sheets', async () => {
@@ -123,3 +126,4 @@ describe('Locale filtering for non-i18n sheets', () => {
 		);
 	});
 });
+

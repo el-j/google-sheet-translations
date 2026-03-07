@@ -32,6 +32,24 @@ export interface SpreadsheetOptions {
 	 * this mode because they require write access.
 	 */
 	publicSheet?: boolean;
+	/**
+	 * Automatically create a new Google Spreadsheet when no spreadsheetId is
+	 * available and the caller is in authenticated mode.
+	 * Default: `true` (creation happens on the first run when no ID is set).
+	 */
+	autoCreate?: boolean;
+	/** Title for the auto-created spreadsheet (default: "google-sheet-translations"). */
+	spreadsheetTitle?: string;
+	/**
+	 * Source locale used when seeding the auto-created spreadsheet with
+	 * GOOGLETRANSLATE formulas (default: "en").
+	 */
+	sourceLocale?: string;
+	/**
+	 * Target locales for GOOGLETRANSLATE formulas in the auto-created spreadsheet.
+	 * Default: ['de', 'fr', 'es', 'it', 'pt', 'ja', 'zh'].
+	 */
+	targetLocales?: string[];
 }
 
 /**
@@ -47,6 +65,10 @@ export interface NormalizedConfig {
 	autoTranslate: boolean;
 	spreadsheetId: string | undefined;
 	publicSheet: boolean;
+	autoCreate: boolean;
+	spreadsheetTitle: string;
+	sourceLocale: string;
+	targetLocales: string[];
 }
 
 /**
@@ -63,5 +85,9 @@ export function normalizeConfig(options: SpreadsheetOptions = {}): NormalizedCon
 		autoTranslate: options.autoTranslate === true, // Default to false
 		spreadsheetId: options.spreadsheetId,
 		publicSheet: options.publicSheet === true, // Default to false
+		autoCreate: options.autoCreate !== false, // Default to true
+		spreadsheetTitle: options.spreadsheetTitle ?? 'google-sheet-translations',
+		sourceLocale: options.sourceLocale ?? 'en',
+		targetLocales: options.targetLocales ?? ['de', 'fr', 'es', 'it', 'pt', 'ja', 'zh'],
 	};
 }

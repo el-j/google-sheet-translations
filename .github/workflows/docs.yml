@@ -40,6 +40,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build package (required by VitePress data loader)
+        run: npm run build
+
       - name: Build with VitePress
         run: npm run docs:build
 
