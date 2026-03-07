@@ -31,7 +31,8 @@ GOOGLE_SPREADSHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
 ```
 
 > [!TIP]
-> The `GOOGLE_PRIVATE_KEY` value must have real newlines (`\n` in the `.env` value) and must be wrapped in quotes.
+> **Local `.env`**: wrap the key in quotes and use `\n` to represent newlines.  
+> **GitHub Secrets / CI**: paste the key as-is from the service-account JSON — the package automatically converts literal `\n` sequences to real newlines.
 
 ## Basic usage
 

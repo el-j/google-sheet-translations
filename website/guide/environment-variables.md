@@ -53,3 +53,9 @@ env:
   GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
   GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
 ```
+
+> [!IMPORTANT]
+> When you paste your private key into a GitHub Secret the literal string `\n` is stored
+> instead of real newlines. The package automatically converts `\n` → real newlines at
+> runtime, so you can paste the key exactly as it appears in your service-account JSON
+> (including the `\n` sequences) without any manual editing.
