@@ -11,6 +11,7 @@ A Node.js package for managing translations stored in Google Sheets.
 - ✅ **Modular Architecture**: Well-tested, maintainable codebase with clear separation of concerns
 - ✅ **Next.js Integration**: Built-in support for Next.js static export workflows
 - ✅ **Flexible Configuration**: Customizable paths, wait times, and processing options
+- ✅ **GitHub Action**: One-step CI integration via the bundled composite action
 
 ## Installation
 
@@ -94,7 +95,7 @@ Fetches and processes data from a Google Spreadsheet.
 - `sheetTitles`: (Optional) Array of sheet titles to process. If not provided, only the "i18n" sheet will be processed.
 - `options`: (Optional) Configuration object
   - `rowLimit`: Number - Maximum number of rows to fetch (default: 100)
-  - `waitSeconds`: Number - Time to wait between API calls (default: 1)
+  - `waitSeconds`: Number - Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503). Actual delay per retry is `waitSeconds × 2^attempt`, capped at 30 s. (default: 1)
   - `dataJsonPath`: String - Path for languageData.json file (default: 'src/lib/languageData.json')
   - `localesOutputPath`: String - Path for locales.ts file (default: 'src/i18n/locales.ts')
   - `translationsOutputDir`: String - Directory for translations output (default: 'translations')
@@ -187,6 +188,37 @@ console.log(validLocales); // ['en', 'de']
 const config = normalizeConfig({ waitSeconds: 2 });
 ```
 
+## Auto-Creating a Spreadsheet
+
+When no `GOOGLE_SPREADSHEET_ID` is set (and `autoCreate` is not `false`), the package automatically creates a new Google Spreadsheet on first run using your service-account credentials:
+
+```typescript
+// No spreadsheetId needed — the package creates one for you
+const translations = await getSpreadSheetData(['i18n'], {
+  spreadsheetTitle: 'MyProject Translations',
+  sourceLocale: 'en',
+  targetLocales: ['de', 'fr', 'es'],
+});
+```
+
+The created spreadsheet includes:
+- A **`__welcome__`** sheet with setup instructions and your spreadsheet ID.
+- An **`i18n`** starter sheet with common translation keys and `GOOGLETRANSLATE` formulas for each target locale.
+
+The new spreadsheet ID is printed prominently to the console and, if a `.env` file exists in your working directory, is written to it automatically:
+
+```
+✅ New spreadsheet created!
+   Title  : MyProject Translations
+   URL    : https://docs.google.com/spreadsheets/d/...
+   ID     : 1abc...xyz
+
+   Add this to your .env file (or environment):
+   GOOGLE_SPREADSHEET_ID=1abc...xyz
+```
+
+Set `autoCreate: false` to disable this behaviour and require an explicit ID.
+
 ## Bidirectional Sync Feature
 
 This package supports bidirectional synchronization between local translation files and the Google Spreadsheet:
@@ -252,6 +284,102 @@ For more detailed examples, check out the [examples directory](examples) where y
 - Bidirectional sync
 - Auto-translation
 - Next.js integration
+
+## GitHub Action
+
+This repository ships a composite GitHub Action that lets you fetch translations
+in any workflow **without writing any Node.js scripts yourself**.
+
+### Quick start
+
+Add the following step to your workflow after checking out your repository:
+
+```yaml
+- name: Fetch translations
+  uses: el-j/google-sheet-translations@v1   # pin to a specific release tag for stability
+  with:
+    google-client-email:   ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+    google-private-key:    ${{ secrets.GOOGLE_PRIVATE_KEY }}
+    google-spreadsheet-id: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+    sheet-titles: 'landingPage,about'       # comma-separated sheet tab names
+```
+
+### Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `google-client-email` | ✅ | — | Service-account e-mail (`GOOGLE_CLIENT_EMAIL`) |
+| `google-private-key` | ✅ | — | Service-account private key (`GOOGLE_PRIVATE_KEY`) |
+| `google-spreadsheet-id` | ✅ | — | Spreadsheet ID from the sheet URL (`GOOGLE_SPREADSHEET_ID`) |
+| `sheet-titles` | ✅ | — | Comma-separated list of sheet tab names to process |
+| `row-limit` | ❌ | `100` | Maximum rows to read per sheet |
+| `wait-seconds` | ❌ | `1` | Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503) |
+| `translations-output-dir` | ❌ | `translations` | Directory for per-locale JSON files |
+| `locales-output-path` | ❌ | `src/i18n/locales.ts` | Path for the generated `locales.ts` |
+| `data-json-path` | ❌ | `src/lib/languageData.json` | Path for the `languageData.json` snapshot |
+| `sync-local-changes` | ❌ | `true` | Push local changes back to the sheet before fetching |
+| `node-version` | ❌ | `20` | Node.js version used to run the fetch script |
+| `package-version` | ❌ | `latest` | Version of `@el-j/google-sheet-translations` to install |
+
+### Outputs
+
+| Output | Description |
+|--------|-------------|
+| `translations-dir` | Absolute path of the directory containing locale JSON files |
+| `locales-file` | Absolute path of the generated `locales.ts` |
+| `data-json-file` | Absolute path of the `languageData.json` snapshot |
+
+### Full workflow example
+
+```yaml
+name: Update Translations
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # every Monday at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  update-translations:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch translations
+        id: translations
+        uses: el-j/google-sheet-translations@v1
+        with:
+          google-client-email:   ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          google-private-key:    ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          google-spreadsheet-id: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+          sheet-titles:          'landingPage,about'
+          translations-output-dir: 'src/translations'
+          locales-output-path:     'src/i18n/locales.ts'
+          data-json-path:          'src/lib/languageData.json'
+
+      - name: Commit updated translations
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(i18n): update translations from Google Sheets'
+          file_pattern: |
+            ${{ steps.translations.outputs.translations-dir }}/**
+            ${{ steps.translations.outputs.locales-file }}
+            ${{ steps.translations.outputs.data-json-file }}
+```
+
+### Required secrets
+
+Store these as [encrypted repository secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets):
+
+| Secret | Description |
+|--------|-------------|
+| `GOOGLE_CLIENT_EMAIL` | Service-account e-mail from your Google Cloud credentials JSON |
+| `GOOGLE_PRIVATE_KEY` | Private key from your Google Cloud credentials JSON (include the full PEM block) |
+| `GOOGLE_SPREADSHEET_ID` | The long ID found in the spreadsheet URL: `…/spreadsheets/d/<ID>/edit` |
 
 ## License
 

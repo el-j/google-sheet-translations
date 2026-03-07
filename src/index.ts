@@ -11,6 +11,7 @@ export type { SpreadsheetOptions } from './utils/configurationHandler';
 
 // Utility functions required by dependents
 export { wait } from './utils/wait';
+export { withRetry } from './utils/rateLimiter';
 export { validateEnv } from './utils/validateEnv';
 export { createAuthClient } from './utils/auth';
 export { convertToDataJsonFormat } from './utils/dataConverter/convertToDataJsonFormat';
@@ -20,6 +21,10 @@ export { updateSpreadsheetWithLocalChanges } from './utils/spreadsheetUpdater';
 
 // Public (unauthenticated) sheet reader
 export { readPublicSheet } from './utils/publicSheetReader';
+
+// Auto-create spreadsheet utility
+export { createSpreadsheet } from './utils/spreadsheetCreator';
+export { validateCredentials } from './utils/validateEnv';
 
 // Locale validation utilities (useful standalone)
 export { isValidLocale, filterValidLocales } from './utils/localeFilter';

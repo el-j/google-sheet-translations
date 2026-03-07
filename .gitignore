@@ -42,3 +42,4 @@ coverage/
 # VitePress build output
 website/.vitepress/dist
 website/.vitepress/cache
+website/public/translations/

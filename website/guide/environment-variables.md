@@ -13,7 +13,7 @@ The package requires exactly three environment variables:
 In your Google Sheets URL:
 
 ```
-https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit
+https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/edit
                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                                         This is your GOOGLE_SPREADSHEET_ID
 ```
@@ -25,7 +25,7 @@ Create a `.env` file (never commit this):
 ```dotenv
 GOOGLE_CLIENT_EMAIL=fetch-bot@my-project-123.iam.gserviceaccount.com
 GOOGLE_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIB...\n-----END RSA PRIVATE KEY-----\n"
-GOOGLE_SPREADSHEET_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
+GOOGLE_SPREADSHEET_ID=1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0
 ```
 
 Then load with `dotenv` before calling the package:

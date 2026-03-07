@@ -6,6 +6,12 @@ import { DEFAULT_WAIT_SECONDS } from "../constants";
  */
 export interface SpreadsheetOptions {
 	rowLimit?: number;
+	/**
+	 * Base back-off delay in seconds used when retrying Google Sheets API
+	 * calls that fail with a rate-limit response (HTTP 429 / 503).
+	 * The actual delay for each retry attempt is `waitSeconds * 2^attempt`,
+	 * capped at 30 seconds.  Defaults to 1.
+	 */
 	waitSeconds?: number;
 	dataJsonPath?: string;
 	localesOutputPath?: string;
@@ -26,6 +32,24 @@ export interface SpreadsheetOptions {
 	 * this mode because they require write access.
 	 */
 	publicSheet?: boolean;
+	/**
+	 * Automatically create a new Google Spreadsheet when no spreadsheetId is
+	 * available and the caller is in authenticated mode.
+	 * Default: `true` (creation happens on the first run when no ID is set).
+	 */
+	autoCreate?: boolean;
+	/** Title for the auto-created spreadsheet (default: "google-sheet-translations"). */
+	spreadsheetTitle?: string;
+	/**
+	 * Source locale used when seeding the auto-created spreadsheet with
+	 * GOOGLETRANSLATE formulas (default: "en").
+	 */
+	sourceLocale?: string;
+	/**
+	 * Target locales for GOOGLETRANSLATE formulas in the auto-created spreadsheet.
+	 * Default: ['de', 'fr', 'es', 'it', 'pt', 'ja', 'zh'].
+	 */
+	targetLocales?: string[];
 }
 
 /**
@@ -41,6 +65,10 @@ export interface NormalizedConfig {
 	autoTranslate: boolean;
 	spreadsheetId: string | undefined;
 	publicSheet: boolean;
+	autoCreate: boolean;
+	spreadsheetTitle: string;
+	sourceLocale: string;
+	targetLocales: string[];
 }
 
 /**
@@ -51,11 +79,15 @@ export function normalizeConfig(options: SpreadsheetOptions = {}): NormalizedCon
 		rowLimit: options.rowLimit ?? 100,
 		waitSeconds: options.waitSeconds ?? DEFAULT_WAIT_SECONDS,
 		dataJsonPath: options.dataJsonPath ?? path.join(process.cwd(), "src/lib/languageData.json"),
-		localesOutputPath: options.localesOutputPath ?? "src/i18n/locales.ts",
-		translationsOutputDir: options.translationsOutputDir ?? "translations",
+		localesOutputPath: options.localesOutputPath ?? path.join(process.cwd(), "src/i18n/locales.ts"),
+		translationsOutputDir: options.translationsOutputDir ?? path.join(process.cwd(), "translations"),
 		syncLocalChanges: options.syncLocalChanges !== false, // Default to true
 		autoTranslate: options.autoTranslate === true, // Default to false
 		spreadsheetId: options.spreadsheetId,
 		publicSheet: options.publicSheet === true, // Default to false
+		autoCreate: options.autoCreate !== false, // Default to true
+		spreadsheetTitle: options.spreadsheetTitle ?? 'google-sheet-translations',
+		sourceLocale: options.sourceLocale ?? 'en',
+		targetLocales: options.targetLocales ?? ['de', 'fr', 'es', 'it', 'pt', 'ja', 'zh'],
 	};
 }

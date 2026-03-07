@@ -1,0 +1,155 @@
+name: 'Fetch Google Sheet Translations'
+description: >
+  Fetch translations from Google Sheets and write locale JSON files, a
+  locales.ts index, and a languageData.json snapshot to your repository.
+
+branding:
+  icon: 'globe'
+  color: 'green'
+
+inputs:
+  google-client-email:
+    description: 'Google service-account client e-mail (GOOGLE_CLIENT_EMAIL)'
+    required: true
+  google-private-key:
+    description: 'Google service-account private key (GOOGLE_PRIVATE_KEY)'
+    required: true
+  google-spreadsheet-id:
+    description: 'ID of the Google Spreadsheet (GOOGLE_SPREADSHEET_ID). If omitted and auto-create is true, a new spreadsheet is created automatically.'
+    required: false
+    default: ''
+  sheet-titles:
+    description: >
+      Comma-separated list of sheet tab names to process
+      (e.g. "landingPage,about"). The "i18n" sheet is always included
+      automatically.
+    required: true
+  row-limit:
+    description: 'Maximum number of rows to read per sheet'
+    required: false
+    default: '100'
+  wait-seconds:
+    description: 'Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503)'
+    required: false
+    default: '1'
+  translations-output-dir:
+    description: 'Directory to write per-locale JSON translation files'
+    required: false
+    default: 'translations'
+  locales-output-path:
+    description: 'File path for the generated locales.ts index'
+    required: false
+    default: 'src/i18n/locales.ts'
+  data-json-path:
+    description: 'File path for the languageData.json snapshot'
+    required: false
+    default: 'src/lib/languageData.json'
+  sync-local-changes:
+    description: >
+      Push local changes from languageData.json back to the spreadsheet
+      before fetching. Set to "false" to disable.
+    required: false
+    default: 'true'
+  auto-create:
+    description: >
+      Automatically create a new Google Spreadsheet when no spreadsheet ID is
+      provided. Requires google-client-email and google-private-key.
+    required: false
+    default: 'true'
+  spreadsheet-title:
+    description: 'Title for the auto-created spreadsheet'
+    required: false
+    default: 'google-sheet-translations'
+  source-locale:
+    description: 'Source locale for GOOGLETRANSLATE formulas in the auto-created spreadsheet'
+    required: false
+    default: 'en'
+  target-locales:
+    description: 'Comma-separated target locales for auto-translation (e.g. "de,fr,es")'
+    required: false
+    default: 'de,fr,es,it,pt,ja,zh'
+  node-version:
+    description: 'Node.js version used to run the fetch script'
+    required: false
+    default: '20'
+  package-version:
+    description: >
+      Version of @el-j/google-sheet-translations to install.
+      Defaults to "latest". Pin to a specific version for reproducible
+      builds (e.g. "1.0.3").
+    required: false
+    default: 'latest'
+
+outputs:
+  translations-dir:
+    description: 'Absolute path of the directory containing locale JSON files'
+    value: ${{ steps.resolve-paths.outputs.translations-dir }}
+  locales-file:
+    description: 'Absolute path of the generated locales.ts file'
+    value: ${{ steps.resolve-paths.outputs.locales-file }}
+  data-json-file:
+    description: 'Absolute path of the languageData.json snapshot'
+    value: ${{ steps.resolve-paths.outputs.data-json-file }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Resolve output paths
+      id: resolve-paths
+      shell: bash
+      run: |
+        echo "translations-dir=${{ github.workspace }}/${{ inputs.translations-output-dir }}" >> "$GITHUB_OUTPUT"
+        echo "locales-file=${{ github.workspace }}/${{ inputs.locales-output-path }}"         >> "$GITHUB_OUTPUT"
+        echo "data-json-file=${{ github.workspace }}/${{ inputs.data-json-path }}"            >> "$GITHUB_OUTPUT"
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install @el-j/google-sheet-translations
+      shell: bash
+      # Install into a private temp directory so we don't pollute the
+      # consumer's node_modules or package.json.
+      run: |
+        INSTALL_DIR="${RUNNER_TEMP}/gst-action-$$"
+        mkdir -p "$INSTALL_DIR"
+        echo '{"type":"module"}' > "$INSTALL_DIR/package.json"
+        npm install --prefix "$INSTALL_DIR" \
+          "@el-j/google-sheet-translations@${{ inputs.package-version }}" \
+          --no-save --loglevel=error
+        echo "GST_INSTALL_DIR=$INSTALL_DIR" >> "$GITHUB_ENV"
+
+    - name: Fetch translations
+      shell: bash
+      env:
+        GOOGLE_CLIENT_EMAIL: ${{ inputs.google-client-email }}
+        GOOGLE_PRIVATE_KEY: ${{ inputs.google-private-key }}
+        GOOGLE_SPREADSHEET_ID: ${{ inputs.google-spreadsheet-id }}
+      run: |
+        node --input-type=module << 'ENDOFSCRIPT'
+        import { getSpreadSheetData } from '${{ env.GST_INSTALL_DIR }}/node_modules/@el-j/google-sheet-translations/dist/index.js';
+        import path from 'node:path';
+        import { fileURLToPath } from 'node:url';
+
+        const sheetTitles = '${{ inputs.sheet-titles }}'
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean);
+
+        const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
+
+        await getSpreadSheetData(sheetTitles, {
+          rowLimit:             parseInt('${{ inputs.row-limit }}',    10),
+          waitSeconds:          parseInt('${{ inputs.wait-seconds }}', 10),
+          translationsOutputDir: path.resolve(workspaceDir, '${{ inputs.translations-output-dir }}'),
+          localesOutputPath:     path.resolve(workspaceDir, '${{ inputs.locales-output-path }}'),
+          dataJsonPath:          path.resolve(workspaceDir, '${{ inputs.data-json-path }}'),
+          syncLocalChanges:     '${{ inputs.sync-local-changes }}' !== 'false',
+          spreadsheetId: '${{ inputs.google-spreadsheet-id }}' || undefined,
+          autoCreate: '${{ inputs.auto-create }}' !== 'false',
+          spreadsheetTitle: '${{ inputs.spreadsheet-title }}',
+          sourceLocale: '${{ inputs.source-locale }}',
+          targetLocales: '${{ inputs.target-locales }}'.split(',').map(s => s.trim()).filter(Boolean),
+        });
+        ENDOFSCRIPT

@@ -9,8 +9,8 @@ import * as path from 'node:path';
 jest.mock('google-spreadsheet');
 jest.mock('node:fs');
 jest.mock('node:path');
-jest.mock('../src/utils/wait', () => ({
-  wait: jest.fn().mockResolvedValue(undefined)
+jest.mock('../src/utils/rateLimiter', () => ({
+  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 jest.mock('../src/utils/auth', () => ({
   createAuthClient: jest.fn().mockReturnValue({})
@@ -50,7 +50,7 @@ describe('getSpreadSheetData', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
-    
+    process.env.GOOGLE_SPREADSHEET_ID = 'test-spreadsheet-id';
     // Set up mock implementations
     (mockDoc.loadInfo as jest.Mock) = jest.fn().mockResolvedValue(undefined);
     // Use type assertion to deal with readonly property
@@ -87,6 +87,7 @@ describe('getSpreadSheetData', () => {
   });
   
   afterEach(() => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
     jest.restoreAllMocks();
   });
 

@@ -2,8 +2,8 @@ import { updateSpreadsheetWithLocalChanges } from '../../src/utils/spreadsheetUp
 import type { TranslationData } from '../../src/types';
 
 // Mock dependencies
-jest.mock('../../src/utils/wait', () => ({
-  wait: jest.fn().mockResolvedValue(undefined)
+jest.mock('../../src/utils/rateLimiter', () => ({
+  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 
 describe('spreadsheetUpdater - improved auto-translate formula', () => {

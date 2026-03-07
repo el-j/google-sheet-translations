@@ -9,8 +9,8 @@ describe('configurationHandler', () => {
 			expect(config.rowLimit).toBe(100);
 			expect(config.waitSeconds).toBe(1);
 			expect(config.dataJsonPath).toBe(path.join(process.cwd(), "src/lib/languageData.json"));
-			expect(config.localesOutputPath).toBe("src/i18n/locales.ts");
-			expect(config.translationsOutputDir).toBe("translations");
+			expect(config.localesOutputPath).toBe(path.join(process.cwd(), "src/i18n/locales.ts"));
+			expect(config.translationsOutputDir).toBe(path.join(process.cwd(), "translations"));
 			expect(config.syncLocalChanges).toBe(true);
 			expect(config.autoTranslate).toBe(false);
 		});

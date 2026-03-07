@@ -4,7 +4,7 @@
 
 Get started instantly with our ready-to-use demo spreadsheet:
 
-**[📄 Open demo spreadsheet →](https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/edit)**
+**[📄 Open demo spreadsheet →](https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/edit)**
 
 It is publicly accessible — no login required. You can:
 
@@ -13,7 +13,7 @@ It is publicly accessible — no login required. You can:
 
 Direct copy link:
 ```
-https://docs.google.com/spreadsheets/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms/copy
+https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/copy
 ```
 
 ## Spreadsheet structure

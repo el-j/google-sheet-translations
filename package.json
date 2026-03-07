@@ -1,93 +1,94 @@
 {
-	"name": "@el-j/google-sheet-translations",
-	"version": "1.1.0",
-	"description": "A package to manage translations stored in Google Spreadsheets",
-	"main": "dist/index.js",
-	"types": "dist/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"require": "./dist/index.js",
-			"import": "./dist/index.js",
-			"default": "./dist/index.js"
-		}
-	},
-	"publishConfig": {
-		"access": "public"
-	},
-	"files": [
-		"dist",
-		"LICENSE",
-		"README.md"
-	],
-	"scripts": {
-		"build": "tsc",
-		"clean": "rimraf dist",
-		"prebuild": "npm run clean",
-		"prepare": "npm run build",
-		"test": "jest",
-		"lint": "eslint src/ --ext .ts --max-warnings 0",
-		"dev": "tsc --watch",
-		"release": "semantic-release",
-		"release:dry-run": "semantic-release --dry-run",
-		"docs:dev": "vitepress dev website",
-		"docs:build": "vitepress build website",
-		"docs:preview": "vitepress preview website"
-	},
-	"keywords": [
-		"google-sheets",
-		"translations",
-		"i18n",
-		"nextjs",
-		"typescript",
-		"auto-translation",
-		"machine-translation",
-		"google-translate",
-		"localization",
-		"internationalization",
-		"spreadsheet",
-		"google-api",
-		"google-spreadsheet"
-	],
-	"author": "el-j",
-	"license": "MIT",
-	"dependencies": {
-		"google-auth-library": "^10.1.0",
-		"google-spreadsheet": "^4.1.5"
-	},
-	"peerDependencies": {
-		"typescript": ">=4.0.0"
-	},
-	"devDependencies": {
-		"@eslint/js": "^10.0.1",
-		"@semantic-release/changelog": "^6.0.3",
-		"@semantic-release/commit-analyzer": "^13.0.1",
-		"@semantic-release/git": "^10.0.1",
-		"@semantic-release/github": "^12.0.6",
-		"@semantic-release/npm": "^13.1.5",
-		"@semantic-release/release-notes-generator": "^14.1.0",
-		"@types/jest": "^30.0.0",
-		"@types/node": "^24.0.15",
-		"@typescript-eslint/eslint-plugin": "^8.56.1",
-		"@typescript-eslint/parser": "^8.56.1",
-		"conventional-changelog-conventionalcommits": "^9.3.0",
-		"dotenv": "17.2.0",
-		"eslint": "^10.0.3",
-		"jest": "^30.0.4",
-		"jest-mock-extended": "^4.0.0",
-		"rimraf": "^6.0.1",
-		"semantic-release": "^25.0.3",
-		"ts-jest": "^29.4.0",
-		"ts-node": "^10.9.2",
-		"typescript": "^5.8.3",
-		"vitepress": "^1.6.4"
-	},
-	"engines": {
-		"node": ">=14.18.0"
-	},
-	"overrides": {
-		"google-spreadsheet": {
-			"google-auth-library": "^10.1.0"
-		}
-	}
+  "name": "@el-j/google-sheet-translations",
+  "version": "1.1.0",
+  "description": "A package to manage translations stored in Google Spreadsheets",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf dist",
+    "prebuild": "npm run clean",
+    "prepare": "npm run build",
+    "test": "jest",
+    "lint": "eslint src/ --ext .ts --max-warnings 0",
+    "dev": "tsc --watch",
+    "release": "semantic-release",
+    "release:dry-run": "semantic-release --dry-run",
+    "docs:dev": "vitepress dev website",
+    "docs:build": "vitepress build website",
+    "docs:preview": "vitepress preview website",
+    "test:integration": "INTEGRATION=true jest --testPathPatterns=integration --testTimeout=60000 --coverage=false"
+  },
+  "keywords": [
+    "google-sheets",
+    "translations",
+    "i18n",
+    "nextjs",
+    "typescript",
+    "auto-translation",
+    "machine-translation",
+    "google-translate",
+    "localization",
+    "internationalization",
+    "spreadsheet",
+    "google-api",
+    "google-spreadsheet"
+  ],
+  "author": "el-j",
+  "license": "MIT",
+  "dependencies": {
+    "google-auth-library": "^10.1.0",
+    "google-spreadsheet": "^4.1.5"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^12.0.6",
+    "@semantic-release/npm": "^13.1.5",
+    "@semantic-release/release-notes-generator": "^14.1.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^24.0.15",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
+    "conventional-changelog-conventionalcommits": "^9.3.0",
+    "dotenv": "17.2.0",
+    "eslint": "^10.0.3",
+    "jest": "^30.0.4",
+    "jest-mock-extended": "^4.0.0",
+    "rimraf": "^6.0.1",
+    "semantic-release": "^25.0.3",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "vitepress": "^1.6.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "overrides": {
+    "google-spreadsheet": {
+      "google-auth-library": "^10.1.0"
+    }
+  }
 }

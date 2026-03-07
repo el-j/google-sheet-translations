@@ -34,6 +34,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Audit dependencies
+        run: npm audit --omit=dev --audit-level=high
+
       - name: Lint
         run: npm run lint
 
@@ -42,6 +45,10 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Integration test (public spreadsheet connectivity)
+        if: matrix.node-version == '22'
+        run: npm run test:integration
 
       - name: Upload coverage
         if: matrix.node-version == '22'

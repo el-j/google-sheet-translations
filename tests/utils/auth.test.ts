@@ -1,6 +1,6 @@
 import { createAuthClient } from '../../src/utils/auth';
 import { JWT } from 'google-auth-library';
-import { validateEnv } from '../../src/utils/validateEnv';
+import { validateCredentials } from '../../src/utils/validateEnv';
 
 // Mock validateEnv to avoid actual environment checks
 jest.mock('../../src/utils/validateEnv', () => ({
@@ -8,6 +8,10 @@ jest.mock('../../src/utils/validateEnv', () => ({
     GOOGLE_CLIENT_EMAIL: 'test@example.com',
     GOOGLE_PRIVATE_KEY: 'test-private-key',
     GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
+  }),
+  validateCredentials: jest.fn().mockReturnValue({
+    GOOGLE_CLIENT_EMAIL: 'test@example.com',
+    GOOGLE_PRIVATE_KEY: 'test-private-key',
   })
 }));
 
@@ -22,7 +26,7 @@ jest.mock('google-auth-library', () => {
   };
 });
 
-const mockValidateEnv = validateEnv as jest.Mock;
+const mockValidateCredentials = validateCredentials as jest.Mock;
 const MockJWT = JWT as unknown as jest.Mock;
 
 describe('createAuthClient', () => {
@@ -31,7 +35,7 @@ describe('createAuthClient', () => {
   });
 
   test('should create a JWT auth client with correct parameters', () => {
-    mockValidateEnv.mockReturnValue({
+    mockValidateCredentials.mockReturnValue({
       GOOGLE_CLIENT_EMAIL: 'test@example.com',
       GOOGLE_PRIVATE_KEY: 'test-private-key',
       GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
@@ -66,7 +70,7 @@ describe('createAuthClient', () => {
     const keyWithRealNewlines =
       '-----BEGIN RSA PRIVATE KEY-----\nMIIEfake\n-----END RSA PRIVATE KEY-----\n';
 
-    mockValidateEnv.mockReturnValue({
+    mockValidateCredentials.mockReturnValue({
       GOOGLE_CLIENT_EMAIL: 'ci@example.com',
       GOOGLE_PRIVATE_KEY: keyWithEscapedNewlines,
       GOOGLE_SPREADSHEET_ID: 'some-id'
@@ -85,7 +89,7 @@ describe('createAuthClient', () => {
     const keyWithRealNewlines =
       '-----BEGIN RSA PRIVATE KEY-----\nMIIEfake\n-----END RSA PRIVATE KEY-----\n';
 
-    mockValidateEnv.mockReturnValue({
+    mockValidateCredentials.mockReturnValue({
       GOOGLE_CLIENT_EMAIL: 'local@example.com',
       GOOGLE_PRIVATE_KEY: keyWithRealNewlines,
       GOOGLE_SPREADSHEET_ID: 'some-id'
