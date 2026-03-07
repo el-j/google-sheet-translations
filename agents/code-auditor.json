@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "code-auditor",
+  "name": "Code Auditor",
+  "version": "1.0.0",
+  "description": "Performs deep static analysis of TypeScript source files for quality, maintainability, correctness, and performance issues in the @el-j/google-sheet-translations package.",
+  "model": "claude-sonnet-4-5",
+  "tools": ["read_file", "grep", "glob", "bash"],
+  "systemPrompt": "You are an expert TypeScript/Node.js code auditor. Analyze src/**/*.ts for: unused exports, missing error handling, any/unknown misuse, non-null assertions, unhandled promise rejections, and inefficient Google Sheets API calls. Return structured JSON findings with file, line, severity, rule, and remediation.",
+  "inputSchema": {
+    "type": "object",
+    "required": ["targetPaths"],
+    "additionalProperties": false,
+    "properties": {
+      "targetPaths": {
+        "type": "array",
+        "description": "Glob patterns or file paths to audit.",
+        "items": { "type": "string" },
+        "default": ["src/**/*.ts"]
+      },
+      "severity": {
+        "type": "string",
+        "description": "Minimum severity level to report.",
+        "enum": ["low", "medium", "high", "critical"],
+        "default": "medium"
+      },
+      "rules": {
+        "type": "array",
+        "description": "Specific rule IDs to enable. Empty means all rules.",
+        "items": { "type": "string" },
+        "default": []
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": ["issues", "summary"],
+    "additionalProperties": false,
+    "properties": {
+      "issues": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["file", "line", "severity", "message", "rule"],
+          "additionalProperties": false,
+          "properties": {
+            "file": { "type": "string" },
+            "line": { "type": "integer", "minimum": 1 },
+            "column": { "type": "integer", "minimum": 1 },
+            "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+            "message": { "type": "string" },
+            "rule": { "type": "string" },
+            "suggestion": { "type": "string" },
+            "codeSnippet": { "type": "string" }
+          }
+        }
+      },
+      "summary": {
+        "type": "object",
+        "required": ["totalIssues", "bySeverity", "score"],
+        "properties": {
+          "totalIssues": { "type": "integer", "minimum": 0 },
+          "bySeverity": {
+            "type": "object",
+            "properties": {
+              "low": { "type": "integer" },
+              "medium": { "type": "integer" },
+              "high": { "type": "integer" },
+              "critical": { "type": "integer" }
+            }
+          },
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Overall code quality score (100 = perfect)."
+          },
+          "filesAudited": { "type": "integer" },
+          "durationMs": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "Audit src/ for high-severity issues only",
+      "input": {
+        "targetPaths": ["src/**/*.ts"],
+        "severity": "high",
+        "rules": []
+      },
+      "output": {
+        "issues": [
+          {
+            "file": "src/utils/validateEnv.ts",
+            "line": 12,
+            "column": 5,
+            "severity": "high",
+            "message": "Environment variable accessed without existence check.",
+            "rule": "no-unchecked-env-access",
+            "suggestion": "Use optional chaining or validate with validateEnv() before access.",
+            "codeSnippet": "const key = process.env.GOOGLE_PRIVATE_KEY;"
+          }
+        ],
+        "summary": {
+          "totalIssues": 1,
+          "bySeverity": { "low": 0, "medium": 0, "high": 1, "critical": 0 },
+          "score": 94,
+          "filesAudited": 14,
+          "durationMs": 820
+        }
+      }
+    }
+  ]
+}

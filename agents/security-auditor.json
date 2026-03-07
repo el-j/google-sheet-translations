@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "security-auditor",
+  "name": "Security Auditor",
+  "version": "1.0.0",
+  "description": "Reviews the @el-j/google-sheet-translations package for security vulnerabilities: env var leakage, path traversal, injection vectors, secrets in logs, and insecure Google API credential handling.",
+  "model": "claude-sonnet-4-5",
+  "tools": ["read_file", "grep", "bash"],
+  "systemPrompt": "You are a Node.js security auditor. Scan src/**/*.ts for: env secrets in logs/errors, path traversal in file writes, prototype pollution, unvalidated external data from Google Sheets, insecure credential storage, and ReDoS in regex. Map findings to CWE IDs. Return critical issues first.",
+  "inputSchema": {
+    "type": "object",
+    "required": ["targetPaths"],
+    "additionalProperties": false,
+    "properties": {
+      "targetPaths": {
+        "type": "array",
+        "description": "Glob patterns or file paths to scan.",
+        "items": { "type": "string" },
+        "default": ["src/**/*.ts"]
+      },
+      "rulesets": {
+        "type": "array",
+        "description": "Security rulesets to apply.",
+        "items": { "type": "string" },
+        "default": ["owasp-top10", "cwe-top25"]
+      },
+      "includeDevFiles": {
+        "type": "boolean",
+        "description": "Whether to also scan test and config files.",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": ["vulnerabilities", "passed"],
+    "additionalProperties": false,
+    "properties": {
+      "vulnerabilities": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["file", "line", "cwe", "severity", "description"],
+          "additionalProperties": false,
+          "properties": {
+            "file": { "type": "string" },
+            "line": { "type": "integer", "minimum": 1 },
+            "cwe": { "type": "string", "description": "CWE identifier, e.g. CWE-22." },
+            "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+            "description": { "type": "string" },
+            "remediation": { "type": "string" },
+            "codeSnippet": { "type": "string" }
+          }
+        }
+      },
+      "passed": {
+        "type": "boolean",
+        "description": "True if no critical or high vulnerabilities were found."
+      },
+      "summary": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer" },
+          "bySeverity": { "type": "object" },
+          "filesScanned": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "Detect private key leakage in error logging",
+      "input": {
+        "targetPaths": ["src/**/*.ts"],
+        "rulesets": ["owasp-top10"],
+        "includeDevFiles": false
+      },
+      "output": {
+        "vulnerabilities": [
+          {
+            "file": "src/utils/auth.ts",
+            "line": 18,
+            "cwe": "CWE-532",
+            "severity": "critical",
+            "description": "GOOGLE_PRIVATE_KEY value may be included in error message logged to console.",
+            "remediation": "Catch auth errors separately; never interpolate credential values into log messages.",
+            "codeSnippet": "console.error(`Auth failed: ${err.message} key=${privateKey}`);"
+          }
+        ],
+        "passed": false,
+        "summary": { "total": 1, "bySeverity": { "low": 0, "medium": 0, "high": 0, "critical": 1 }, "filesScanned": 14 }
+      }
+    }
+  ]
+}

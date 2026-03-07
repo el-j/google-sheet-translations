@@ -117,4 +117,15 @@ describe('convertFromDataJsonFormat', () => {
     const result = convertFromDataJsonFormat(dataJson);
     expect(result).toEqual({});
   });
+
+  test('should skip entry and warn when sheet value is not an object', () => {
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+    const dataJson = [{ 'mySheet': 'invalid-string-instead-of-object' }] as unknown as Record<string, unknown>[];
+    const result = convertFromDataJsonFormat(dataJson);
+
+    expect(result).toEqual({});
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('mySheet'));
+    consoleSpy.mockRestore();
+  });
 });

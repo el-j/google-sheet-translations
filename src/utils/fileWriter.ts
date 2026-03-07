@@ -16,7 +16,11 @@ export function writeTranslationFiles(
 ): void {
 	// Make sure the translations directory exists
 	if (!fs.existsSync(translationsOutputDir)) {
-		fs.mkdirSync(translationsOutputDir, { recursive: true });
+		try {
+			fs.mkdirSync(translationsOutputDir, { recursive: true });
+		} catch (err) {
+			throw new Error(`Failed to create translations directory "${translationsOutputDir}"`, { cause: err });
+		}
 	}
 
 	// Write files for all locales
@@ -26,12 +30,25 @@ export function writeTranslationFiles(
 			continue;
 		}
 
-		fs.writeFileSync(
-			`${translationsOutputDir}/${locale.toLowerCase()}.json`,
-			JSON.stringify(translations[locale], null, 2),
-			"utf8"
-		);
-		console.log(`Successfully wrote translations for ${locale}`);
+		// Sanitize locale to prevent path traversal attacks
+		const safeName = locale.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+		if (safeName !== locale.toLowerCase()) {
+			console.warn(`Locale "${locale}" contained unsafe characters; sanitised to "${safeName}"`);
+		}
+
+		try {
+			fs.writeFileSync(
+				path.join(translationsOutputDir, `${safeName}.json`),
+				JSON.stringify(translations[locale], null, 2),
+				"utf8"
+			);
+			console.log(`Successfully wrote translations for ${locale}`);
+		} catch (err) {
+			console.error(
+				`Failed to write translation file for locale "${locale}" at "${path.join(translationsOutputDir, `${safeName}.json`)}":`,
+				err
+			);
+		}
 	}
 }
 
@@ -49,10 +66,12 @@ export function writeLocalesFile(
 	// Create locales.ts file directory if it doesn't exist
 	const localesOutputDir = path.dirname(localesOutputPath);
 	if (!fs.existsSync(localesOutputDir)) {
-		fs.mkdirSync(localesOutputDir, { recursive: true });
+		try {
+			fs.mkdirSync(localesOutputDir, { recursive: true });
+		} catch (err) {
+			throw new Error(`Failed to create directory "${localesOutputDir}"`, { cause: err });
+		}
 	}
-
-	// Only write valid, non-empty locales
 	const validLocales = locales.filter(locale => locale && locale.trim().length > 0);
 
 	// Create the content with both locales and header mapping
@@ -73,7 +92,11 @@ export const localeHeaderMapping = ${JSON.stringify(localeMapping, null, 2)};
 export default locales;
 `;
 
-	fs.writeFileSync(localesOutputPath, content, "utf8");
+	try {
+		fs.writeFileSync(localesOutputPath, content, "utf8");
+	} catch (err) {
+		throw new Error(`Failed to write locales file at "${localesOutputPath}"`, { cause: err });
+	}
 	console.log(`Successfully wrote locales file with ${validLocales.length} locales:`, validLocales);
 	console.log('Header mapping includes:', Object.keys(localeMapping).length, 'mappings');
 }
@@ -92,17 +115,24 @@ export function writeLanguageDataFile(
 	// Create languageData.json directory if it doesn't exist
 	const dataJsonDir = path.dirname(dataJsonPath);
 	if (!fs.existsSync(dataJsonDir)) {
-		fs.mkdirSync(dataJsonDir, { recursive: true });
+		try {
+			fs.mkdirSync(dataJsonDir, { recursive: true });
+		} catch (err) {
+			throw new Error(`Failed to create directory "${dataJsonDir}"`, { cause: err });
+		}
 	}
 
 	// Convert the object format to the array format expected in languageData.json
 	const dataJsonContent = convertToDataJsonFormat(translations, locales);
 
-	// Write the updated data to languageData.json
-	fs.writeFileSync(
-		dataJsonPath,
-		JSON.stringify(dataJsonContent, null, 2),
-		"utf8"
-	);
+	try {
+		fs.writeFileSync(
+			dataJsonPath,
+			JSON.stringify(dataJsonContent, null, 2),
+			"utf8"
+		);
+	} catch (err) {
+		throw new Error(`Failed to write language data file at "${dataJsonPath}"`, { cause: err });
+	}
 	console.log("Successfully updated languageData.json with fresh spreadsheet data");
 }

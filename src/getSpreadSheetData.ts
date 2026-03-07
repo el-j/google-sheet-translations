@@ -7,9 +7,8 @@ import { normalizeConfig, type SpreadsheetOptions } from "./utils/configurationH
 import { processSheet } from "./utils/sheetProcessor";
 import { writeTranslationFiles, writeLocalesFile, writeLanguageDataFile } from "./utils/fileWriter";
 import { handleBidirectionalSync } from "./utils/syncManager";
-
-// Default wait time between API calls (in seconds)
-export const DEFAULT_WAIT_SECONDS = 1;
+import { DEFAULT_WAIT_SECONDS } from "./constants";
+export { DEFAULT_WAIT_SECONDS };
 
 /**
  * Fetches and processes data from a Google Spreadsheet
@@ -17,9 +16,12 @@ export const DEFAULT_WAIT_SECONDS = 1;
  * @param options - Additional options for fetching data
  * @returns Processed translation data
  */
+const MAX_SYNC_REFRESH_DEPTH = 1;
+
 export async function getSpreadSheetData(
 	_docTitle?: string[],
 	options: SpreadsheetOptions = {},
+	_refreshDepth = 0,
 ): Promise<TranslationData> {
 	// Normalize configuration with defaults
 	const config = normalizeConfig(options);
@@ -31,12 +33,16 @@ export async function getSpreadSheetData(
 	const serviceAuthClient = createAuthClient();
 	const doc = new GoogleSpreadsheet(GOOGLE_SPREADSHEET_ID, serviceAuthClient);
 
-	await doc.loadInfo(true);
+	try {
+		await doc.loadInfo(true);
+	} catch (err) {
+		throw new Error(`Failed to load spreadsheet "${GOOGLE_SPREADSHEET_ID}"`, { cause: err });
+	}
 
 	// Prepare sheet titles to process
-	let docTitle: string[] = _docTitle || [];
-	
-	if (!docTitle || docTitle.length === 0) {
+	const docTitle: string[] = _docTitle ?? [];
+
+	if (docTitle.length === 0) {
 		console.warn("No sheet titles provided, cannot process spreadsheet data");
 		return {};
 	}
@@ -124,12 +130,12 @@ export async function getSpreadSheetData(
 		globalLocaleMapping
 	);
 
-	// If sync requested a refresh, recursively call with updated data
-	if (syncResult.shouldRefresh) {
+	// If sync requested a refresh, recursively call with updated data (depth-limited)
+	if (syncResult.shouldRefresh && _refreshDepth < MAX_SYNC_REFRESH_DEPTH) {
 		return getSpreadSheetData(_docTitle, {
 			...options,
-			syncLocalChanges: false, // Prevent infinite loop
-		});
+			syncLocalChanges: false,
+		}, _refreshDepth + 1);
 	}
 
 	// Write output files - use all locales for translation files but filtered locales for locales.ts

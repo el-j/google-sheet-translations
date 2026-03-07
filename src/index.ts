@@ -1,45 +1,32 @@
 /**
  * Google Sheet Translation Manager Package
- * Exports utilities for working with Google Sheets as a translation source
+ * v2.0.0 – public API surface
  */
 
-// Main functionality
+// Main entry point
 export { getSpreadSheetData, DEFAULT_WAIT_SECONDS } from './getSpreadSheetData';
 
-// Configuration and options
-export { normalizeConfig, type SpreadsheetOptions, type NormalizedConfig } from './utils/configurationHandler';
+// Configuration types (needed by callers of getSpreadSheetData)
+export type { SpreadsheetOptions } from './utils/configurationHandler';
 
-// Processing utilities
-export { processSheet, type SheetProcessingResult } from './utils/sheetProcessor';
-export { handleBidirectionalSync, type SyncResult } from './utils/syncManager';
-
-// File writing utilities
-export { writeTranslationFiles, writeLocalesFile, writeLanguageDataFile } from './utils/fileWriter';
-
-// Locale validation
-export { isValidLocale, filterValidLocales } from './utils/localeFilter';
-
-// Utils
+// Utility functions required by dependents
 export { wait } from './utils/wait';
 export { validateEnv } from './utils/validateEnv';
 export { createAuthClient } from './utils/auth';
-export { 
-  convertToDataJsonFormat
-} from './utils/dataConverter/convertToDataJsonFormat';
-export { 
-  convertFromDataJsonFormat
-} from './utils/dataConverter/convertFromDataJsonFormat';
-export { 
-  findLocalChanges
-} from './utils/dataConverter/findLocalChanges';
+export { convertToDataJsonFormat } from './utils/dataConverter/convertToDataJsonFormat';
+export { convertFromDataJsonFormat } from './utils/dataConverter/convertFromDataJsonFormat';
+export { findLocalChanges } from './utils/dataConverter/findLocalChanges';
 export { updateSpreadsheetWithLocalChanges } from './utils/spreadsheetUpdater';
 
-// Types
-export type { 
-  TranslationData, 
-  TranslationValue, 
+// Locale validation utilities (useful standalone)
+export { isValidLocale, filterValidLocales } from './utils/localeFilter';
+
+// Public types
+export type {
+  TranslationData,
+  TranslationValue,
   SheetRow,
-  GoogleEnvVars 
+  GoogleEnvVars,
 } from './types';
 
 // Default export

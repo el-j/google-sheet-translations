@@ -108,6 +108,58 @@ describe('fileWriter', () => {
 		});
 	});
 
+	describe('writeTranslationFiles - path traversal prevention', () => {
+		it('should sanitize a locale with path traversal characters to use underscores', () => {
+			const dangerousLocale = '../../../dangerous';
+			const translations: TranslationData = {
+				[dangerousLocale]: { 'sheet1': { 'hello': 'Hello' } }
+			};
+			const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+			writeTranslationFiles(translations, [dangerousLocale], 'translations');
+
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+				path.join('translations', '_________dangerous.json'),
+				expect.any(String),
+				'utf8'
+			);
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.stringContaining('unsafe characters')
+			);
+			consoleSpy.mockRestore();
+		});
+
+		it('should write en-gb locale unchanged (only valid chars)', () => {
+			const translations: TranslationData = {
+				'en-gb': { 'sheet1': { 'hello': 'Hello' } }
+			};
+			jest.spyOn(console, 'log').mockImplementation();
+
+			writeTranslationFiles(translations, ['en-gb'], 'translations');
+
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+				path.join('translations', 'en-gb.json'),
+				expect.any(String),
+				'utf8'
+			);
+		});
+
+		it('should lowercase an uppercase locale like ZH-CN to zh-cn', () => {
+			const translations: TranslationData = {
+				'ZH-CN': { 'sheet1': { 'hello': '你好' } }
+			};
+			jest.spyOn(console, 'log').mockImplementation();
+
+			writeTranslationFiles(translations, ['ZH-CN'], 'translations');
+
+			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
+				path.join('translations', 'zh-cn.json'),
+				expect.any(String),
+				'utf8'
+			);
+		});
+	});
+
 	describe('writeLanguageDataFile', () => {
 		it('should create directory and write language data file', () => {
 			const translations: TranslationData = {

@@ -35,3 +35,10 @@ coverage/
 # Package lock files (uncomment if you want to ignore them)
 # package-lock.json
 # yarn.lock
+
+# semantic-release
+.releaserc.local.json
+
+# VitePress build output
+website/.vitepress/dist
+website/.vitepress/cache
