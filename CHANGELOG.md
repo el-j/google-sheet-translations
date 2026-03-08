@@ -1,3 +1,14 @@
+## [1.3.0](https://github.com/el-j/google-sheet-translations/compare/v1.2.0...v1.3.0) (2026-03-08)
+
+### 🚀 Features
+
+* sync docs translations to spreadsheet + multilingual live-demo page ([907f76b](https://github.com/el-j/google-sheet-translations/commit/907f76bd024afbbeff9b73002cb4767c4ecc1490))
+
+### 🐛 Bug Fixes
+
+* add headers=1 to gviz URL so col.label is always populated (fixes Node 22 integration test) ([7255402](https://github.com/el-j/google-sheet-translations/commit/7255402f879778e1c35ba3983c051d4a22879b62))
+* sync docs version with package.json and fix demo spreadsheet sheet names ([2ef0b9b](https://github.com/el-j/google-sheet-translations/commit/2ef0b9b1c244161fe46ab7ca53c6350ca39bd089))
+
 ## [1.2.0](https://github.com/el-j/google-sheet-translations/compare/v1.1.0...v1.2.0) (2026-03-07)
 
 ### 🚀 Features
