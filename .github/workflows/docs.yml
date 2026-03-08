@@ -46,13 +46,31 @@ jobs:
       - name: Build package (required by sync script and VitePress data loader)
         run: npm run build
 
-      - name: Sync translations to demo spreadsheet
-        if: ${{ env.GOOGLE_CLIENT_EMAIL != '' }}
+      - name: Check sync credentials
+        id: sync_creds
         env:
-          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
-          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
-          GOOGLE_SPREADSHEET_ID: 1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0
+          _MAIL: ${{ secrets.mail }}
+        run: |
+          if [ -n "$_MAIL" ]; then
+            echo "has_creds=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_creds=false" >> "$GITHUB_OUTPUT"
+            echo "[sync] No credentials found – skipping translation sync (secrets 'mail' / 'private-key' / 'docId' not set)"
+          fi
+
+      - name: Sync translations to demo spreadsheet
+        if: steps.sync_creds.outputs.has_creds == 'true'
+        env:
+          GOOGLE_CLIENT_EMAIL: ${{ secrets.mail }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.private-key }}
+          GOOGLE_SPREADSHEET_ID: ${{ secrets.docId }}
         run: node scripts/sync-demo-translations.mjs
+
+      - name: Verify translations were pushed
+        if: steps.sync_creds.outputs.has_creds == 'true'
+        env:
+          GOOGLE_SPREADSHEET_ID: ${{ secrets.docId }}
+        run: node scripts/verify-demo-translations.mjs
 
       - name: Build with VitePress
         run: npm run docs:build

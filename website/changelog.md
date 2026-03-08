@@ -6,18 +6,29 @@ The changelog lives in the repository at [CHANGELOG.md](https://github.com/el-j/
 
 ## Version history summary
 
-### v2.0.0 — Current stable
+### v1.3.0 — Current stable
 
-Major audit-driven quality release:
+Translation sync pipeline release:
+
+- 🔄 **Docs-to-spreadsheet sync** — CI pipeline pushes `landingPage` and `i18n` keys to the demo spreadsheet with auto-translate formulas on every push to `main`
+- 🌐 **Multilingual live-demo page** — language switcher powered by real spreadsheet data
+- 🐛 **gviz endpoint fix** — `headers=1` ensures column labels are always populated (fixes Node 22 integration test)
+- 🧪 **172 tests** across 27 suites
+
+### v1.2.0
 
 - 🔒 **Path-traversal fix** — locale filenames sanitised against directory traversal
 - 🔄 **Circular dependency eliminated** — `DEFAULT_WAIT_SECONDS` moved to `constants.ts`
 - 📊 **Column overflow fix** — `columnIndexToLetter()` supports A–ZZ+ (was broken above 26 columns)
 - 🛡️ **Type safety** — runtime type-guard on parsed JSON, proper TypeScript narrowing throughout
-- 🧪 **Test coverage ≥ 90%** — 141 tests across 24 suites
+- 🧪 **Test coverage ≥ 90%** — tests across 24+ suites
 - 🔧 **ESLint** — `@typescript-eslint/recommended` clean at `--max-warnings 0`
-- 📦 **Clean public API** — trimmed exports, `exports` field in `package.json`
 - 🚀 **Semantic release** — fully automated versioning from conventional commits going forward
+
+### v1.1.0
+
+- 🌐 **Public sheet access** — unauthenticated reading via Google Visualization API (`gviz/tq`)
+- 📖 **Demo spreadsheet** — publicly accessible spreadsheet for testing without credentials
 
 ### v1.0.0
 

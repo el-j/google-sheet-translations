@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "name": "@el-j/google-sheet-translations",
-  "version": "1.1.0",
+  "version": "1.3.0",
   "description": "A package to manage translations stored in Google Spreadsheets",
   "repository": "el-j/google-sheet-translations",
   "features": [
@@ -564,13 +564,32 @@
         ]
       },
       {
+        "id": "sync-and-verify",
+        "name": "Sync & Verify Translations",
+        "description": "Push i18n keys to the demo spreadsheet, auto-translate via GOOGLETRANSLATE formulas, then read back and verify all keys returned correctly.",
+        "parallel": false,
+        "agents": [],
+        "dependsOn": ["document"],
+        "commands": [
+          "node scripts/sync-demo-translations.mjs",
+          "node scripts/verify-demo-translations.mjs"
+        ],
+        "secrets": {
+          "GOOGLE_CLIENT_EMAIL": "mail",
+          "GOOGLE_PRIVATE_KEY": "private-key",
+          "GOOGLE_SPREADSHEET_ID": "docId"
+        },
+        "onFailure": "continue",
+        "outputArtifacts": []
+      },
+      {
         "id": "release",
         "name": "Release",
         "description": "Version bump, changelog, and npm publish",
         "parallel": false,
         "agents": [],
         "dependsOn": [
-          "document"
+          "sync-and-verify"
         ],
         "commands": [
           "npm run build",
@@ -639,5 +658,94 @@
         ]
       }
     }
+  },
+  "todo": {
+    "description": "Comprehensive task backlog. Track all future work here. Status: open | in-progress | done | deferred.",
+    "items": [
+      {
+        "id": "T-001",
+        "title": "Fix docs.yml: use correct GitHub Secrets (mail / private-key / docId)",
+        "status": "done",
+        "priority": "critical",
+        "detail": "Updated docs.yml to map mail→GOOGLE_CLIENT_EMAIL, private-key→GOOGLE_PRIVATE_KEY, docId→GOOGLE_SPREADSHEET_ID. Fixed broken if-condition using a pre-check step."
+      },
+      {
+        "id": "T-002",
+        "title": "Push website i18n keys to demo spreadsheet on every main push",
+        "status": "done",
+        "priority": "high",
+        "detail": "scripts/sync-demo-translations.mjs pushes landingPage.en.json + ui.en.json keys with GOOGLETRANSLATE formulas. Runs in docs.yml after build."
+      },
+      {
+        "id": "T-003",
+        "title": "Verify translations are readable back from spreadsheet after sync",
+        "status": "done",
+        "priority": "high",
+        "detail": "scripts/verify-demo-translations.mjs reads back translations via public gviz endpoint, checks all expected keys are present. Runs in docs.yml after sync."
+      },
+      {
+        "id": "T-004",
+        "title": "Fixed wrong version number in docs (v2.0.0 → v1.3.0)",
+        "status": "done",
+        "priority": "medium",
+        "detail": "website/changelog.md incorrectly listed v2.0.0 as current. Fixed to v1.3.0 with correct feature list. src/index.ts wrong v2.0.0 comment also fixed."
+      },
+      {
+        "id": "T-005",
+        "title": "Add global language switcher to VitePress nav bar",
+        "status": "done",
+        "priority": "high",
+        "detail": "Created website/.vitepress/theme/index.ts + LangSwitcher.vue. Injects a locale dropdown into the nav-bar-content-after slot. Synced with translations from the spreadsheet at build time. Selection persisted in localStorage."
+      },
+      {
+        "id": "T-006",
+        "title": "Full website i18n: translate all page content via spreadsheet",
+        "status": "open",
+        "priority": "high",
+        "detail": "Currently only landingPage and i18n (UI) keys are translated. Future: push all docs page content as i18n keys and render translated content per locale. Requires significant doc restructuring. Consider VitePress built-in locales config."
+      },
+      {
+        "id": "T-007",
+        "title": "Locale regex consolidation",
+        "status": "open",
+        "priority": "low",
+        "detail": "Deferred from v2: consolidate locale validation regex into a single canonical pattern. Currently there are multiple similar regex patterns across localeFilter.ts and localeNormalizer.ts."
+      },
+      {
+        "id": "T-008",
+        "title": "SpreadsheetUpdater helper extraction",
+        "status": "open",
+        "priority": "low",
+        "detail": "Deferred from v2: extract reusable helper functions from spreadsheetUpdater.ts to reduce duplication."
+      },
+      {
+        "id": "T-009",
+        "title": "Remove duplicate tests in tests/basic.test.js",
+        "status": "open",
+        "priority": "low",
+        "detail": "Deferred from v2: tests/basic.test.js has duplicate test cases that should be deduplicated or migrated to the TypeScript test files."
+      },
+      {
+        "id": "T-010",
+        "title": "Add language switcher to all doc pages (not just Live Demo)",
+        "status": "open",
+        "priority": "medium",
+        "detail": "The global LangSwitcher is in the nav bar and stores the selected locale. Next step: consume selected locale in all page components that have i18n keys in the spreadsheet."
+      },
+      {
+        "id": "T-011",
+        "title": "Add translated UI strings to VitePress config (nav/footer) dynamically",
+        "status": "open",
+        "priority": "medium",
+        "detail": "nav_guide, nav_api, nav_npm, footer_license, footer_copyright keys are in ui.en.json / spreadsheet. Plan to inject these into VitePress themeConfig at build time via the translations data loader."
+      },
+      {
+        "id": "T-012",
+        "title": "Add weekly schedule to docs.yml to keep demo spreadsheet fresh",
+        "status": "open",
+        "priority": "low",
+        "detail": "Add `schedule: - cron: '0 6 * * 1'` to docs.yml so GOOGLETRANSLATE formulas are re-evaluated weekly even without a code push."
+      }
+    ]
   }
 }

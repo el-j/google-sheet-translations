@@ -1,6 +1,6 @@
 /**
  * Google Sheet Translation Manager Package
- * v2.0.0 – public API surface
+ * Public API surface – see package.json for current version
  */
 
 // Main entry point
