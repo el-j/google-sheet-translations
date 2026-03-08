@@ -98,9 +98,12 @@ export async function readPublicSheet(
 	spreadsheetId: string,
 	sheetName: string,
 ): Promise<SheetRow[]> {
+	// `headers=1` tells the gviz API to treat the first spreadsheet row as column
+	// labels (col.label). Without it Google may return empty labels and fall back
+	// to column IDs (A, B, C …) which are not valid locale codes.
 	const url =
 		`https://docs.google.com/spreadsheets/d/${encodeURIComponent(spreadsheetId)}` +
-		`/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+		`/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(sheetName)}`;
 
 	let raw: string;
 	try {

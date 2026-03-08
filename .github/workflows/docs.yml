@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'website/**'
+      - 'scripts/**'
       - '.github/workflows/docs.yml'
       - 'README.md'
       - 'CHANGELOG.md'
@@ -42,8 +43,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build package (required by VitePress data loader)
+      - name: Build package (required by sync script and VitePress data loader)
         run: npm run build
+
+      - name: Sync translations to demo spreadsheet
+        if: ${{ env.GOOGLE_CLIENT_EMAIL != '' }}
+        env:
+          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          GOOGLE_SPREADSHEET_ID: 1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0
+        run: node scripts/sync-demo-translations.mjs
 
       - name: Build with VitePress
         run: npm run docs:build

@@ -44,6 +44,29 @@ describe('readPublicSheet', () => {
     jest.clearAllMocks();
   });
 
+  test('uses headers=1 in the gviz URL so column labels are always populated', async () => {
+    const payload = {
+      status: 'ok',
+      table: {
+        cols: [
+          { id: 'A', label: 'key', type: 'string' },
+          { id: 'B', label: 'en', type: 'string' },
+        ],
+        rows: [{ c: [{ v: 'hello' }, { v: 'Hello' }] }],
+      },
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    let capturedUrl = '';
+    (https.get as jest.Mock).mockImplementation((url: string, cb: (r: unknown) => void) => {
+      capturedUrl = url;
+      return trigger(cb);
+    });
+
+    await readPublicSheet('SPREADSHEET_ID', 'mySheet');
+
+    expect(capturedUrl).toContain('headers=1');
+  });
+
   test('parses a valid gviz response into SheetRow[]', async () => {
     const payload = {
       status: 'ok',

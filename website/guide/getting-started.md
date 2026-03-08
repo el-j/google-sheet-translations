@@ -33,7 +33,7 @@ or any publicly accessible sheet:
 ```typescript
 import getSpreadSheetData from '@el-j/google-sheet-translations';
 
-const translations = await getSpreadSheetData(['home', 'common'], {
+const translations = await getSpreadSheetData(['landingPage', 'i18n'], {
   spreadsheetId: '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0',
   publicSheet: true,
 });

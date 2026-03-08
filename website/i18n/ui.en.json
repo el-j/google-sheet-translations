@@ -1,0 +1,17 @@
+{
+  "nav_guide": "Guide",
+  "nav_api": "API",
+  "nav_npm": "npm",
+  "footer_license": "Released under the MIT License.",
+  "footer_copyright": "Copyright 2024-present el-j",
+  "demo_title": "Live Demo",
+  "demo_description": "This page is generated at build time by running the package against our demo spreadsheet.",
+  "demo_working": "If you can read the translation data below, the package is working end-to-end.",
+  "demo_fetched_at": "Fetched at",
+  "demo_locales_found": "Locales found",
+  "demo_not_available": "Translation data not available. Check build logs for errors.",
+  "demo_static_files": "Static translation files",
+  "demo_language_switcher": "Switch language",
+  "demo_hero_preview": "Hero preview",
+  "demo_feature_highlights": "Feature highlights"
+}

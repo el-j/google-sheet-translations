@@ -38,7 +38,7 @@ https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNur
 import getSpreadSheetData from '@el-j/google-sheet-translations';
 
 // No .env or service-account credentials required!
-const translations = await getSpreadSheetData(['home', 'common'], {
+const translations = await getSpreadSheetData(['landingPage', 'i18n'], {
   spreadsheetId: '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0',
   publicSheet: true,
 });
