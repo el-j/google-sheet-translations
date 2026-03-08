@@ -38,6 +38,7 @@ jobs:
   build:
     name: Build documentation
     runs-on: ubuntu-latest
+    environment: production
     # When triggered by workflow_run, only proceed if the Release workflow
     # succeeded.  For push / workflow_dispatch we always build.
     if: >-
@@ -68,27 +69,27 @@ jobs:
       - name: Check sync credentials
         id: sync_creds
         env:
-          _MAIL: ${{ secrets.mail }}
+          _MAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
         run: |
           if [ -n "$_MAIL" ]; then
             echo "has_creds=true" >> "$GITHUB_OUTPUT"
           else
             echo "has_creds=false" >> "$GITHUB_OUTPUT"
-            echo "[sync] No credentials found – skipping translation sync (secrets 'mail' / 'private-key' / 'docId' not set)"
+            echo "[sync] No credentials found – skipping translation sync (secrets 'GOOGLE_CLIENT_EMAIL' / 'GOOGLE_PRIVATE_KEY' / 'GOOGLE_SPREADSHEET_ID' not set)"
           fi
 
       - name: Sync translations to demo spreadsheet
         if: steps.sync_creds.outputs.has_creds == 'true'
         env:
-          GOOGLE_CLIENT_EMAIL: ${{ secrets.mail }}
-          GOOGLE_PRIVATE_KEY: ${{ secrets.private-key }}
-          GOOGLE_SPREADSHEET_ID: ${{ secrets.docId }}
+          GOOGLE_CLIENT_EMAIL: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
         run: node scripts/sync-demo-translations.mjs
 
       - name: Verify translations were pushed
         if: steps.sync_creds.outputs.has_creds == 'true'
         env:
-          GOOGLE_SPREADSHEET_ID: ${{ secrets.docId }}
+          GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
         run: node scripts/verify-demo-translations.mjs
 
       - name: Build with VitePress
