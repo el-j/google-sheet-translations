@@ -1,3 +1,9 @@
+## [1.3.1](https://github.com/el-j/google-sheet-translations/compare/v1.3.0...v1.3.1) (2026-03-08)
+
+### 🐛 Bug Fixes
+
+* docs version from post-release package.json via workflow_run; fix sync case-sensitivity bug ([d716fe2](https://github.com/el-j/google-sheet-translations/commit/d716fe216d2aa38b0ea665ad10f65c8106b848af))
+
 ## [1.3.0](https://github.com/el-j/google-sheet-translations/compare/v1.2.0...v1.3.0) (2026-03-08)
 
 ### 🚀 Features
