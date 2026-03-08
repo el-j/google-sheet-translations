@@ -29,6 +29,23 @@ export { validateCredentials } from './utils/validateEnv';
 // Locale validation utilities (useful standalone)
 export { isValidLocale, filterValidLocales } from './utils/localeFilter';
 
+// Locale normalisation utilities
+export {
+  getLanguagePrefix,
+  normalizeLocaleCode,
+  createLocaleMapping,
+  getOriginalHeaderForLocale,
+  getNormalizedLocaleForHeader,
+} from './utils/localeNormalizer';
+
+// Sheet processing (pure row-processing core, no API calls)
+export { processRawRows } from './utils/sheetProcessor';
+export type { SheetProcessingResult } from './utils/sheetProcessor';
+
+// Higher-level translation helpers
+export { getTranslationSummary, getLocaleDisplayName, mergeSheets } from './utils/translationHelpers';
+export type { TranslationSummary, SheetSummary } from './utils/translationHelpers';
+
 // Public types
 export type {
   TranslationData,
