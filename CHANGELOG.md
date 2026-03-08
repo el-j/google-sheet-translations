@@ -1,3 +1,10 @@
+## [1.3.3](https://github.com/el-j/google-sheet-translations/compare/v1.3.2...v1.3.3) (2026-03-08)
+
+### 🐛 Bug Fixes
+
+* locale-family resolution so translations are pushed when locale codes don't match exactly ([aebf7d6](https://github.com/el-j/google-sheet-translations/commit/aebf7d6c64bc3a2c76d6c4458774924d73903e7e))
+* map ui.en.json to ui sheet; auto-create missing sheets; show locale names in LangSwitcher ([8654f27](https://github.com/el-j/google-sheet-translations/commit/8654f27b545d1244fb75dd6708cf8232da3ecf80))
+
 ## [1.3.2](https://github.com/el-j/google-sheet-translations/compare/v1.3.1...v1.3.2) (2026-03-08)
 
 ### 🐛 Bug Fixes
