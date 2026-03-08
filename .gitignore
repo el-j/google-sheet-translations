@@ -43,3 +43,6 @@ coverage/
 website/.vitepress/dist
 website/.vitepress/cache
 website/public/translations/
+
+# Sync script temp output
+tmp/

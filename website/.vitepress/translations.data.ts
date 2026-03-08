@@ -32,10 +32,10 @@ export default {
           count: Object.keys(keys as object).length,
         }));
       }
-      return { locales, summary, fetchedAt: new Date().toISOString() };
+      return { locales, summary, fetchedAt: new Date().toISOString(), translations };
     } catch (err) {
       console.warn('[translations.data] Could not fetch demo translations:', err);
-      return { locales: [], summary: {}, fetchedAt: null, error: String(err) };
+      return { locales: [], summary: {}, fetchedAt: null, translations: {}, error: String(err) };
     }
   },
 };
