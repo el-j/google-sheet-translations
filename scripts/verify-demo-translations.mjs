@@ -34,7 +34,7 @@ console.log(`[verify] Reading back translations from spreadsheet ${DEMO_SPREADSH
 
 let translations;
 try {
-  translations = await getSpreadSheetData(['landingPage', 'i18n'], {
+  translations = await getSpreadSheetData(['landingPage', 'ui', 'i18n'], {
     spreadsheetId: DEMO_SPREADSHEET_ID,
     publicSheet: true,
     syncLocalChanges: false,
@@ -75,13 +75,13 @@ if (missingLanding.length > 0) {
 console.log(`[verify] ✓ landingPage: all ${landingPageKeys.length} keys present in "${enLocale}"`);
 
 // ── Verify i18n/ui keys ───────────────────────────────────────────────────────
-const enUi = enData?.i18n ?? {};
+const enUi = enData?.ui ?? {};
 const missingUi = uiKeys.filter((k) => !(k in enUi));
 if (missingUi.length > 0) {
-  console.error(`[verify] ✗ Missing i18n keys in locale "${enLocale}": ${missingUi.join(', ')}`);
+  console.error(`[verify] ✗ Missing ui keys in locale "${enLocale}": ${missingUi.join(', ')}`);
   process.exit(1);
 }
-console.log(`[verify] ✓ i18n: all ${uiKeys.length} keys present in "${enLocale}"`);
+console.log(`[verify] ✓ ui: all ${uiKeys.length} keys present in "${enLocale}"`);
 
 // ── Report available locales ──────────────────────────────────────────────────
 const localeCount = locales.length;

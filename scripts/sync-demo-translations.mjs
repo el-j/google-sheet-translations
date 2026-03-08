@@ -38,9 +38,12 @@ const uiEn = JSON.parse(
 
 // ── Build the languageData.json array the package expects ────────────────────
 // Format: [ { sheetTitle: { locale: { key: value } } }, … ]
+// NOTE: landingPage keys → landingPage sheet; UI/nav/footer keys → ui sheet.
+//       The i18n sheet is managed manually in the spreadsheet (locale definitions
+//       + language-switcher names) and is only read back, never written from here.
 const languageData = [
   { landingPage: { en: landingPageEn } },
-  { i18n:        { en: uiEn } },
+  { ui:          { en: uiEn } },
 ];
 
 // Write to a temp location; the package reads this to detect local changes
@@ -62,7 +65,7 @@ const tmpOutDir = path.join(tmpDir, 'out');
 mkdirSync(tmpOutDir, { recursive: true });
 
 console.log('[sync] Syncing translations to demo spreadsheet…');
-await getSpreadSheetData(['landingPage', 'i18n'], {
+await getSpreadSheetData(['landingPage', 'ui', 'i18n'], {
   spreadsheetId: DEMO_SPREADSHEET_ID,
   syncLocalChanges: true,
   autoTranslate: true,

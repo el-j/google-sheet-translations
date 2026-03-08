@@ -417,4 +417,70 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(mockRow.save).toHaveBeenCalled();
     expect(mockSheet.addRows).not.toHaveBeenCalled();
   });
+
+  // ── Auto-create missing sheet ─────────────────────────────────────────────
+
+  test('should auto-create sheet when it does not exist and localeMapping is non-empty', async () => {
+    // Simulates the scenario where 'ui' sheet does not yet exist in the spreadsheet
+    // but localeMapping is available from the previously processed 'i18n' sheet.
+    const mockNewSheet = {
+      getRows: jest.fn().mockResolvedValue([]),  // newly created — no data rows
+      addRows: jest.fn().mockResolvedValue([]),
+    };
+    (mockDoc as any).addSheet = jest.fn().mockResolvedValue(mockNewSheet);
+
+    const changes: TranslationData = {
+      'en-us': { 'ui': { 'nav_guide': 'Guide', 'nav_api': 'API' } },
+    };
+    const localeMapping: Record<string, string> = { 'en-us': 'en-US', 'de-de': 'de-DE' };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, localeMapping);
+
+    // The sheet should have been created with the locale headers
+    expect((mockDoc as any).addSheet).toHaveBeenCalledWith({
+      title: 'ui',
+      headerValues: ['key', 'en-US', 'de-DE'],
+    });
+
+    // New keys should be added to the newly created sheet
+    expect(mockNewSheet.addRows).toHaveBeenCalled();
+    const addedRows: Record<string, string>[] = mockNewSheet.addRows.mock.calls[0][0];
+    expect(addedRows).toContainEqual(expect.objectContaining({ key: 'nav_guide', 'en-US': 'Guide' }));
+    expect(addedRows).toContainEqual(expect.objectContaining({ key: 'nav_api', 'en-US': 'API' }));
+  });
+
+  test('should warn when sheet does not exist and localeMapping is empty', async () => {
+    // When no localeMapping is available, auto-creation is not possible
+    const changes: TranslationData = {
+      'en': { 'missing': { 'key1': 'Value' } },
+    };
+
+    // localeMapping defaults to {} — should still warn, not try to create
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, {});
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('not found in the document')
+    );
+  });
+
+  test('should add new keys to an empty (newly created) sheet using localeMapping for headers', async () => {
+    // The sheet exists but has 0 data rows (just created with headerValues)
+    mockSheet.getRows.mockResolvedValueOnce([]);
+
+    const changes: TranslationData = {
+      'en-us': { 'home': { 'hello': 'Hello', 'bye': 'Goodbye' } },
+    };
+    const localeMapping: Record<string, string> = { 'en-us': 'en-US', 'de-de': 'de-DE' };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, localeMapping);
+
+    // No new sheet should be created (sheet 'home' already exists)
+    expect((mockDoc as any).addSheet).not.toHaveBeenCalled();
+
+    // Keys should be added using the reconstructed headers from localeMapping
+    expect(mockSheet.addRows).toHaveBeenCalled();
+    const addedRows: Record<string, string>[] = mockSheet.addRows.mock.calls[0][0];
+    expect(addedRows).toContainEqual(expect.objectContaining({ key: 'hello', 'en-US': 'Hello' }));
+    expect(addedRows).toContainEqual(expect.objectContaining({ key: 'bye', 'en-US': 'Goodbye' }));
+  });
 });
