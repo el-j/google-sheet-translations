@@ -10,6 +10,11 @@
  * This component is injected into the VitePress Layout slot so it appears
  * on every page. The actual page content remains in English — only the
  * i18n keys that live in the spreadsheet are translated.
+ *
+ * Locale names are sourced from the `i18n` sheet in the spreadsheet
+ * (e.g. the key "en-us" → "English", "de-de" → "Deutsch"). The name shown
+ * for each option is the locale's own name (self-referential: how each
+ * language calls itself), falling back to the raw locale code.
  */
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { data } from '../../translations.data.ts'
@@ -64,6 +69,24 @@ function focusOption(index: number) {
   const list = document.querySelectorAll<HTMLElement>('.lang-switcher__option')
   list[index]?.focus()
 }
+
+/**
+ * Returns the human-readable name for a locale using the `i18n` sheet data.
+ *
+ * The `i18n` spreadsheet sheet contains locale-name translations keyed by
+ * locale code (e.g. key "en-us" has value "English" in the `en-US` column,
+ * "Englisch" in the `de-DE` column, etc.).
+ *
+ * We show each locale in its **own** language (self-referential), so the
+ * German option always shows "Deutsch" regardless of the current selection.
+ * Falls back to the raw locale code if the translation is not available.
+ */
+function getLocaleName(locale: string): string {
+  const localeData = (data.translations as Record<string, Record<string, Record<string, unknown>>>)?.[locale]
+  const i18nSheet = localeData?.['i18n']
+  const name = i18nSheet?.[locale]
+  return typeof name === 'string' ? name : locale
+}
 </script>
 
 <template>
@@ -94,7 +117,7 @@ function focusOption(index: number) {
         @click="selectLocale(locale)"
         @keydown="handleOptionKeydown($event, locale, index)"
       >
-        {{ locale }}
+        {{ getLocaleName(locale) }}
       </li>
     </ul>
   </div>

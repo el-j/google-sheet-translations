@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, '../..');
 const DEMO_SPREADSHEET_ID = '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0';
-const DEMO_SHEETS = ['landingPage', 'i18n'];
+const DEMO_SHEETS = ['landingPage', 'ui', 'i18n'];
 
 export default {
   async load() {

@@ -21,7 +21,7 @@ const t = computed(() => {
   if (!data.translations?.[loc]) return {}
   return {
     ...data.translations[loc].landingPage,
-    ...data.translations[loc].i18n,
+    ...data.translations[loc].ui,
   }
 })
 </script>

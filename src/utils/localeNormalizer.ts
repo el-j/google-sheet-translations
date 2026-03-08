@@ -4,6 +4,21 @@
  */
 
 /**
+ * Returns the language prefix of a locale code (the part before the first
+ * `-` or `_` separator), lowercased.
+ *
+ * Examples:
+ * - `'en-US'` → `'en'`
+ * - `'zh_CN'` → `'zh'`
+ * - `'de'`    → `'de'`
+ *
+ * Used for language-family matching when an exact locale code is not found.
+ */
+export function getLanguagePrefix(locale: string): string {
+	return locale.toLowerCase().split(/[-_]/)[0];
+}
+
+/**
  * Common language to country mappings for normalization
  * Maps language codes to their most common country variants
  */
@@ -125,8 +140,16 @@ export function createLocaleMapping(
 }
 
 /**
- * Finds the original header name for a given normalized locale
- * @param normalizedLocale The normalized locale code (e.g., 'pl-PL')
+ * Finds the original header name for a given normalized locale.
+ *
+ * Lookup order (most-specific → most-lenient):
+ * 1. Direct key match  (`'en-us'` → `'en-US'`)
+ * 2. Lowercase key match (`'EN-US'` → key `'en-us'`)
+ * 3. Case-insensitive key comparison
+ * 4. Language-family prefix match – e.g. `'en'` or `'en-GB'` finds `'en-US'`
+ *    when `'en-US'` is the only English variant present in the mapping.
+ *
+ * @param normalizedLocale The normalized locale code (e.g., `'en-GB'`, `'en'`)
  * @param localeMapping Mapping from normalized locales to original headers
  * @returns Original header name or undefined if not found
  */
@@ -146,6 +169,15 @@ export function getOriginalHeaderForLocale(
 	// Try finding by case-insensitive key comparison
 	for (const [key, value] of Object.entries(localeMapping)) {
 		if (key.toLowerCase() === lowercaseLocale) {
+			return value;
+		}
+	}
+
+	// Language-family fallback: 'en' or 'en-GB' should find 'en-US' when that
+	// is the only English variant present in the localeMapping.
+	const inputLangCode = getLanguagePrefix(normalizedLocale);
+	for (const [key, value] of Object.entries(localeMapping)) {
+		if (getLanguagePrefix(key) === inputLangCode) {
 			return value;
 		}
 	}

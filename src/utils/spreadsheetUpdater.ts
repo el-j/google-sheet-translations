@@ -1,7 +1,7 @@
-import type { GoogleSpreadsheet } from "google-spreadsheet";
+import type { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from "google-spreadsheet";
 import type { TranslationData } from "../types";
 import { withRetry } from "./rateLimiter";
-import { getOriginalHeaderForLocale } from "./localeNormalizer";
+import { getOriginalHeaderForLocale, getLanguagePrefix } from "./localeNormalizer";
 
 /** Converts a 0-based column index to a spreadsheet column letter (A, B, ..., Z, AA, AB, ...) */
 function columnIndexToLetter(index: number): string {
@@ -15,19 +15,24 @@ function columnIndexToLetter(index: number): string {
 }
 
 /**
- * Updates the Google Spreadsheet with new keys from local data
- * 
+ * Updates the Google Spreadsheet with new keys from local data.
+ *
  * When autoTranslate is enabled:
  * - For each new key added to the spreadsheet, the system checks which languages have translations
  * - For languages missing translations, it automatically adds Google Translate formulas
  * - The formula format is: =GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());$sourceColumn$1;targetColumn$1)
  * - This dynamic formula uses cell references for language codes and automatically adapts to the correct row
- * 
+ *
+ * If a sheet named `sheetTitle` does not yet exist in the document and `localeMapping` is
+ * non-empty, the sheet is **created automatically** with "key" as the first column followed by
+ * the original locale-header names from `localeMapping`.  This ensures that new feature sheets
+ * (e.g. "ui") are bootstrapped on the first sync without requiring manual spreadsheet setup.
+ *
  * Example:
  * If a new key "welcome" has an English translation in column B but no German translation in column C,
  * and autoTranslate is enabled, the system will add:
  * =GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1) to the German column
- * 
+ *
  * @param doc - The Google Spreadsheet instance
  * @param changes - Object containing new keys to add to the spreadsheet
  * @param waitSeconds - Base back-off delay in seconds for retrying rate-limited API calls
@@ -50,34 +55,63 @@ export async function updateSpreadsheetWithLocalChanges(
         Object.values(changes).flatMap(locale => Object.keys(locale))
     )) {
         console.log(`Processing sheet: ${sheetTitle}`);
-        const sheet = doc.sheetsByTitle[sheetTitle];
+        // Allow re-assignment: sheet may be auto-created below
+        let sheet = doc.sheetsByTitle[sheetTitle] as GoogleSpreadsheetWorksheet | undefined;
         
         if (!sheet) {
-            console.warn(`Sheet "${sheetTitle}" not found in the document, cannot update`);
+            const localeHeaders = Object.values(localeMapping);
+            if (localeHeaders.length === 0) {
+                console.warn(`Sheet "${sheetTitle}" not found in the document, cannot update`);
+                continue;
+            }
+            console.log(`Sheet "${sheetTitle}" not found — creating it with ${localeHeaders.length} locale column(s).`);
+            sheet = await withRetry(
+                () => doc.addSheet({ title: sheetTitle, headerValues: ['key', ...localeHeaders] }),
+                `addSheet: ${sheetTitle}`,
+                baseDelayMs,
+            );
+        }
+
+        // Safety guard — should never be reached, but satisfies TypeScript
+        if (!sheet) {
+            console.warn(`Sheet "${sheetTitle}" could not be found or created, skipping.`);
             continue;
         }
         
         // Get all rows from the sheet (retries automatically on rate-limit)
         const rows = await withRetry(
-            () => sheet.getRows(),
+            () => sheet!.getRows(),
             `getRows: ${sheetTitle}`,
             baseDelayMs,
         );
         
-        if (!rows || rows.length === 0) {
-            console.warn(`No rows found in sheet "${sheetTitle}", cannot update`);
-            continue;
+        // Determine column headers.
+        // Normal path: derive from the first data row (most reliable).
+        // Empty-sheet path: the sheet was just auto-created (or had all rows deleted);
+        // reconstruct from localeMapping so we can still add new keys correctly.
+        let headerRow: string[];
+        let originalHeaders: string[];
+
+        if (rows.length > 0) {
+            originalHeaders = Object.keys(rows[0].toObject());
+            headerRow = originalHeaders.map(h => h.toLowerCase());
+        } else {
+            const localeHeaders = Object.values(localeMapping);
+            if (localeHeaders.length === 0) {
+                console.warn(`No rows found in sheet "${sheetTitle}", cannot update`);
+                continue;
+            }
+            // Reconstruct headers from the locale mapping (original case preserved)
+            originalHeaders = ['key', ...localeHeaders];
+            headerRow = originalHeaders.map(h => h.toLowerCase());
         }
-        
-        // Extract header information
-        const rowObject = rows[0].toObject();
-        const headerRow = Object.keys(rowObject).map(key => key.toLowerCase());
-        const keyColumn = headerRow[0]; // First column is the key
+
+        const keyColumn = headerRow[0]; // First column is always the key column
         
         // Get all locales from the headerRow except the key column
         const locales = headerRow.filter(key => key !== keyColumn);
         
-        // Map of existing keys to their row indices
+        // Map of existing keys to their row indices (empty when rows.length === 0)
         const existingKeys = new Map<string, number>();
         rows.forEach((row, index) => {
             const rowData = row.toObject();
@@ -113,9 +147,13 @@ export async function updateSpreadsheetWithLocalChanges(
                     // Find the exact header for this locale using the mapping
                     let localeHeader = getOriginalHeaderForLocale(locale, localeMapping);
                     
-                    // Fallback to case-insensitive search in headerRow if mapping lookup fails
+                    // Fallback: language-family prefix match against original-case sheet headers
+                    // e.g. locale 'en' finds column header 'en-US' (not the lowercase 'en-us')
                     if (!localeHeader) {
-                        localeHeader = headerRow.find(h => h.toLowerCase() === locale.toLowerCase());
+                        const localeLang = getLanguagePrefix(locale);
+                        localeHeader = originalHeaders.find(
+                            h => getLanguagePrefix(h) === localeLang
+                        );
                     }
                     
                     if (localeHeader) {
@@ -144,10 +182,12 @@ export async function updateSpreadsheetWithLocalChanges(
                     // Find the exact header for this locale using the mapping
                     let localeHeader = getOriginalHeaderForLocale(locale, localeMapping);
                     
-                    // Fallback to case-insensitive search if mapping lookup fails
+                    // Fallback: language-family prefix match against the row's own keys
+                    // e.g. locale 'en' finds column header 'en-US' on the existing row
                     if (!localeHeader) {
+                        const localeLang = getLanguagePrefix(locale);
                         localeHeader = Object.keys(row.toObject()).find(
-                            h => h.toLowerCase() === locale.toLowerCase()
+                            h => getLanguagePrefix(h) === localeLang
                         );
                     }
                     
@@ -242,7 +282,7 @@ export async function updateSpreadsheetWithLocalChanges(
             for (let i = 0; i < newRows.length; i += CHUNK_SIZE) {
                 const chunk = newRows.slice(i, i + CHUNK_SIZE);
                 await withRetry(
-                    () => sheet.addRows(chunk),
+                    () => sheet!.addRows(chunk),
                     `addRows chunk ${Math.floor(i / CHUNK_SIZE) + 1} in ${sheetTitle}`,
                     baseDelayMs,
                 );
