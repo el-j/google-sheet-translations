@@ -198,3 +198,48 @@ export function getNormalizedLocaleForHeader(
 ): string | undefined {
 	return originalMapping[originalHeader.toLowerCase()];
 }
+
+/**
+ * Resolves a locale code to the closest matching locale in an available list
+ * using a three-step fallback strategy:
+ *
+ * 1. **Exact match** — `'en-us'` → `'en-us'`
+ * 2. **Lowercase match** — `'en-US'` → `'en-us'`
+ * 3. **Language-family prefix** — `'en'` or `'en-GB'` → `'en-us'`
+ *    when `'en-us'` is the only English variant in `availableLocales`
+ *
+ * Returns `undefined` when no matching locale is found.
+ *
+ * This is the same strategy used internally by `findLocalChanges()` when
+ * mapping local `languageData.json` keys to spreadsheet locale columns.
+ *
+ * @param locale           - The locale code to resolve (e.g. `'en'`, `'en-GB'`).
+ * @param availableLocales - Array of locale codes to search (e.g. from
+ *   `Object.keys(translations)` or the `locales` array from `getSpreadSheetData`).
+ * @returns The matched locale code from `availableLocales`, or `undefined`.
+ *
+ * @example
+ * ```ts
+ * import { resolveLocaleWithFallback } from '@el-j/google-sheet-translations';
+ *
+ * const locales = ['en-us', 'de-de', 'fr-fr'];
+ * resolveLocaleWithFallback('en', locales);    // → 'en-us'
+ * resolveLocaleWithFallback('en-GB', locales); // → 'en-us'
+ * resolveLocaleWithFallback('de-DE', locales); // → 'de-de'
+ * resolveLocaleWithFallback('ja', locales);    // → undefined
+ * ```
+ */
+export function resolveLocaleWithFallback(
+	locale: string,
+	availableLocales: string[],
+): string | undefined {
+	// 1. Exact match
+	if (availableLocales.includes(locale)) return locale;
+	// 2. Lowercase match
+	const lower = locale.toLowerCase();
+	const lowerMatch = availableLocales.find((l) => l === lower);
+	if (lowerMatch) return lowerMatch;
+	// 3. Language-family prefix fallback
+	const langCode = getLanguagePrefix(lower);
+	return availableLocales.find((l) => getLanguagePrefix(l) === langCode);
+}

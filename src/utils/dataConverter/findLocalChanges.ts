@@ -1,29 +1,5 @@
 import type { TranslationData } from "../../types";
-import { getLanguagePrefix } from "../localeNormalizer";
-
-/**
- * Resolves a locale key from `localData` to the corresponding key actually
- * present in `spreadsheetData`, using a three-step strategy:
- *
- * 1. Exact match            – `'en-us'` → `'en-us'`
- * 2. Lowercase match        – `'en-US'` → `'en-us'`
- * 3. Language-family prefix – `'en'` or `'en-GB'` → `'en-us'`
- *    (when `'en-us'` is the only English variant in the spreadsheet data)
- *
- * Returns `undefined` when no matching locale exists in `spreadsheetData`.
- */
-function resolveLocaleAlias(
-	locale: string,
-	spreadsheetData: TranslationData,
-): string | undefined {
-	if (spreadsheetData[locale]) return locale;
-	const lower = locale.toLowerCase();
-	if (spreadsheetData[lower]) return lower;
-	const langCode = getLanguagePrefix(lower);
-	return Object.keys(spreadsheetData).find(
-		(k) => getLanguagePrefix(k) === langCode,
-	);
-}
+import { resolveLocaleWithFallback } from "../localeNormalizer";
 
 /**
  * Compares local languageData.json with spreadsheet data to find new keys.
@@ -33,7 +9,8 @@ function resolveLocaleAlias(
  * - The sheet or key is absent for the resolved locale.
  *
  * Locale matching is fuzzy: `'en'` and `'en-GB'` will both match against
- * an `'en-us'` entry in `spreadsheetData` (language-family resolution).
+ * an `'en-us'` entry in `spreadsheetData` (language-family resolution via
+ * `resolveLocaleWithFallback`).
  *
  * @param localData - Data from local languageData.json file
  * @param spreadsheetData - Data fetched from the spreadsheet
@@ -50,7 +27,7 @@ export function findLocalChanges(
 		if (!localData[locale]) continue;
 
 		// Resolve the locale to the matching key in spreadsheetData (fuzzy match)
-		const resolvedLocale = resolveLocaleAlias(locale, spreadsheetData);
+		const resolvedLocale = resolveLocaleWithFallback(locale, Object.keys(spreadsheetData));
 
 		// Check each sheet in local data
 		for (const sheet of Object.keys(localData[locale])) {

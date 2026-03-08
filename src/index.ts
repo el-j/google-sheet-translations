@@ -36,6 +36,7 @@ export {
   createLocaleMapping,
   getOriginalHeaderForLocale,
   getNormalizedLocaleForHeader,
+  resolveLocaleWithFallback,
 } from './utils/localeNormalizer';
 
 // Sheet processing (pure row-processing core, no API calls)
@@ -45,6 +46,13 @@ export type { SheetProcessingResult } from './utils/sheetProcessor';
 // Higher-level translation helpers
 export { getTranslationSummary, getLocaleDisplayName, mergeSheets } from './utils/translationHelpers';
 export type { TranslationSummary, SheetSummary } from './utils/translationHelpers';
+
+// File-writing utilities (custom output pipelines)
+export { writeTranslationFiles, writeLocalesFile, writeLanguageDataFile } from './utils/fileWriter';
+
+// Bidirectional sync manager
+export { handleBidirectionalSync } from './utils/syncManager';
+export type { SyncResult } from './utils/syncManager';
 
 // Public types
 export type {
