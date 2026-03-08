@@ -1,4 +1,8 @@
+import { createRequire } from 'node:module'
 import { defineConfig } from 'vitepress'
+
+const require = createRequire(import.meta.url)
+const pkg = require('../../package.json') as { version: string }
 
 export default defineConfig({
   title: '@el-j/google-sheet-translations',
@@ -28,7 +32,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
       {
-        text: 'v2.0.0',
+        text: `v${pkg.version}`,
         items: [
           { text: 'Changelog', link: '/changelog' },
           { text: 'Contributing', link: '/contributing' },
