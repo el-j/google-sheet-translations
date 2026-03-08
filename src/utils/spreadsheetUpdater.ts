@@ -192,8 +192,11 @@ export async function updateSpreadsheetWithLocalChanges(
                         for (const localeHeader of locales) {
                             const localeLower = localeHeader.toLowerCase();
                             
-                            // Skip if this locale already has a value
-                            if (localesWithValues.has(localeLower) || rowData[localeHeader]) {
+                            // Skip if this locale already has a value.
+                            // rowData keys may be mixed-case (e.g. "en-GB"), so use a
+                            // case-insensitive lookup instead of a direct key access.
+                            const rowDataKey = Object.keys(rowData).find(k => k.toLowerCase() === localeLower);
+                            if (localesWithValues.has(localeLower) || (rowDataKey && rowData[rowDataKey])) {
                                 continue;
                             }
                             
@@ -207,8 +210,9 @@ export async function updateSpreadsheetWithLocalChanges(
                                 // Since we don't know the exact row number yet, we'll use a special placeholder
                                 // that will be replaced with the actual cell reference after the rows are added
                                 
-                                // Get the column index for the source locale to build the reference
-                                const sourceHeaderIndex = headerRow.indexOf(sourceHeader);
+                                // headerRow is fully lowercased; normalise sourceHeader to match so
+                                // that mixed-case originals (e.g. "en-GB") are found correctly.
+                                const sourceHeaderIndex = headerRow.indexOf(sourceHeader.toLowerCase());
                                 // Get the column index for the target locale
                                 const targetHeaderIndex = headerRow.indexOf(exactHeaderName);
                                 // Guard against unexpected out-of-range indices

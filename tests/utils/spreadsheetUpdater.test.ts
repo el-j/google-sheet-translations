@@ -303,4 +303,68 @@ describe('updateSpreadsheetWithLocalChanges', () => {
       })
     );
   });
+
+  test('should generate GOOGLETRANSLATE formulas when source locale header is mixed-case', async () => {
+    // Regression test: sourceHeader was looked up with headerRow.indexOf(sourceHeader)
+    // but headerRow is fully lowercased, causing indexOf to return -1 for mixed-case
+    // headers like 'en-GB' → the formula was silently skipped.
+    mockRow.toObject.mockReturnValue({
+      'key': 'existing_key',
+      'en-GB': 'Existing Value',
+      'de-DE': 'Bestehender Wert',
+      'fr-FR': 'Valeur Existante',
+    });
+
+    const changes: TranslationData = {
+      'en-GB': {
+        'home': {
+          'new_key': 'New Value',
+        },
+      },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0];
+    expect(addedRows).toHaveLength(1);
+    const addedRow = addedRows[0];
+
+    // English value should be present as the source
+    expect(addedRow['key']).toBe('new_key');
+    expect(addedRow['en-gb']).toBe('New Value');
+
+    // Both other locales must have GOOGLETRANSLATE formulas (not be undefined/missing)
+    expect(addedRow['de-de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
+    expect(addedRow['fr-fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
+  });
+
+  test('should skip formula generation for locales that already have a mixed-case key in rowData', async () => {
+    // Regression test: rowData[localeHeader] used a direct key lookup but rowData keys
+    // may be original-case (e.g. "en-GB") while localeHeader is lowercase ("en-gb"),
+    // causing the check to always evaluate to falsy → formulas added for locales that
+    // already have a value.
+    mockRow.toObject.mockReturnValue({
+      'key': 'existing_key',
+      'en-GB': 'Existing Value',
+      'de-DE': 'Bestehender Wert',
+    });
+
+    // Provide translations for BOTH locales — neither should get a GOOGLETRANSLATE formula
+    const changes: TranslationData = {
+      'en-GB': { 'home': { 'new_key': 'New Value' } },
+      'de-DE': { 'home': { 'new_key': 'Neuer Wert' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0];
+    expect(addedRows).toHaveLength(1);
+    const addedRow = addedRows[0];
+
+    // Both locales have actual values — no formulas should appear
+    expect(addedRow['en-gb']).toBe('New Value');
+    expect(addedRow['de-de']).toBe('Neuer Wert');
+    expect(addedRow['en-gb']).not.toMatch(/^=GOOGLETRANSLATE/);
+    expect(addedRow['de-de']).not.toMatch(/^=GOOGLETRANSLATE/);
+  });
 });

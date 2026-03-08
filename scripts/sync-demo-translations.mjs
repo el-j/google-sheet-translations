@@ -23,7 +23,8 @@ const repoRoot = path.resolve(__dirname, '..');
 // ── Validate credentials ─────────────────────────────────────────────────────
 if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
   console.error('[sync] ✗ Missing GOOGLE_CLIENT_EMAIL or GOOGLE_PRIVATE_KEY.');
-  console.error('[sync]   Add them as GitHub Secrets and share the spreadsheet with the service account email.');
+  console.error('[sync]   Add GitHub Secrets: mail → GOOGLE_CLIENT_EMAIL, private-key → GOOGLE_PRIVATE_KEY, docId → GOOGLE_SPREADSHEET_ID');
+  console.error('[sync]   Share the spreadsheet with the service account email (edit access).');
   process.exit(1);
 }
 
@@ -55,7 +56,7 @@ const { getSpreadSheetData } = await import(
   path.join(repoRoot, 'dist/index.js')
 );
 
-const DEMO_SPREADSHEET_ID = '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0';
+const DEMO_SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID || '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0';
 // Use a fresh, empty output dir so isDataJsonNewer() always returns true
 const tmpOutDir = path.join(tmpDir, 'out');
 mkdirSync(tmpOutDir, { recursive: true });
