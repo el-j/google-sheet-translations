@@ -1,6 +1,18 @@
 name: Deploy Documentation
 
 on:
+  # Primary trigger on main: run AFTER the Release workflow finishes so the
+  # checked-out package.json already contains the version bump committed by
+  # semantic-release.  The semantic-release commit carries "[skip ci]" which
+  # suppresses the push trigger — workflow_run is the only way to catch it.
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+    branches: [main]
+
+  # Secondary trigger: website / script changes that are not part of a release
+  # (e.g. fixing a typo in a doc page). src/** and tests/** are intentionally
+  # omitted here — those changes go through the Release workflow first.
   push:
     branches: [main]
     paths:
@@ -8,9 +20,7 @@ on:
       - 'scripts/**'
       - '.github/workflows/docs.yml'
       - 'README.md'
-      - 'CHANGELOG.md'
-      - 'src/**'
-      - 'tests/**'
+
   workflow_dispatch:
 
 # Sets permissions to allow deployment to GitHub Pages
@@ -28,10 +38,19 @@ jobs:
   build:
     name: Build documentation
     runs-on: ubuntu-latest
+    # When triggered by workflow_run, only proceed if the Release workflow
+    # succeeded.  For push / workflow_dispatch we always build.
+    if: >-
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          # When triggered by workflow_run, check out main HEAD so we get the
+          # version-bumped package.json committed by semantic-release.
+          # For push / workflow_dispatch, use the SHA that triggered this run.
+          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
           fetch-depth: 0
 
       - name: Setup Node.js
