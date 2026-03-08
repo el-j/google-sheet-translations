@@ -329,9 +329,9 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(addedRows).toHaveLength(1);
     const addedRow = addedRows[0];
 
-    // English value should be present as the source
+    // English value should be present as the source (stored under original-case header)
     expect(addedRow['key']).toBe('new_key');
-    expect(addedRow['en-gb']).toBe('New Value');
+    expect(addedRow['en-GB']).toBe('New Value');
 
     // Both other locales must have GOOGLETRANSLATE formulas (not be undefined/missing)
     expect(addedRow['de-de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
@@ -361,10 +361,60 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(addedRows).toHaveLength(1);
     const addedRow = addedRows[0];
 
-    // Both locales have actual values — no formulas should appear
-    expect(addedRow['en-gb']).toBe('New Value');
-    expect(addedRow['de-de']).toBe('Neuer Wert');
-    expect(addedRow['en-gb']).not.toMatch(/^=GOOGLETRANSLATE/);
-    expect(addedRow['de-de']).not.toMatch(/^=GOOGLETRANSLATE/);
+    // Both locales have actual values — stored under original-case headers, no formulas
+    expect(addedRow['en-GB']).toBe('New Value');
+    expect(addedRow['de-DE']).toBe('Neuer Wert');
+    expect(addedRow['en-GB']).not.toMatch(/^=GOOGLETRANSLATE/);
+    expect(addedRow['de-DE']).not.toMatch(/^=GOOGLETRANSLATE/);
+  });
+
+  // ── Language-family locale fallback (regression for "only keys pushed, no translations") ──
+
+  test('should write translation when locale is short code "en" but sheet header is "en-US"', async () => {
+    // Regression: when languageData.json uses locale 'en' but the spreadsheet column is
+    // 'en-US', getOriginalHeaderForLocale() previously returned undefined (no match),
+    // causing the row to be added with only the key column and no translation value.
+    mockRow.toObject.mockReturnValue({
+      'key': 'existing_key',
+      'en-US': 'Existing Value',
+      'de-DE': 'Bestehender Wert',
+    });
+
+    const changes: TranslationData = {
+      'en': {   // <── short locale code, spreadsheet header is 'en-US'
+        'home': { 'nav_guide': 'Navigation Guide' }
+      }
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false);
+
+    // A new row must be added because 'nav_guide' is not in existingKeys
+    expect(mockSheet.addRows).toHaveBeenCalled();
+    const addedRow = mockSheet.addRows.mock.calls[0][0][0];
+
+    expect(addedRow['key']).toBe('nav_guide');
+    // The translation value must be present under the 'en-US' column header
+    // (matched via language-family fallback: 'en' → 'en-us' prefix 'en' == 'en-us' prefix 'en')
+    expect(addedRow['en-US']).toBe('Navigation Guide');
+  });
+
+  test('should update existing row translation when locale "en" resolves to "en-US" header', async () => {
+    // Same locale-family scenario but key already exists in the sheet (update path)
+    mockRow.toObject.mockReturnValue({
+      'key': 'hero_title',
+      'en-US': '',        // empty – should be updated
+      'de-DE': 'Held Titel',
+    });
+
+    const changes: TranslationData = {
+      'en': { 'home': { 'hero_title': 'Hero Title' } }
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false);
+
+    // The existing row should be updated, not a new row added
+    expect(mockRow.set).toHaveBeenCalledWith('en-US', 'Hero Title');
+    expect(mockRow.save).toHaveBeenCalled();
+    expect(mockSheet.addRows).not.toHaveBeenCalled();
   });
 });

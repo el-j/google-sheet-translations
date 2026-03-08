@@ -1,7 +1,7 @@
 import type { GoogleSpreadsheet } from "google-spreadsheet";
 import type { TranslationData } from "../types";
 import { withRetry } from "./rateLimiter";
-import { getOriginalHeaderForLocale } from "./localeNormalizer";
+import { getOriginalHeaderForLocale, getLanguagePrefix } from "./localeNormalizer";
 
 /** Converts a 0-based column index to a spreadsheet column letter (A, B, ..., Z, AA, AB, ...) */
 function columnIndexToLetter(index: number): string {
@@ -73,6 +73,8 @@ export async function updateSpreadsheetWithLocalChanges(
         const rowObject = rows[0].toObject();
         const headerRow = Object.keys(rowObject).map(key => key.toLowerCase());
         const keyColumn = headerRow[0]; // First column is the key
+        // Original-case header list – used for finding the right column by language family
+        const originalHeaders = Object.keys(rowObject);
         
         // Get all locales from the headerRow except the key column
         const locales = headerRow.filter(key => key !== keyColumn);
@@ -113,9 +115,13 @@ export async function updateSpreadsheetWithLocalChanges(
                     // Find the exact header for this locale using the mapping
                     let localeHeader = getOriginalHeaderForLocale(locale, localeMapping);
                     
-                    // Fallback to case-insensitive search in headerRow if mapping lookup fails
+                    // Fallback: language-family prefix match against original-case sheet headers
+                    // e.g. locale 'en' finds column header 'en-US' (not the lowercase 'en-us')
                     if (!localeHeader) {
-                        localeHeader = headerRow.find(h => h.toLowerCase() === locale.toLowerCase());
+                        const localeLang = getLanguagePrefix(locale);
+                        localeHeader = originalHeaders.find(
+                            h => getLanguagePrefix(h) === localeLang
+                        );
                     }
                     
                     if (localeHeader) {
@@ -144,10 +150,12 @@ export async function updateSpreadsheetWithLocalChanges(
                     // Find the exact header for this locale using the mapping
                     let localeHeader = getOriginalHeaderForLocale(locale, localeMapping);
                     
-                    // Fallback to case-insensitive search if mapping lookup fails
+                    // Fallback: language-family prefix match against the row's own keys
+                    // e.g. locale 'en' finds column header 'en-US' on the existing row
                     if (!localeHeader) {
+                        const localeLang = getLanguagePrefix(locale);
                         localeHeader = Object.keys(row.toObject()).find(
-                            h => h.toLowerCase() === locale.toLowerCase()
+                            h => getLanguagePrefix(h) === localeLang
                         );
                     }
                     
