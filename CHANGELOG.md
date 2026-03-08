@@ -1,3 +1,9 @@
+## [1.3.2](https://github.com/el-j/google-sheet-translations/compare/v1.3.1...v1.3.2) (2026-03-08)
+
+### 🐛 Bug Fixes
+
+* use correct secret names and production environment in docs.yml ([091d349](https://github.com/el-j/google-sheet-translations/commit/091d3493950589216ff4e60b499fcc196904a386))
+
 ## [1.3.1](https://github.com/el-j/google-sheet-translations/compare/v1.3.0...v1.3.1) (2026-03-08)
 
 ### 🐛 Bug Fixes
