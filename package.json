@@ -21,7 +21,7 @@
     "README.md"
   ],
   "scripts": {
-    "build:action": "ncc build src/action-entrypoint.ts -o dist-action --license licenses.txt --no-source-map-register",
+    "build:action": "ncc build src/action-entrypoint.ts -o dist-action --license licenses.txt --no-source-map-register && find dist-action -name \"*.d.ts\" -delete && find dist-action -name \"*.d.ts.map\" -delete",
     "build": "tsc",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
