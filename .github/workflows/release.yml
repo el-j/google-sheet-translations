@@ -1,3 +1,10 @@
+# Release workflow
+#
+# Gate: A full `quality-gate` job (multi-node test matrix) MUST pass before the
+#       semantic-release step is allowed to run. This prevents broken releases.
+#
+# Triggered: push to main / develop / next (same branches as CI)
+
 name: Release
 
 on:
@@ -12,15 +19,60 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # QUALITY GATE – must pass on ALL nodes before release is allowed
+  # ────────────────────────────────────────────────────────────────────────────
+  quality-gate:
+    name: Quality Gate (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+      fail-fast: true   # fail fast so we don't waste minutes on a broken build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        # Only audit production deps – devDep vulnerabilities in the npm CLI
+        # bundled inside @semantic-release/npm are unfixable from our side.
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # RELEASE – only runs when every quality-gate matrix leg succeeds
+  # ────────────────────────────────────────────────────────────────────────────
   release:
     name: Semantic Release
     runs-on: ubuntu-latest
+    needs: [quality-gate]   # ← blocks release until all quality gates pass
 
     permissions:
-      contents: write      # create tags + commits
-      issues: write        # comment on issues
-      pull-requests: write # comment on PRs
-      id-token: write      # npm provenance
+      contents: write       # create tags + commits
+      issues: write         # comment on issues
+      pull-requests: write  # comment on PRs
+      id-token: write       # npm provenance
 
     steps:
       - name: Checkout (full history required by semantic-release)
@@ -37,12 +89,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Test
-        run: npm test
 
       - name: Build
         run: npm run build
