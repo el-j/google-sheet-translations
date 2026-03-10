@@ -359,7 +359,7 @@ jobs:
 |-------|----------|---------|-------------|
 | `google-client-email` | ✅ | — | Service-account e-mail (`GOOGLE_CLIENT_EMAIL`) |
 | `google-private-key` | ✅ | — | Service-account private key (`GOOGLE_PRIVATE_KEY`) |
-| `google-spreadsheet-id` | ❌ | `''` | Spreadsheet ID from the sheet URL; if empty a new spreadsheet is auto-created |
+| `google-spreadsheet-id` | ❌ | `''` | Spreadsheet ID from the sheet URL; if empty and `auto-create` is `true`, a new spreadsheet is auto-created |
 | `sheet-titles` | ✅ | — | Comma-separated list of sheet tab names to process (`i18n` is always auto-included) |
 | `row-limit` | ❌ | `100` | Maximum rows to read per sheet |
 | `wait-seconds` | ❌ | `1` | Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503) |
@@ -382,7 +382,7 @@ jobs:
 
 ### Auto-Create Feature
 
-If `google-spreadsheet-id` is left empty and `auto-create` is `true` (the default), the action will automatically create a new Google Spreadsheet using your service-account credentials. The new spreadsheet is pre-populated with an `i18n` starter sheet containing `GOOGLETRANSLATE` formulas for every locale listed in `target-locales`. The new spreadsheet ID is printed to the workflow log and written to your `.env` file (if one exists in the repository root) so you can commit it and reuse it in future runs.
+If `google-spreadsheet-id` is left empty and `auto-create` is `true` (the default), the action will automatically create a new Google Spreadsheet using your service-account credentials. The spreadsheet is pre-populated with an `i18n` starter sheet containing `GOOGLETRANSLATE` formulas for every locale listed in `target-locales`. The new spreadsheet ID is printed to the workflow log and written to your `.env` file (if one exists in the repository root), allowing you to commit it and reuse it in future runs.
 
 ## License
 

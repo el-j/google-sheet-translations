@@ -1,0 +1,18 @@
+import type { TranslationData } from "../../types";
+/**
+ * Compares local languageData.json with spreadsheet data to find new keys.
+ *
+ * A key is considered "new" when:
+ * - No matching locale exists in `spreadsheetData` for that locale, OR
+ * - The sheet or key is absent for the resolved locale.
+ *
+ * Locale matching is fuzzy: `'en'` and `'en-GB'` will both match against
+ * an `'en-us'` entry in `spreadsheetData` (language-family resolution via
+ * `resolveLocaleWithFallback`).
+ *
+ * @param localData - Data from local languageData.json file
+ * @param spreadsheetData - Data fetched from the spreadsheet
+ * @returns Object with new keys that are in localData but not in spreadsheetData
+ */
+export declare function findLocalChanges(localData: TranslationData, spreadsheetData: TranslationData): TranslationData;
+//# sourceMappingURL=findLocalChanges.d.ts.map
