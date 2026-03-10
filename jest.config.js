@@ -33,13 +33,7 @@ module.exports = {
       tsconfig: 'tsconfig.test.json'
     }],
     '^.+\\.m?js$': ['ts-jest', {
-      tsconfig: {
-        allowJs: true,
-        module: 'commonjs',
-        target: 'es2020',
-        esModuleInterop: true,
-        skipLibCheck: true,
-      },
+      tsconfig: 'tsconfig.jest-js.json',
       diagnostics: false,
     }]
   },
