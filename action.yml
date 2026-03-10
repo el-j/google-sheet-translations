@@ -69,87 +69,22 @@ inputs:
     required: false
     default: 'de,fr,es,it,pt,ja,zh'
   node-version:
-    description: 'Node.js version used to run the fetch script'
+    description: 'DEPRECATED – no longer used. The action always runs on Node 20.'
     required: false
     default: '20'
   package-version:
-    description: >
-      Version of @el-j/google-sheet-translations to install.
-      Defaults to "latest". Pin to a specific version for reproducible
-      builds (e.g. "1.0.3").
+    description: 'DEPRECATED – no longer used. The bundled package version is fixed at release time.'
     required: false
     default: 'latest'
 
 outputs:
   translations-dir:
     description: 'Absolute path of the directory containing locale JSON files'
-    value: ${{ steps.resolve-paths.outputs.translations-dir }}
   locales-file:
     description: 'Absolute path of the generated locales.ts file'
-    value: ${{ steps.resolve-paths.outputs.locales-file }}
   data-json-file:
     description: 'Absolute path of the languageData.json snapshot'
-    value: ${{ steps.resolve-paths.outputs.data-json-file }}
 
 runs:
-  using: 'composite'
-  steps:
-    - name: Resolve output paths
-      id: resolve-paths
-      shell: bash
-      run: |
-        echo "translations-dir=${{ github.workspace }}/${{ inputs.translations-output-dir }}" >> "$GITHUB_OUTPUT"
-        echo "locales-file=${{ github.workspace }}/${{ inputs.locales-output-path }}"         >> "$GITHUB_OUTPUT"
-        echo "data-json-file=${{ github.workspace }}/${{ inputs.data-json-path }}"            >> "$GITHUB_OUTPUT"
-
-    - name: Set up Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ inputs.node-version }}
-
-    - name: Install @el-j/google-sheet-translations
-      shell: bash
-      # Install into a private temp directory so we don't pollute the
-      # consumer's node_modules or package.json.
-      run: |
-        INSTALL_DIR="${RUNNER_TEMP}/gst-action-$$"
-        mkdir -p "$INSTALL_DIR"
-        echo '{"type":"module"}' > "$INSTALL_DIR/package.json"
-        npm install --prefix "$INSTALL_DIR" \
-          "@el-j/google-sheet-translations@${{ inputs.package-version }}" \
-          --no-save --loglevel=error
-        echo "GST_INSTALL_DIR=$INSTALL_DIR" >> "$GITHUB_ENV"
-
-    - name: Fetch translations
-      shell: bash
-      env:
-        GOOGLE_CLIENT_EMAIL: ${{ inputs.google-client-email }}
-        GOOGLE_PRIVATE_KEY: ${{ inputs.google-private-key }}
-        GOOGLE_SPREADSHEET_ID: ${{ inputs.google-spreadsheet-id }}
-      run: |
-        node --input-type=module << 'ENDOFSCRIPT'
-        import { getSpreadSheetData } from '${{ env.GST_INSTALL_DIR }}/node_modules/@el-j/google-sheet-translations/dist/index.js';
-        import path from 'node:path';
-        import { fileURLToPath } from 'node:url';
-
-        const sheetTitles = '${{ inputs.sheet-titles }}'
-          .split(',')
-          .map(s => s.trim())
-          .filter(Boolean);
-
-        const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
-
-        await getSpreadSheetData(sheetTitles, {
-          rowLimit:             parseInt('${{ inputs.row-limit }}',    10),
-          waitSeconds:          parseInt('${{ inputs.wait-seconds }}', 10),
-          translationsOutputDir: path.resolve(workspaceDir, '${{ inputs.translations-output-dir }}'),
-          localesOutputPath:     path.resolve(workspaceDir, '${{ inputs.locales-output-path }}'),
-          dataJsonPath:          path.resolve(workspaceDir, '${{ inputs.data-json-path }}'),
-          syncLocalChanges:     '${{ inputs.sync-local-changes }}' !== 'false',
-          spreadsheetId: '${{ inputs.google-spreadsheet-id }}' || undefined,
-          autoCreate: '${{ inputs.auto-create }}' !== 'false',
-          spreadsheetTitle: '${{ inputs.spreadsheet-title }}',
-          sourceLocale: '${{ inputs.source-locale }}',
-          targetLocales: '${{ inputs.target-locales }}'.split(',').map(s => s.trim()).filter(Boolean),
-        });
-        ENDOFSCRIPT
+  using: 'node20'
+  main: 'dist-action/index.js'
