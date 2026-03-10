@@ -3,89 +3,20 @@
  * LangSwitcher.vue
  *
  * Global language switcher for the VitePress docs site.
- * Uses translation data fetched at build time from the demo spreadsheet
- * (via translations.data.ts) to let users preview UI strings in any
- * available locale. The selected locale is persisted in localStorage.
+ * Locale selection state, localStorage persistence, and keyboard navigation
+ * are handled by the `useLocaleSwitcher` composable.
  *
- * This component is injected into the VitePress Layout slot so it appears
- * on every page. The actual page content remains in English — only the
- * i18n keys that live in the spreadsheet are translated.
- *
- * Locale names are sourced from the `i18n` sheet in the spreadsheet
- * (e.g. the key "en-us" → "English", "de-de" → "Deutsch"). The name shown
- * for each option is the locale's own name (self-referential: how each
- * language calls itself), falling back to the raw locale code.
+ * Locale display names are pre-computed at build time by translations.data.ts
+ * using the `getLocaleDisplayName()` package utility.
  */
-import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { data } from '../../translations.data.ts'
+import { useLocaleSwitcher } from '../composables/useLocaleSwitcher'
 
-const STORAGE_KEY = 'gst-lang'
+const { selectedLocale, isOpen, select, toggle, handleOptionKeydown } =
+  useLocaleSwitcher({ locales: data.locales })
 
-const selectedLocale = ref<string>('en')
-const isOpen = ref(false)
-
-onMounted(() => {
-  const saved = localStorage.getItem(STORAGE_KEY)
-  if (saved && data.locales.includes(saved)) {
-    selectedLocale.value = saved
-  } else if (data.locales.length > 0) {
-    selectedLocale.value = data.locales[0]
-  }
-  document.addEventListener('keydown', handleGlobalKeydown)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('keydown', handleGlobalKeydown)
-})
-
-function handleGlobalKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape' && isOpen.value) {
-    isOpen.value = false
-  }
-}
-
-function selectLocale(locale: string) {
-  selectedLocale.value = locale
-  localStorage.setItem(STORAGE_KEY, locale)
-  isOpen.value = false
-}
-
-function handleOptionKeydown(e: KeyboardEvent, locale: string, index: number) {
-  if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault()
-    selectLocale(locale)
-  } else if (e.key === 'ArrowDown') {
-    e.preventDefault()
-    const next = index + 1 < data.locales.length ? index + 1 : 0
-    focusOption(next)
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault()
-    const prev = index - 1 >= 0 ? index - 1 : data.locales.length - 1
-    focusOption(prev)
-  }
-}
-
-function focusOption(index: number) {
-  const list = document.querySelectorAll<HTMLElement>('.lang-switcher__option')
-  list[index]?.focus()
-}
-
-/**
- * Returns the human-readable name for a locale using the `i18n` sheet data.
- *
- * The `i18n` spreadsheet sheet contains locale-name translations keyed by
- * locale code (e.g. key "en-us" has value "English" in the `en-US` column,
- * "Englisch" in the `de-DE` column, etc.).
- *
- * We show each locale in its **own** language (self-referential), so the
- * German option always shows "Deutsch" regardless of the current selection.
- * Falls back to the raw locale code if the translation is not available.
- */
 function getLocaleName(locale: string): string {
-  const localeData = (data.translations as Record<string, Record<string, Record<string, unknown>>>)?.[locale]
-  const i18nSheet = localeData?.['i18n']
-  const name = i18nSheet?.[locale]
-  return typeof name === 'string' ? name : locale
+  return (data.localeNames as Record<string, string>)?.[locale] ?? locale
 }
 </script>
 
@@ -96,7 +27,7 @@ function getLocaleName(locale: string): string {
       :aria-label="`Language: ${selectedLocale}`"
       :aria-expanded="isOpen"
       aria-haspopup="listbox"
-      @click="isOpen = !isOpen"
+      @click="toggle()"
     >
       🌐 {{ selectedLocale }}
     </button>
@@ -114,7 +45,7 @@ function getLocaleName(locale: string): string {
         tabindex="0"
         class="lang-switcher__option"
         :class="{ 'lang-switcher__option--active': locale === selectedLocale }"
-        @click="selectLocale(locale)"
+        @click="select(locale)"
         @keydown="handleOptionKeydown($event, locale, index)"
       >
         {{ getLocaleName(locale) }}

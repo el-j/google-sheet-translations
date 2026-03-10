@@ -45,3 +45,8 @@ docs/
 website/
 CHANGELOG.md
 CONTRIBUTING.md
+
+# GitHub Actions bundle (not needed in npm package)
+dist-action/
+action.yml
+licenses.txt

@@ -1,0 +1,46 @@
+# Dependabot configuration
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # ── npm ─────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    groups:
+      # Group all devDependency updates together to reduce PR noise
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      # Keep production dependencies separate so they get individual review
+      production-dependencies:
+        dependency-type: "production"
+    # Ignore known-unfixable vulnerabilities in the npm CLI bundled inside
+    # @semantic-release/npm. These affect ONLY the release toolchain (devDep)
+    # and are not reachable from the published package. They require the npm
+    # CLI itself to ship patched tar/minimatch — which is outside our control.
+    ignore:
+      # tar bundled inside npm CLI – drive-relative path traversal (Windows only)
+      - dependency-name: "tar"
+        update-types: ["version-update:semver-patch"]
+      # minimatch bundled inside npm CLI – ReDoS via extglob / globstar patterns
+      - dependency-name: "minimatch"
+        update-types: ["version-update:semver-patch"]
+
+  # ── GitHub Actions ───────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    open-pull-requests-limit: 5

@@ -10,7 +10,7 @@ export default {
   async load() {
     try {
       // Import from the pre-built dist (docs:build always runs after npm run build)
-      const { getSpreadSheetData } = await import(
+      const { getSpreadSheetData, getTranslationSummary, getLocaleDisplayName } = await import(
         path.join(repoRoot, 'dist/index.js')
       );
 
@@ -23,19 +23,21 @@ export default {
         dataJsonPath: path.join(__dirname, '../public/translations/languageData.json'),
       });
 
-      // Summarise for the live-demo page
+      // Summarise for the live-demo page (uses package utility)
       const locales = Object.keys(translations);
-      const summary: Record<string, { sheet: string; count: number }[]> = {};
+      const summary = getTranslationSummary(translations);
+
+      // Pre-compute locale display names so UI components don't need to
+      // re-implement the i18n-sheet lookup logic (uses package utility)
+      const localeNames: Record<string, string> = {};
       for (const locale of locales) {
-        summary[locale] = Object.entries(translations[locale]).map(([sheet, keys]) => ({
-          sheet,
-          count: Object.keys(keys as object).length,
-        }));
+        localeNames[locale] = getLocaleDisplayName(locale, translations);
       }
-      return { locales, summary, fetchedAt: new Date().toISOString(), translations };
+
+      return { locales, localeNames, summary, fetchedAt: new Date().toISOString(), translations };
     } catch (err) {
       console.warn('[translations.data] Could not fetch demo translations:', err);
-      return { locales: [], summary: {}, fetchedAt: null, translations: {}, error: String(err) };
+      return { locales: [], localeNames: {}, summary: {}, fetchedAt: null, translations: {}, error: String(err) };
     }
   },
 };

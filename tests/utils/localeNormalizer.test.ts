@@ -1,4 +1,4 @@
-import { getNormalizedLocaleForHeader, getOriginalHeaderForLocale } from '../../src/utils/localeNormalizer';
+import { getNormalizedLocaleForHeader, getOriginalHeaderForLocale, resolveLocaleWithFallback } from '../../src/utils/localeNormalizer';
 
 describe('getNormalizedLocaleForHeader', () => {
 	test('should return the mapped value for a matching key', () => {
@@ -60,5 +60,49 @@ describe('getOriginalHeaderForLocale', () => {
 		// When 'en-gb' exists, it must be preferred over 'en-us' for input 'en-GB'
 		const localeMapping = { 'en-gb': 'en-GB', 'en-us': 'en-US' };
 		expect(getOriginalHeaderForLocale('en-GB', localeMapping)).toBe('en-GB');
+	});
+});
+
+describe('resolveLocaleWithFallback', () => {
+	const availableLocales = ['en-us', 'de-de', 'fr-fr'];
+
+	test('exact match returns the locale unchanged', () => {
+		expect(resolveLocaleWithFallback('en-us', availableLocales)).toBe('en-us');
+	});
+
+	test('lowercase match: mixed-case input resolves correctly', () => {
+		expect(resolveLocaleWithFallback('EN-US', availableLocales)).toBe('en-us');
+		expect(resolveLocaleWithFallback('De-De', availableLocales)).toBe('de-de');
+	});
+
+	test('language-family fallback: short code resolves to full locale', () => {
+		expect(resolveLocaleWithFallback('en', availableLocales)).toBe('en-us');
+		expect(resolveLocaleWithFallback('de', availableLocales)).toBe('de-de');
+		expect(resolveLocaleWithFallback('fr', availableLocales)).toBe('fr-fr');
+	});
+
+	test('language-family fallback: different region resolves to available variant', () => {
+		expect(resolveLocaleWithFallback('en-GB', availableLocales)).toBe('en-us');
+		expect(resolveLocaleWithFallback('de-AT', availableLocales)).toBe('de-de');
+	});
+
+	test('returns undefined when no match found', () => {
+		expect(resolveLocaleWithFallback('ja', availableLocales)).toBeUndefined();
+		expect(resolveLocaleWithFallback('zh-cn', availableLocales)).toBeUndefined();
+	});
+
+	test('returns undefined for empty available locales', () => {
+		expect(resolveLocaleWithFallback('en', [])).toBeUndefined();
+	});
+
+	test('exact match takes priority over family fallback', () => {
+		const locales = ['en-gb', 'en-us'];
+		expect(resolveLocaleWithFallback('en-gb', locales)).toBe('en-gb');
+		expect(resolveLocaleWithFallback('en-us', locales)).toBe('en-us');
+	});
+
+	test('works with a single available locale', () => {
+		expect(resolveLocaleWithFallback('en', ['en-gb'])).toBe('en-gb');
+		expect(resolveLocaleWithFallback('en-US', ['en-gb'])).toBe('en-gb');
 	});
 });
