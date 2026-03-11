@@ -1,7 +1,15 @@
 import * as core from '@actions/core';
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
 
-jest.mock('@actions/core');
+jest.mock('@actions/core', () => ({
+	getInput: jest.fn(),
+	setOutput: jest.fn(),
+	setFailed: jest.fn(),
+	info: jest.fn(),
+	warning: jest.fn(),
+	error: jest.fn(),
+	debug: jest.fn(),
+}));
 jest.mock('../src/getSpreadSheetData', () => ({
 	getSpreadSheetData: jest.fn().mockResolvedValue({}),
 }));
