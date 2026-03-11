@@ -1,7 +1,6 @@
 name: 'Fetch Google Sheet Translations'
-description: >
-  Fetch translations from Google Sheets and write locale JSON files, a
-  locales.ts index, and a languageData.json snapshot to your repository.
+description: >-
+  Fetch translations from Google Sheets and write locale JSON files, locales.ts index, and languageData.json snapshot.
 
 branding:
   icon: 'globe'
@@ -87,4 +86,4 @@ outputs:
 
 runs:
   using: 'node20'
-  main: 'dist-action/index.js'
+  main: 'dist-action/index.mjs'
