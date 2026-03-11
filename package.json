@@ -97,7 +97,6 @@
   "overrides": {
     "google-spreadsheet": {
       "google-auth-library": "^10.6.1"
-    },
-    "@actions/http-client": "^3.0.2"
+    }
   }
 }
