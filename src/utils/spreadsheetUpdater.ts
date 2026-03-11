@@ -2,6 +2,7 @@ import type { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from "google-sprea
 import type { TranslationData } from "../types";
 import { withRetry } from "./rateLimiter";
 import { getOriginalHeaderForLocale, getLanguagePrefix } from "./localeNormalizer";
+import { I18N_SHEET_NAME } from "../constants";
 
 /** Converts a 0-based column index to a spreadsheet column letter (A, B, ..., Z, AA, AB, ...) */
 function columnIndexToLetter(index: number): string {
@@ -54,6 +55,12 @@ export async function updateSpreadsheetWithLocalChanges(
     for (const sheetTitle of new Set(
         Object.values(changes).flatMap(locale => Object.keys(locale))
     )) {
+        // The i18n sheet is a reserved metadata sheet (locale display names).
+        // Translation key pushes must NEVER touch it.
+        if (sheetTitle === I18N_SHEET_NAME) {
+            console.log(`Skipping reserved metadata sheet "${sheetTitle}" – its content is managed separately.`);
+            continue;
+        }
         console.log(`Processing sheet: ${sheetTitle}`);
         // Allow re-assignment: sheet may be auto-created below
         let sheet = doc.sheetsByTitle[sheetTitle] as GoogleSpreadsheetWorksheet | undefined;
@@ -240,8 +247,9 @@ export async function updateSpreadsheetWithLocalChanges(
                                 continue;
                             }
                             
-                            // Find the exact case-preserved header name
-                            const exactHeaderName = headerRow.find(
+                            // Find the exact case-preserved header name (from originalHeaders, not the
+                            // all-lowercase headerRow, so we store the formula under the correct key).
+                            const exactHeaderName = originalHeaders.find(
                                 h => h.toLowerCase() === localeLower
                             );
                             
@@ -250,11 +258,11 @@ export async function updateSpreadsheetWithLocalChanges(
                                 // Since we don't know the exact row number yet, we'll use a special placeholder
                                 // that will be replaced with the actual cell reference after the rows are added
                                 
-                                // headerRow is fully lowercased; normalise sourceHeader to match so
-                                // that mixed-case originals (e.g. "en-GB") are found correctly.
+                                // headerRow is fully lowercased; normalise both source and target headers to
+                                // lowercase for the index lookup so mixed-case headers (e.g. "en-GB") are found.
                                 const sourceHeaderIndex = headerRow.indexOf(sourceHeader.toLowerCase());
-                                // Get the column index for the target locale
-                                const targetHeaderIndex = headerRow.indexOf(exactHeaderName);
+                                // Get the column index for the target locale (use lowercase for headerRow lookup)
+                                const targetHeaderIndex = headerRow.indexOf(exactHeaderName.toLowerCase());
                                 // Guard against unexpected out-of-range indices
                                 if (sourceHeaderIndex < 0 || targetHeaderIndex < 0) {
                                     continue;

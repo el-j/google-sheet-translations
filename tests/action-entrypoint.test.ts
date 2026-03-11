@@ -183,6 +183,27 @@ describe('action-entrypoint', () => {
 			const [, options] = mockGetSpreadSheetData.mock.calls[0];
 			expect(options?.autoCreate).toBe(true);
 		});
+
+		it('sets autoTranslate to true when auto-translate input is "true"', async () => {
+			const inputs = makeInputs({ 'auto-translate': 'true' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			const [, options] = mockGetSpreadSheetData.mock.calls[0];
+			expect(options?.autoTranslate).toBe(true);
+		});
+
+		it('sets autoTranslate to false when auto-translate input is absent or "false"', async () => {
+			// Missing key → empty string → false
+			const inputs = makeInputs();
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			const [, options] = mockGetSpreadSheetData.mock.calls[0];
+			expect(options?.autoTranslate).toBe(false);
+		});
 	});
 
 	describe('target-locales parsing', () => {
