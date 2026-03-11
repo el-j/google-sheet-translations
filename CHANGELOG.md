@@ -1,3 +1,29 @@
+## [1.4.0](https://github.com/el-j/google-sheet-translations/compare/v1.3.3...v1.4.0) (2026-03-11)
+
+### 🚀 Features
+
+* add TypeScript GitHub Action entry point with tests ([9e3eee7](https://github.com/el-j/google-sheet-translations/commit/9e3eee7c703c07385f41499a70dd32726aa2fa04))
+* dual ESM+CJS package build + esbuild ESM action bundle for @actions/core v3 ([674b6f0](https://github.com/el-j/google-sheet-translations/commit/674b6f003a5f394ef3b9a78bfad3249bd27c1e5b))
+* export file writers, sync manager, resolveLocaleWithFallback; Vue composable; React hook; Next.js middleware ([42f302c](https://github.com/el-j/google-sheet-translations/commit/42f302c2e2bc0e47d77e47f6a25709ee68684a88))
+* extract website translation helpers into package utilities ([c2eed6d](https://github.com/el-j/google-sheet-translations/commit/c2eed6d2dcbab3f68177fa2f5cbbdeae83f59ada))
+* ship GitHub Action with node20 runner, ncc bundle, 19 tests + security fixes ([b309e44](https://github.com/el-j/google-sheet-translations/commit/b309e447c16a507697986e6d2e93ec0e220e12ab))
+
+### 🐛 Bug Fixes
+
+* **action:** downgrade @actions/core to v2 to fix ncc bundle build failure ([cdedd6c](https://github.com/el-j/google-sheet-translations/commit/cdedd6c7496f778f4c54bcf4d819c39cb4ff9ed1))
+* remove @actions/http-client override causing ERR_MODULE_NOT_FOUND in semantic-release ([b066a07](https://github.com/el-j/google-sheet-translations/commit/b066a0748b3b31c951151f626dcd9739b23b318a))
+* remove duplicate tests/basic.test.js to fix Node 22 CI failure ([7904bf9](https://github.com/el-j/google-sheet-translations/commit/7904bf9ae7c06e5f6969006520b797e92ce06e18))
+* shorten action.yml description to 116 chars to satisfy GitHub Marketplace 124-char limit ([ce70789](https://github.com/el-j/google-sheet-translations/commit/ce707897f8b5a60a13d5634ed508bd11577e3940))
+
+### ♻️ Refactoring
+
+* **jest:** extract JS transform tsconfig to tsconfig.jest-js.json ([86a427e](https://github.com/el-j/google-sheet-translations/commit/86a427e781f860ce56949e0589eb69a34d5f2a29))
+
+### 📝 Documentation
+
+* address review feedback on GitHub Action section ([2016eee](https://github.com/el-j/google-sheet-translations/commit/2016eee1877d6cceea7bbd6107855bf289cadc0d))
+* expand GitHub Action section in README ([191fa25](https://github.com/el-j/google-sheet-translations/commit/191fa25f53a437f25074378b4b3a0113b93f922d))
+
 ## [1.3.3](https://github.com/el-j/google-sheet-translations/compare/v1.3.2...v1.3.3) (2026-03-08)
 
 ### 🐛 Bug Fixes
