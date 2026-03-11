@@ -6,7 +6,24 @@ The changelog lives in the repository at [CHANGELOG.md](https://github.com/el-j/
 
 ## Version history summary
 
-### v1.3.0 — Current stable
+### v2.0.0 — Current stable
+
+Version alignment release — the package version now matches the GitHub Action `@v2` tag:
+
+- 🏷️ **Major version alignment** — package version promoted from 1.x → 2.0.0 so `@v2` action references resolve correctly
+- 🔄 **Floating major tag** — release workflow now auto-updates the `v2` tag on every 2.x.x release
+- ✅ **No API breaking changes** — all existing functionality unchanged; this is purely a versioning alignment
+
+### v1.4.0
+
+GitHub Action entry point release:
+
+- 🚀 **TypeScript action entry point** — first-class `action.yml` with node20 runner and esbuild ESM bundle
+- 📦 **Dual ESM+CJS build** — package ships both formats for maximum compatibility
+- 🔌 **New exports** — file writers, sync manager, locale helpers, Vue composable, React hook, Next.js middleware
+- 🧪 **234 tests** across 28 suites
+
+### v1.3.0
 
 Translation sync pipeline release:
 

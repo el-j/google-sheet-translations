@@ -97,7 +97,33 @@ jobs:
         run: npm run build:action
 
       - name: Release
+        id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
+
+      # After a successful release, update the floating major-version tag
+      # (e.g. v2) so that GitHub Action users referencing @v2 always get
+      # the latest 2.x.x release.
+      - name: Update floating major-version tag
+        if: steps.release.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Read the just-released version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+
+          echo "Released version: v${VERSION}"
+          echo "Updating floating tag: v${MAJOR}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Configure remote with token (persist-credentials: false above)
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+          # Force-create the major-version tag and push it
+          git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}"
+          git push origin "v${MAJOR}" --force

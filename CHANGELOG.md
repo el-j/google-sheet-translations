@@ -1,3 +1,14 @@
+## [2.0.0](https://github.com/el-j/google-sheet-translations/compare/v1.4.0...v2.0.0) (2026-03-11)
+
+### ⚠ BREAKING CHANGES
+
+* Package version promoted to 2.0.0 to align with GitHub Action `@v2` tag. No API breaking changes; this is a versioning alignment release.
+
+### 🚀 Features
+
+* promote package to v2.0.0 for GitHub Action `@v2` alignment
+* add floating major-version tag (`v2`) automation to release workflow
+
 ## [1.4.0](https://github.com/el-j/google-sheet-translations/compare/v1.3.3...v1.4.0) (2026-03-11)
 
 ### 🚀 Features
