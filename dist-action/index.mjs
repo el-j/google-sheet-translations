@@ -41757,6 +41757,7 @@ import path from "node:path";
 
 // src/constants.ts
 var DEFAULT_WAIT_SECONDS = 1;
+var I18N_SHEET_NAME = "i18n";
 
 // src/utils/configurationHandler.ts
 function normalizeConfig(options = {}) {
@@ -42199,6 +42200,7 @@ function findLocalChanges(localData, spreadsheetData) {
     const resolvedLocale = resolveLocaleWithFallback(locale, Object.keys(spreadsheetData));
     for (const sheet of Object.keys(localData[locale])) {
       if (!localData[locale][sheet]) continue;
+      if (sheet === I18N_SHEET_NAME) continue;
       for (const key of Object.keys(localData[locale][sheet])) {
         const isNewKey = !resolvedLocale || !spreadsheetData[resolvedLocale]?.[sheet] || !spreadsheetData[resolvedLocale][sheet][key];
         if (isNewKey) {
@@ -42228,6 +42230,10 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
   for (const sheetTitle of new Set(
     Object.values(changes).flatMap((locale) => Object.keys(locale))
   )) {
+    if (sheetTitle === I18N_SHEET_NAME) {
+      console.log(`Skipping reserved metadata sheet "${sheetTitle}" \u2013 its content is managed separately.`);
+      continue;
+    }
     console.log(`Processing sheet: ${sheetTitle}`);
     let sheet = doc.sheetsByTitle[sheetTitle];
     if (!sheet) {
@@ -42349,12 +42355,12 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
               if (localesWithValues.has(localeLower) || rowDataKey && rowData[rowDataKey]) {
                 continue;
               }
-              const exactHeaderName = headerRow.find(
+              const exactHeaderName = originalHeaders.find(
                 (h2) => h2.toLowerCase() === localeLower
               );
               if (exactHeaderName) {
                 const sourceHeaderIndex = headerRow.indexOf(sourceHeader.toLowerCase());
-                const targetHeaderIndex = headerRow.indexOf(exactHeaderName);
+                const targetHeaderIndex = headerRow.indexOf(exactHeaderName.toLowerCase());
                 if (sourceHeaderIndex < 0 || targetHeaderIndex < 0) {
                   continue;
                 }
@@ -42875,6 +42881,7 @@ async function run() {
       localesOutputPath: path5.resolve(workspaceDir, localesOutputPath),
       dataJsonPath: path5.resolve(workspaceDir, dataJsonPath),
       syncLocalChanges: getInput("sync-local-changes") !== "false",
+      autoTranslate: getInput("auto-translate") === "true",
       spreadsheetId: spreadsheetIdInput || void 0,
       autoCreate: getInput("auto-create") !== "false",
       spreadsheetTitle: getInput("spreadsheet-title") || "google-sheet-translations",
