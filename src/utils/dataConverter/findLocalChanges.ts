@@ -1,5 +1,6 @@
 import type { TranslationData } from "../../types";
 import { resolveLocaleWithFallback } from "../localeNormalizer";
+import { I18N_SHEET_NAME } from "../../constants";
 
 /**
  * Compares local languageData.json with spreadsheet data to find new keys.
@@ -32,6 +33,10 @@ export function findLocalChanges(
 		// Check each sheet in local data
 		for (const sheet of Object.keys(localData[locale])) {
 			if (!localData[locale][sheet]) continue;
+
+			// The i18n sheet is a metadata sheet (locale display names).
+			// Its contents must never be treated as new translation keys to push.
+			if (sheet === I18N_SHEET_NAME) continue;
 
 			// Check each key in local data
 			for (const key of Object.keys(localData[locale][sheet])) {

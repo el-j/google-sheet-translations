@@ -216,23 +216,23 @@ describe('findLocalChanges', () => {
     // but localData has the key 'nav_guide' which is absent from spreadsheetData['en-us'].
     // It should therefore appear in changes.
     const localData: TranslationData = {
-      'en': { 'i18n': { 'nav_guide': 'Guide' } }
+      'en': { 'home': { 'nav_guide': 'Guide' } }
     };
     const spreadsheetData: TranslationData = {
-      'en-us': { 'i18n': { 'en-us': 'English' } }
+      'en-us': { 'home': { 'en-us': 'English' } }
     };
 
     const result = findLocalChanges(localData, spreadsheetData);
-    expect(result).toEqual({ 'en': { 'i18n': { 'nav_guide': 'Guide' } } });
+    expect(result).toEqual({ 'en': { 'home': { 'nav_guide': 'Guide' } } });
   });
 
   test('locale alias: short code "en" does NOT report key as new when "en-us" already has it', () => {
     // 'en' resolves to 'en-us'; 'nav_guide' already exists → no change
     const localData: TranslationData = {
-      'en': { 'i18n': { 'nav_guide': 'Guide' } }
+      'en': { 'home': { 'nav_guide': 'Guide' } }
     };
     const spreadsheetData: TranslationData = {
-      'en-us': { 'i18n': { 'nav_guide': 'Guide', 'en-us': 'English' } }
+      'en-us': { 'home': { 'nav_guide': 'Guide', 'en-us': 'English' } }
     };
 
     const result = findLocalChanges(localData, spreadsheetData);
@@ -262,5 +262,44 @@ describe('findLocalChanges', () => {
     const result = findLocalChanges(localData, spreadsheetData);
     // 'new_key' is not in de-de/home → should be a change
     expect(result).toEqual({ 'de': { 'home': { 'new_key': 'Neu' } } });
+  });
+
+  // ── i18n sheet protection ──────────────────────────────────────────────────
+
+  test('should never include i18n sheet keys in changes', () => {
+    // The i18n sheet stores locale display names (metadata).
+    // Its keys must never be treated as new translation keys to push back.
+    const localData: TranslationData = {
+      'en': {
+        'i18n': { 'en': 'English', 'de': 'German' },  // must be excluded
+        'home': { 'welcome': 'Welcome', 'newKey': 'New' },  // must be included
+      },
+    };
+    const spreadsheetData: TranslationData = {
+      'en': {
+        'i18n': { 'en': 'English', 'de': 'German' },
+        'home': { 'welcome': 'Welcome' },
+      },
+    };
+
+    const result = findLocalChanges(localData, spreadsheetData);
+    expect(result).toEqual({ 'en': { 'home': { 'newKey': 'New' } } });
+    // i18n changes must NOT appear
+    expect(result['en']?.['i18n']).toBeUndefined();
+  });
+
+  test('should not report i18n keys as new even when spreadsheet i18n section is empty', () => {
+    const localData: TranslationData = {
+      'en': {
+        'i18n': { 'en': 'English' },
+        'ui': { 'btn': 'Click me' },
+      },
+    };
+    const spreadsheetData: TranslationData = {};
+
+    const result = findLocalChanges(localData, spreadsheetData);
+    // Only 'ui' sheet keys should appear; i18n must be absent
+    expect(result['en']?.['i18n']).toBeUndefined();
+    expect(result['en']?.['ui']).toEqual({ 'btn': 'Click me' });
   });
 });

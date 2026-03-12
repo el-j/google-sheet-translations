@@ -333,9 +333,12 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(addedRow['key']).toBe('new_key');
     expect(addedRow['en-GB']).toBe('New Value');
 
-    // Both other locales must have GOOGLETRANSLATE formulas (not be undefined/missing)
-    expect(addedRow['de-de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
-    expect(addedRow['fr-fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
+    // Both other locales must have GOOGLETRANSLATE formulas stored under original-case keys
+    expect(addedRow['de-DE']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
+    expect(addedRow['fr-FR']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
+    // Must NOT be stored under lowercase keys
+    expect(addedRow['de-de']).toBeUndefined();
+    expect(addedRow['fr-fr']).toBeUndefined();
   });
 
   test('should skip formula generation for locales that already have a mixed-case key in rowData', async () => {
@@ -482,5 +485,50 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     const addedRows: Record<string, string>[] = mockSheet.addRows.mock.calls[0][0];
     expect(addedRows).toContainEqual(expect.objectContaining({ key: 'hello', 'en-US': 'Hello' }));
     expect(addedRows).toContainEqual(expect.objectContaining({ key: 'bye', 'en-US': 'Goodbye' }));
+  });
+
+  // ── i18n sheet protection ─────────────────────────────────────────────────
+
+  test('should never push keys to the reserved "i18n" metadata sheet', async () => {
+    // The i18n sheet holds locale display names and must be excluded from all push operations.
+    const changes: TranslationData = {
+      'en': {
+        'i18n': { 'en': 'English', 'de': 'German' },  // must be skipped
+        'home': { 'welcome': 'Welcome' },               // must be processed normally
+      },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false);
+
+    // 'home' sheet is processed; 'i18n' sheet is skipped entirely
+    expect(mockSheet.getRows).toHaveBeenCalledTimes(1);
+    expect(console.log).toHaveBeenCalledWith(
+      expect.stringContaining('Skipping reserved metadata sheet "i18n"')
+    );
+  });
+
+  test('should ONLY skip i18n sheet, not other sheets with similar names', async () => {
+    // Sheets named e.g. "i18nExtras" or "myI18n" should not be skipped
+    const mockOtherSheet = {
+      getRows: jest.fn().mockResolvedValue([]),
+      addRows: jest.fn().mockResolvedValue([]),
+    };
+    (mockDoc as any).sheetsByTitle = {
+      'home': mockSheet as any,
+      'i18nExtras': mockOtherSheet as any,
+    };
+    const localeMapping: Record<string, string> = { 'en': 'en' };
+    const changes: TranslationData = {
+      'en': {
+        'i18n': { 'en': 'English' },        // skipped
+        'home': { 'welcome': 'Welcome' },    // processed
+        'i18nExtras': { 'key1': 'Value' },   // processed (not the reserved sheet)
+      },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, localeMapping);
+
+    expect(mockSheet.getRows).toHaveBeenCalledTimes(1);
+    expect(mockOtherSheet.getRows).toHaveBeenCalledTimes(1);
   });
 });

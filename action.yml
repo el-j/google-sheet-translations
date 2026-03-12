@@ -49,6 +49,12 @@ inputs:
       before fetching. Set to "false" to disable.
     required: false
     default: 'true'
+  auto-translate:
+    description: >
+      Automatically add GOOGLETRANSLATE formulas for missing locale columns
+      when new keys are pushed to the spreadsheet. Set to "true" to enable.
+    required: false
+    default: 'false'
   auto-create:
     description: >
       Automatically create a new Google Spreadsheet when no spreadsheet ID is
