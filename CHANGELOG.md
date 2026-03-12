@@ -1,3 +1,9 @@
+## [2.0.1](https://github.com/el-j/google-sheet-translations/compare/v2.0.0...v2.0.1) (2026-03-12)
+
+### 🐛 Bug Fixes
+
+* guard i18n sheet from push, fix auto-translate header case, add auto-translate action input ([6ce753b](https://github.com/el-j/google-sheet-translations/commit/6ce753bb1c44ed84904f3fe7e958243241e52928))
+
 ## [2.0.0](https://github.com/el-j/google-sheet-translations/compare/v1.4.0...v2.0.0) (2026-03-11)
 
 ### ⚠ BREAKING CHANGES
