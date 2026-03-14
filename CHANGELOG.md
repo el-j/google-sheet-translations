@@ -1,3 +1,11 @@
+## [2.1.2](https://github.com/el-j/google-sheet-translations/compare/v2.1.1...v2.1.2) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* auto-create missing sheets on fresh push — bypass CI timestamp trap ([aa6d11b](https://github.com/el-j/google-sheet-translations/commit/aa6d11bd37737c4b983a4ede91eb2335f67d8659))
+* close missing describe brace in syncManager.test.ts and remove conflicting codeql.yml ([81e1c89](https://github.com/el-j/google-sheet-translations/commit/81e1c89480db3108732355129171292d796cf15a))
+* resolve esbuild Dependabot alert and CodeQL false positive for dist-action ([49efa1d](https://github.com/el-j/google-sheet-translations/commit/49efa1d763d28a63bc3cfabef1aefe6d283c2c24))
+
 ## [2.1.1](https://github.com/el-j/google-sheet-translations/compare/v2.1.0...v2.1.1) (2026-03-14)
 
 ### 🐛 Bug Fixes

@@ -42539,6 +42539,9 @@ function isDataJsonNewer(dataJsonPath, translationsOutputDir) {
     if (!mostRecentTranslationMtime) return true;
     return dataJsonMtime > mostRecentTranslationMtime;
   } catch (error2) {
+    if (error2.code === "ENOENT") {
+      return true;
+    }
     console.warn("Error comparing file modification times:", error2);
     return false;
   }
@@ -42596,6 +42599,20 @@ function readDataJson(dataJsonPath) {
 }
 
 // src/utils/syncManager.ts
+function hasSheetsMissingFromSpreadsheet(localData, spreadsheetData) {
+  const spreadsheetLocales = Object.keys(spreadsheetData);
+  for (const locale of Object.keys(localData)) {
+    if (!localData[locale]) continue;
+    const resolvedLocale = resolveLocaleWithFallback(locale, spreadsheetLocales);
+    for (const sheet of Object.keys(localData[locale])) {
+      if (sheet === I18N_SHEET_NAME) continue;
+      if (!resolvedLocale || !spreadsheetData[resolvedLocale]?.[sheet]) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
 async function handleBidirectionalSync(doc, dataJsonPath, translationsOutputDir, syncLocalChanges, autoTranslate, spreadsheetData, waitSeconds, localeMapping = {}, override = false, cleanPush = false) {
   const result = {
     shouldRefresh: false,
@@ -42603,12 +42620,15 @@ async function handleBidirectionalSync(doc, dataJsonPath, translationsOutputDir,
   };
   const localData = readDataJson(dataJsonPath);
   const dataJsonExists = localData !== null;
-  const shouldSyncToSheet = dataJsonExists && (cleanPush || syncLocalChanges && isDataJsonNewer(dataJsonPath, translationsOutputDir));
+  const hasMissingSheets = syncLocalChanges && localData !== null && hasSheetsMissingFromSpreadsheet(localData, spreadsheetData);
+  const shouldSyncToSheet = dataJsonExists && (cleanPush || syncLocalChanges && isDataJsonNewer(dataJsonPath, translationsOutputDir) || hasMissingSheets);
   if (!shouldSyncToSheet || !localData) {
     return result;
   }
   if (cleanPush) {
     console.log("Clean push enabled \u2013 pushing ALL keys from languageData.json to the spreadsheet...");
+  } else if (hasMissingSheets) {
+    console.log("Spreadsheet is missing one or more local sheets. Syncing missing sheets...");
   } else {
     console.log("Local languageData.json is newer than translation files. Checking for changes...");
   }
