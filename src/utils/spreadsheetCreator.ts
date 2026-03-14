@@ -15,6 +15,19 @@ function colLetter(index: number): string {
 	return result;
 }
 
+/**
+ * Wraps a spreadsheet cell reference in a formula that extracts the language
+ * prefix (the part before the first "-") and lowercases it.
+ *
+ * GOOGLETRANSLATE only accepts ISO 639-1 two-letter codes (e.g. "tr") for most
+ * languages – region-qualified codes like "tr-TR" no longer work reliably.
+ *
+ * @param cellRef - A spreadsheet cell reference string, e.g. `$B$1` or `C$1`
+ */
+function langCodeFormula(cellRef: string): string {
+	return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+}
+
 export interface CreateSpreadsheetOptions {
 	/** Spreadsheet title (default: "google-sheet-translations") */
 	title?: string;
@@ -145,8 +158,10 @@ export async function createSpreadsheet(
 			const row: Record<string, string> = { key, [sourceLocale]: sourceValue };
 			targetLocales.forEach((locale, idx) => {
 				const targetColLetter = colLetter(2 + idx); // C, D, E, …
+				// Use language-prefix extraction so region-qualified headers (e.g. "tr-TR")
+				// are reduced to the ISO 639-1 code ("tr") that GOOGLETRANSLATE requires.
 				row[locale] =
-					`=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());$${sourceColLetter}$1;${targetColLetter}$1)`;
+					`=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());${langCodeFormula(`$${sourceColLetter}$1`)};${langCodeFormula(`${targetColLetter}$1`)})`;
 			});
 			return row;
 		});
