@@ -42160,11 +42160,8 @@ function convertToDataJsonFormat(translationObj, locales) {
     projectData[sheetTitle] = {};
     for (const locale of locales) {
       if (translationObj?.[locale]?.[sheetTitle]) {
-        projectData[sheetTitle][locale] = {};
         const translations = translationObj[locale][sheetTitle];
-        for (const key of Object.keys(translations)) {
-          projectData[sheetTitle][locale][key] = translations[key];
-        }
+        projectData[sheetTitle][locale] = { ...translations };
         console.log(
           `Found ${Object.keys(translations).length} keys for locale ${locale} in sheet ${sheetTitle}`
         );
