@@ -1,3 +1,13 @@
+## [2.1.3](https://github.com/el-j/google-sheet-translations/compare/v2.1.2...v2.1.3) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* proactive rate-limit throttling and GOOGLETRANSLATE language-prefix extraction ([492be83](https://github.com/el-j/google-sheet-translations/commit/492be8335ad555cc1e4130d44d63e75396100b90))
+
+### ♻️ Refactoring
+
+* clarify chunk-delay comment and neutralize test comment per review ([55188b7](https://github.com/el-j/google-sheet-translations/commit/55188b747aa8b4373dfd22133b875599808388e9))
+
 ## [2.1.2](https://github.com/el-j/google-sheet-translations/compare/v2.1.1...v2.1.2) (2026-03-14)
 
 ### 🐛 Bug Fixes
