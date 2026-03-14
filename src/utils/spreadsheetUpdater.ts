@@ -23,6 +23,8 @@ function columnIndexToLetter(index: number): string {
  * - For languages missing translations, it automatically adds Google Translate formulas
  * - The formula format is: =GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());$sourceColumn$1;targetColumn$1)
  * - This dynamic formula uses cell references for language codes and automatically adapts to the correct row
+ * - For **existing** keys the same logic applies: empty cells in other language columns receive a
+ *   formula; cells that already contain a translation are only overwritten when `override` is true.
  *
  * If a sheet named `sheetTitle` does not yet exist in the document and `localeMapping` is
  * non-empty, the sheet is **created automatically** with "key" as the first column followed by
@@ -39,6 +41,9 @@ function columnIndexToLetter(index: number): string {
  * @param waitSeconds - Base back-off delay in seconds for retrying rate-limited API calls
  * @param autoTranslate - Whether to add Google Translate formulas for missing translations (default: false)
  * @param localeMapping - Mapping from normalized locale codes to original spreadsheet headers
+ * @param override - When true AND autoTranslate is true, existing translations in other language
+ *   columns are overwritten with GOOGLETRANSLATE formulas.  When false (default) only empty cells
+ *   receive a formula.
  * @returns Promise that resolves when the update is complete
  */
 export async function updateSpreadsheetWithLocalChanges(
@@ -46,7 +51,8 @@ export async function updateSpreadsheetWithLocalChanges(
     changes: TranslationData,
     waitSeconds: number,
     autoTranslate = false,
-    localeMapping: Record<string, string> = {}
+    localeMapping: Record<string, string> = {},
+    override = false
 ): Promise<void> {
     console.log("Updating spreadsheet with local changes...");
     const baseDelayMs = waitSeconds * 1000;
@@ -135,6 +141,32 @@ export async function updateSpreadsheetWithLocalChanges(
         
         // Track which locales have values for each new key (for auto-translation)
         const keyLocalesMap = new Map<string, Map<string, string>>();
+
+        // Precompute which locale headers are explicitly pushed for each existing key.
+        // This prevents auto-translate formulas from overwriting values that will be
+        // (or have been) set by another locale iteration in the same push batch.
+        const pushedLocaleHeadersPerKey = new Map<string, Set<string>>();
+        if (autoTranslate) {
+            for (const pushedLocale of Object.keys(changes)) {
+                if (!changes[pushedLocale]?.[sheetTitle]) continue;
+                for (const pushedKey of Object.keys(changes[pushedLocale][sheetTitle])) {
+                    const pushedKeyLower = pushedKey.toLowerCase();
+                    if (!existingKeys.has(pushedKeyLower)) continue; // new keys handled separately
+
+                    let pushedHeader = getOriginalHeaderForLocale(pushedLocale, localeMapping);
+                    if (!pushedHeader) {
+                        const prefix = getLanguagePrefix(pushedLocale);
+                        pushedHeader = originalHeaders.find(h => getLanguagePrefix(h) === prefix);
+                    }
+                    if (pushedHeader) {
+                        if (!pushedLocaleHeadersPerKey.has(pushedKeyLower)) {
+                            pushedLocaleHeadersPerKey.set(pushedKeyLower, new Set());
+                        }
+                        pushedLocaleHeadersPerKey.get(pushedKeyLower)!.add(pushedHeader.toLowerCase());
+                    }
+                }
+            }
+        }
         
         // Collect all new keys and their translations
         for (const locale of Object.keys(changes)) {
@@ -201,6 +233,52 @@ export async function updateSpreadsheetWithLocalChanges(
                     if (localeHeader) {
                         // Use set() method instead of direct property assignment to avoid TS errors
                         row.set(localeHeader, String(localeData[key]));
+
+                        // When autoTranslate is enabled, also fill other language columns:
+                        // - empty columns always get a GOOGLETRANSLATE formula
+                        // - non-empty columns are overwritten only when override=true
+                        // Columns that are explicitly being pushed (via another locale entry in
+                        // this batch) are skipped to avoid racing with their actual value.
+                        if (autoTranslate) {
+                            const sourceHeaderLower = localeHeader.toLowerCase();
+                            const sourceHeaderIndex = headerRow.indexOf(sourceHeaderLower);
+
+                            if (sourceHeaderIndex >= 0) {
+                                const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
+                                // Snapshot current cell values before our set() calls
+                                const rowObj = row.toObject();
+                                const pushedHeaders = pushedLocaleHeadersPerKey.get(keyLower) ?? new Set<string>();
+
+                                for (const targetLocaleHeader of locales) {
+                                    const targetLower = targetLocaleHeader.toLowerCase();
+                                    // Skip the source locale itself
+                                    if (targetLower === sourceHeaderLower) continue;
+                                    // Skip locales that are also being explicitly pushed for this key
+                                    if (pushedHeaders.has(targetLower)) continue;
+
+                                    const targetHeaderIndex = headerRow.indexOf(targetLower);
+                                    if (targetHeaderIndex < 0) continue;
+
+                                    // Use original-case header name for row.set()
+                                    const exactTargetHeader = originalHeaders.find(
+                                        h => h.toLowerCase() === targetLower
+                                    );
+                                    if (!exactTargetHeader) continue;
+
+                                    const existingValue = rowObj[exactTargetHeader];
+                                    const isEmpty = !existingValue || existingValue.toString().trim() === '';
+
+                                    if (isEmpty || override) {
+                                        const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
+                                        row.set(
+                                            exactTargetHeader,
+                                            `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());$${sourceColumnLetter}$1;${targetColumnLetter}$1)`
+                                        );
+                                    }
+                                }
+                            }
+                        }
+
                         try {
                             await withRetry(
                                 () => row.save(),

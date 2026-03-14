@@ -55,6 +55,14 @@ inputs:
       when new keys are pushed to the spreadsheet. Set to "true" to enable.
     required: false
     default: 'false'
+  override:
+    description: >
+      When "true" and auto-translate is also "true", existing translations in
+      other language columns are overwritten with GOOGLETRANSLATE formulas
+      whenever a key is pushed.  When "false" (the default) only empty cells
+      receive a formula – existing translations are preserved.
+    required: false
+    default: 'false'
   auto-create:
     description: >
       Automatically create a new Google Spreadsheet when no spreadsheet ID is

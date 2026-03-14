@@ -23,6 +23,7 @@ export interface SyncResult {
  * @param spreadsheetData Current data from the spreadsheet
  * @param waitSeconds Time to wait between API calls
  * @param localeMapping Mapping from normalized locale codes to original spreadsheet headers
+ * @param override When true AND autoTranslate is true, overwrite existing translations with formulas
  * @returns Sync operation result
  */
 export async function handleBidirectionalSync(
@@ -33,7 +34,8 @@ export async function handleBidirectionalSync(
 	autoTranslate: boolean,
 	spreadsheetData: TranslationData,
 	waitSeconds: number,
-	localeMapping: Record<string, string> = {}
+	localeMapping: Record<string, string> = {},
+	override = false
 ): Promise<SyncResult> {
 	const result: SyncResult = {
 		shouldRefresh: false,
@@ -77,7 +79,7 @@ export async function handleBidirectionalSync(
 	
 	// Update the spreadsheet with the changes, passing the autoTranslate option and locale mapping
 	try {
-		await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate, localeMapping);
+		await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate, localeMapping, override);
 		result.shouldRefresh = true;
 		result.hasChanges = true;
 	} catch (err) {
