@@ -2304,9 +2304,9 @@ var require_timers = __commonJS({
        * before the specified function or code is executed.
        * @param {*} arg
        */
-      constructor(callback, delay3, arg) {
+      constructor(callback, delay4, arg) {
         this._onTimeout = callback;
-        this._idleTimeout = delay3;
+        this._idleTimeout = delay4;
         this._timerArg = arg;
         this.refresh();
       }
@@ -2351,8 +2351,8 @@ var require_timers = __commonJS({
        * when the timer expires.
        * @returns {NodeJS.Timeout|FastTimer}
        */
-      setTimeout(callback, delay3, arg) {
-        return delay3 <= RESOLUTION_MS ? setTimeout(callback, delay3, arg) : new FastTimer(callback, delay3, arg);
+      setTimeout(callback, delay4, arg) {
+        return delay4 <= RESOLUTION_MS ? setTimeout(callback, delay4, arg) : new FastTimer(callback, delay4, arg);
       },
       /**
        * The clearTimeout method cancels an instantiated Timer previously created
@@ -2378,8 +2378,8 @@ var require_timers = __commonJS({
        * when the timer expires.
        * @returns {FastTimer}
        */
-      setFastTimeout(callback, delay3, arg) {
-        return new FastTimer(callback, delay3, arg);
+      setFastTimeout(callback, delay4, arg) {
+        return new FastTimer(callback, delay4, arg);
       },
       /**
        * The clearTimeout method cancels an instantiated FastTimer previously
@@ -2405,8 +2405,8 @@ var require_timers = __commonJS({
        * @deprecated
        * @param {number} [delay=0] The delay in milliseconds to add to the now value.
        */
-      tick(delay3 = 0) {
-        fastNow += delay3 - RESOLUTION_MS + 1;
+      tick(delay4 = 0) {
+        fastNow += delay4 - RESOLUTION_MS + 1;
         onTick();
         onTick();
       },
@@ -5801,21 +5801,21 @@ var require_client_h1 = __commonJS({
         this.connection = "";
         this.maxResponseSize = client[kMaxResponseSize];
       }
-      setTimeout(delay3, type) {
-        if (delay3 !== this.timeoutValue || type & USE_FAST_TIMER ^ this.timeoutType & USE_FAST_TIMER) {
+      setTimeout(delay4, type) {
+        if (delay4 !== this.timeoutValue || type & USE_FAST_TIMER ^ this.timeoutType & USE_FAST_TIMER) {
           if (this.timeout) {
             timers.clearTimeout(this.timeout);
             this.timeout = null;
           }
-          if (delay3) {
+          if (delay4) {
             if (type & USE_FAST_TIMER) {
-              this.timeout = timers.setFastTimeout(onParserTimeout, delay3, new WeakRef(this));
+              this.timeout = timers.setFastTimeout(onParserTimeout, delay4, new WeakRef(this));
             } else {
-              this.timeout = setTimeout(onParserTimeout, delay3, new WeakRef(this));
+              this.timeout = setTimeout(onParserTimeout, delay4, new WeakRef(this));
               this.timeout.unref();
             }
           }
-          this.timeoutValue = delay3;
+          this.timeoutValue = delay4;
         } else if (this.timeout) {
           if (this.timeout.refresh) {
             this.timeout.refresh();
@@ -10573,7 +10573,7 @@ var require_mock_utils = __commonJS({
       if (mockDispatch2.data.callback) {
         mockDispatch2.data = { ...mockDispatch2.data, ...mockDispatch2.data.callback(opts) };
       }
-      const { data: { statusCode, data, headers, trailers, error: error2 }, delay: delay3, persist } = mockDispatch2;
+      const { data: { statusCode, data, headers, trailers, error: error2 }, delay: delay4, persist } = mockDispatch2;
       const { timesInvoked, times: times2 } = mockDispatch2;
       mockDispatch2.consumed = !persist && timesInvoked >= times2;
       mockDispatch2.pending = timesInvoked < times2;
@@ -10582,10 +10582,10 @@ var require_mock_utils = __commonJS({
         handler.onError(error2);
         return true;
       }
-      if (typeof delay3 === "number" && delay3 > 0) {
+      if (typeof delay4 === "number" && delay4 > 0) {
         setTimeout(() => {
           handleReply(this[kDispatches]);
-        }, delay3);
+        }, delay4);
       } else {
         handleReply(this[kDispatches]);
       }
@@ -17914,7 +17914,7 @@ var require_util8 = __commonJS({
       }
       return true;
     }
-    function delay3(ms) {
+    function delay4(ms) {
       return new Promise((resolve) => {
         setTimeout(resolve, ms).unref();
       });
@@ -17922,7 +17922,7 @@ var require_util8 = __commonJS({
     module.exports = {
       isValidLastEventId,
       isASCIINumber,
-      delay: delay3
+      delay: delay4
     };
   }
 });
@@ -18169,7 +18169,7 @@ var require_eventsource = __commonJS({
     var { parseMIMEType } = require_data_url();
     var { createFastMessageEvent } = require_events();
     var { isNetworkError } = require_response();
-    var { delay: delay3 } = require_util8();
+    var { delay: delay4 } = require_util8();
     var { kEnumerableProperty } = require_util();
     var { environmentSettingsObject } = require_util2();
     var experimentalWarned = false;
@@ -18340,7 +18340,7 @@ var require_eventsource = __commonJS({
         if (this.#readyState === CLOSED) return;
         this.#readyState = CONNECTING;
         this.dispatchEvent(new Event("error"));
-        await delay3(this.#state.reconnectionTime);
+        await delay4(this.#state.reconnectionTime);
         if (this.#readyState !== CONNECTING) return;
         if (this.#state.lastEventId.length) {
           this.#request.headersList.set("last-event-id", this.#state.lastEventId, true);
@@ -19098,10 +19098,10 @@ var require_retry2 = __commonJS({
       if (!await shouldRetryFn(err)) {
         return { shouldRetry: false, config: err.config };
       }
-      const delay3 = getNextRetryDelay(config);
+      const delay4 = getNextRetryDelay(config);
       err.config.retryConfig.currentRetryAttempt += 1;
-      const backoff = config.retryBackoff ? config.retryBackoff(err, delay3) : new Promise((resolve) => {
-        setTimeout(resolve, delay3);
+      const backoff = config.retryBackoff ? config.retryBackoff(err, delay4) : new Promise((resolve) => {
+        setTimeout(resolve, delay4);
       });
       if (config.onRetryAttempt) {
         await config.onRetryAttempt(err);
@@ -42287,6 +42287,7 @@ function findLocalChanges(localData, spreadsheetData) {
 }
 
 // src/utils/spreadsheetUpdater.ts
+import { setTimeout as delay3 } from "node:timers/promises";
 function columnIndexToLetter(index) {
   let result = "";
   let i2 = index;
@@ -42295,6 +42296,9 @@ function columnIndexToLetter(index) {
     i2 = Math.floor(i2 / 26) - 1;
   } while (i2 >= 0);
   return result;
+}
+function langCodeFormula(cellRef) {
+  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
 }
 async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate = false, localeMapping = {}, override = false) {
   console.log("Updating spreadsheet with local changes...");
@@ -42442,7 +42446,7 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                     const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                     row.set(
                       exactTargetHeader,
-                      `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());$${sourceColumnLetter}$1;${targetColumnLetter}$1)`
+                      `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`
                     );
                   }
                 }
@@ -42454,6 +42458,9 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                 `save row ${rowIndex} in ${sheetTitle}`,
                 baseDelayMs
               );
+              if (baseDelayMs > 0) {
+                await delay3(baseDelayMs);
+              }
             } catch (err) {
               console.error(
                 `Failed to save row for key "${keyLower}" in sheet "${sheetTitle}":`,
@@ -42488,7 +42495,7 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                 }
                 const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
                 const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
-                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());$${sourceColumnLetter}$1;${targetColumnLetter}$1)`;
+                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`;
               }
             }
           }
@@ -42503,6 +42510,9 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
           `addRows chunk ${Math.floor(i2 / CHUNK_SIZE) + 1} in ${sheetTitle}`,
           baseDelayMs
         );
+        if (baseDelayMs > 0 && i2 + CHUNK_SIZE < newRows.length) {
+          await delay3(baseDelayMs);
+        }
       }
     }
   }
@@ -42740,6 +42750,9 @@ function colLetter(index) {
   } while (i2 >= 0);
   return result;
 }
+function langCodeFormula2(cellRef) {
+  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+}
 var DEFAULT_TARGET_LOCALES = ["de", "fr", "es", "it", "pt", "ja", "zh"];
 var STARTER_KEYS = {
   "app.name": "My App",
@@ -42824,7 +42837,7 @@ async function createSpreadsheet(authClient, options = {}) {
       const row = { key, [sourceLocale]: sourceValue };
       targetLocales.forEach((locale, idx) => {
         const targetColLetter = colLetter(2 + idx);
-        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());$${sourceColLetter}$1;${targetColLetter}$1)`;
+        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());${langCodeFormula2(`$${sourceColLetter}$1`)};${langCodeFormula2(`${targetColLetter}$1`)})`;
       });
       return row;
     });
