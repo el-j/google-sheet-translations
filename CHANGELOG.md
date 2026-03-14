@@ -1,3 +1,14 @@
+## [2.1.0](https://github.com/el-j/google-sheet-translations/compare/v2.0.1...v2.1.0) (2026-03-14)
+
+### 🚀 Features
+
+* add cleanPush option to push all keys regardless of timestamp/diff ([f27e17f](https://github.com/el-j/google-sheet-translations/commit/f27e17fca76111ae1182f2d846022f71fb518f5f))
+* add override prop + autoTranslate for existing keys on push ([cc74076](https://github.com/el-j/google-sheet-translations/commit/cc74076894c8781a6a15cf93322a72775a144ede))
+
+### 🐛 Bug Fixes
+
+* address code review – clarify cleanPush description and rowObj comment ([d7c42bc](https://github.com/el-j/google-sheet-translations/commit/d7c42bc2ec181e4d8dc94a717023564450963298))
+
 ## [2.0.1](https://github.com/el-j/google-sheet-translations/compare/v2.0.0...v2.0.1) (2026-03-12)
 
 ### 🐛 Bug Fixes
