@@ -38,14 +38,10 @@ export function convertToDataJsonFormat(
 		for (const locale of locales) {
 			if (translationObj?.[locale]?.[sheetTitle]) { // Use original locale case for lookup
 
-				// Create the locale object
-				projectData[sheetTitle][locale] = {};
-
-				// Add all translations for this locale
 				const translations = translationObj[locale][sheetTitle];
-				for (const key of Object.keys(translations)) {
-					projectData[sheetTitle][locale][key] = translations[key];
-				}
+
+				// Spread into a new object to avoid prototype-polluting assignment
+				projectData[sheetTitle][locale] = { ...translations };
 
 				// Log how many translations we found for debugging
 				console.log(

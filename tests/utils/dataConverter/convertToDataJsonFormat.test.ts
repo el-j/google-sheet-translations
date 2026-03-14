@@ -307,4 +307,30 @@ describe('convertToDataJsonFormat', () => {
       'hello': 'Hallo'
     });
   });
+
+  test('should not pollute Object prototype when translation keys include dangerous names', () => {
+    // Simulate data that could contain __proto__, constructor, or prototype keys
+    const poisonedTranslations = Object.create(null) as Record<string, string>;
+    Object.defineProperty(poisonedTranslations, '__proto__', {
+      value: 'POISONED',
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    poisonedTranslations['greeting'] = 'Hello';
+
+    const translationObj = {
+      'en': {
+        'home': poisonedTranslations as Record<string, string>,
+      },
+    } as unknown as import('../../../src/types').TranslationData;
+
+    const before = ({} as Record<string, unknown>).injected;
+
+    convertToDataJsonFormat(translationObj, ['en']);
+
+    // Object prototype must remain unmodified
+    expect(({} as Record<string, unknown>).injected).toBe(before);
+    expect(Object.prototype).not.toHaveProperty('injected');
+  });
 });
