@@ -97,6 +97,9 @@
   "overrides": {
     "google-spreadsheet": {
       "google-auth-library": "^10.6.1"
+    },
+    "vite": {
+      "esbuild": "^0.25.0"
     }
   }
 }
