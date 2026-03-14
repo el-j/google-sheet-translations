@@ -218,15 +218,16 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     // Call with autoTranslate = true
     await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
     
-    // Verify that a new row was added with GOOGLETRANSLATE formulas for missing languages
-    expect(mockSheet.addRows).toHaveBeenCalledWith([
-      expect.objectContaining({
-        'key': 'new_key',
-        'en': 'New Value',
-        'fr': '=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)',
-        'de': '=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;D$1)'
-      })
-    ]);
+    // Verify that a new row was added with GOOGLETRANSLATE formulas for missing languages.
+    // The formula now extracts the language prefix from the header cell using
+    // LOWER(IFERROR(LEFT(col$1,FIND("-",col$1)-1),col$1)) so that "tr-TR" → "tr".
+    const addedRows = mockSheet.addRows.mock.calls[0][0];
+    expect(addedRows).toHaveLength(1);
+    const addedRow = addedRows[0];
+    expect(addedRow['key']).toBe('new_key');
+    expect(addedRow['en']).toBe('New Value');
+    expect(addedRow['fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\);LOWER\(IFERROR\(.*\$B\$1.*\)\);LOWER\(IFERROR\(.*C\$1.*\)\)\)$/);
+    expect(addedRow['de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\);LOWER\(IFERROR\(.*\$B\$1.*\)\);LOWER\(IFERROR\(.*D\$1.*\)\)\)$/);
   });
 
   test('should not add auto-translation formulas when disabled', async () => {
@@ -278,30 +279,23 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     // Call with autoTranslate = true
     await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
     
-    // Verify that new rows were added with correct GOOGLETRANSLATE formulas
+    // Verify that new rows were added with correct GOOGLETRANSLATE formulas.
+    // Formulas now use LOWER(IFERROR(LEFT(...))) to extract the language prefix.
     const addedRows = mockSheet.addRows.mock.calls[0][0];
     
-    // First new key should translate from French to other languages
-    expect(addedRows).toContainEqual(
-      expect.objectContaining({
-        'key': 'new_key1',
-        'fr': 'Nouvelle Valeur',
-        'en': '=GOOGLETRANSLATE(INDIRECT("C"&ROW());$C$1;B$1)',
-        'de': '=GOOGLETRANSLATE(INDIRECT("C"&ROW());$C$1;D$1)',
-        'es': '=GOOGLETRANSLATE(INDIRECT("C"&ROW());$C$1;E$1)'
-      })
-    );
+    // First new key should translate from French (column C) to other languages
+    const row1 = addedRows.find((r: Record<string, string>) => r['key'] === 'new_key1');
+    expect(row1['fr']).toBe('Nouvelle Valeur');
+    expect(row1['en']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\);LOWER\(IFERROR\(.*\$C\$1.*\)\);LOWER\(IFERROR\(.*B\$1.*\)\)\)$/);
+    expect(row1['de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\);LOWER\(IFERROR\(.*\$C\$1.*\)\);LOWER\(IFERROR\(.*D\$1.*\)\)\)$/);
+    expect(row1['es']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\);LOWER\(IFERROR\(.*\$C\$1.*\)\);LOWER\(IFERROR\(.*E\$1.*\)\)\)$/);
     
-    // Second new key should translate from German to other languages
-    expect(addedRows).toContainEqual(
-      expect.objectContaining({
-        'key': 'new_key2',
-        'de': 'Neuer Wert',
-        'en': '=GOOGLETRANSLATE(INDIRECT("D"&ROW());$D$1;B$1)',
-        'fr': '=GOOGLETRANSLATE(INDIRECT("D"&ROW());$D$1;C$1)',
-        'es': '=GOOGLETRANSLATE(INDIRECT("D"&ROW());$D$1;E$1)'
-      })
-    );
+    // Second new key should translate from German (column D) to other languages
+    const row2 = addedRows.find((r: Record<string, string>) => r['key'] === 'new_key2');
+    expect(row2['de']).toBe('Neuer Wert');
+    expect(row2['en']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\);LOWER\(IFERROR\(.*\$D\$1.*\)\);LOWER\(IFERROR\(.*B\$1.*\)\)\)$/);
+    expect(row2['fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\);LOWER\(IFERROR\(.*\$D\$1.*\)\);LOWER\(IFERROR\(.*C\$1.*\)\)\)$/);
+    expect(row2['es']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\);LOWER\(IFERROR\(.*\$D\$1.*\)\);LOWER\(IFERROR\(.*E\$1.*\)\)\)$/);
   });
 
   test('should generate GOOGLETRANSLATE formulas when source locale header is mixed-case', async () => {
@@ -627,5 +621,35 @@ describe('updateSpreadsheetWithLocalChanges', () => {
       expect(val).not.toMatch(/^=GOOGLETRANSLATE/);
     });
     expect(rowEn.set).toHaveBeenCalledWith('fr', 'Titre FR');
+  });
+
+  // ── Language-prefix extraction in GOOGLETRANSLATE formula ────────────────
+
+  test('should use language-prefix extraction in formula for region-qualified headers like tr-TR', async () => {
+    // Regression: GOOGLETRANSLATE stopped accepting "tr-TR"; only "tr" works.
+    // The formula now wraps header cell refs with LOWER(IFERROR(LEFT(col$1,FIND("-",col$1)-1),col$1))
+    // so "tr-TR" → "tr", "en-US" → "en", while bare codes like "tr" stay unchanged.
+    mockRow.toObject.mockReturnValue({
+      key: 'existing',
+      'en-US': 'Existing',
+      'tr-TR': '',
+    });
+
+    const changes: TranslationData = {
+      'en-US': { home: { new_key: 'Hello' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0];
+    expect(addedRows).toHaveLength(1);
+    const addedRow = addedRows[0];
+
+    expect(addedRow['en-US']).toBe('Hello');
+    // The formula for tr-TR must contain LOWER(IFERROR(...)) so "tr-TR" is reduced to "tr"
+    expect(addedRow['tr-TR']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
+    expect(addedRow['tr-TR']).toContain('LOWER(IFERROR(');
+    // Must NOT use the raw header value directly (old broken format)
+    expect(addedRow['tr-TR']).not.toMatch(/;\$B\$1;C\$1\)$/);
   });
 });

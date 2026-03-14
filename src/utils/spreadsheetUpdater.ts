@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import type { GoogleSpreadsheet, GoogleSpreadsheetWorksheet } from "google-spreadsheet";
 import type { TranslationData } from "../types";
 import { withRetry } from "./rateLimiter";
@@ -16,15 +17,39 @@ function columnIndexToLetter(index: number): string {
 }
 
 /**
+ * Wraps a spreadsheet cell reference in a formula that extracts the language
+ * prefix (the part before the first "-") and lowercases it.
+ *
+ * GOOGLETRANSLATE only accepts ISO 639-1 two-letter codes (e.g. "tr") for most
+ * languages – region-qualified codes like "tr-TR" no longer work reliably.
+ * This helper converts "tr-TR" → "tr", "en-US" → "en", "zh-CN" → "zh", and
+ * leaves bare codes like "tr" or "en" unchanged.
+ *
+ * @param cellRef - A spreadsheet cell reference string, e.g. `$B$1` or `C$1`
+ * @returns A Google Sheets formula fragment, e.g.
+ *   `LOWER(IFERROR(LEFT($B$1,FIND("-",$B$1)-1),$B$1))`
+ */
+function langCodeFormula(cellRef: string): string {
+    return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+}
+
+/**
  * Updates the Google Spreadsheet with new keys from local data.
  *
  * When autoTranslate is enabled:
  * - For each new key added to the spreadsheet, the system checks which languages have translations
  * - For languages missing translations, it automatically adds Google Translate formulas
- * - The formula format is: =GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());$sourceColumn$1;targetColumn$1)
+ * - The formula extracts the language prefix from the header cell (e.g. "tr-TR" → "tr") because
+ *   GOOGLETRANSLATE only accepts ISO 639-1 codes for most languages
+ * - The formula format is:
+ *   =GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());LOWER(IFERROR(LEFT($sourceColumn$1,FIND("-",$sourceColumn$1)-1),$sourceColumn$1));LOWER(IFERROR(LEFT(targetColumn$1,FIND("-",targetColumn$1)-1),targetColumn$1)))
  * - This dynamic formula uses cell references for language codes and automatically adapts to the correct row
  * - For **existing** keys the same logic applies: empty cells in other language columns receive a
  *   formula; cells that already contain a translation are only overwritten when `override` is true.
+ *
+ * A proactive inter-request delay of `waitSeconds` seconds is inserted between each
+ * individual row save and between each addRows chunk to avoid exceeding Google's
+ * "Write requests per minute per user" quota before a 429 is even returned.
  *
  * If a sheet named `sheetTitle` does not yet exist in the document and `localeMapping` is
  * non-empty, the sheet is **created automatically** with "key" as the first column followed by
@@ -33,12 +58,13 @@ function columnIndexToLetter(index: number): string {
  *
  * Example:
  * If a new key "welcome" has an English translation in column B but no German translation in column C,
- * and autoTranslate is enabled, the system will add:
- * =GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1) to the German column
+ * and autoTranslate is enabled, the system will add a formula that translates from English ("en")
+ * to the language code extracted from the German column header to the German column.
  *
  * @param doc - The Google Spreadsheet instance
  * @param changes - Object containing new keys to add to the spreadsheet
- * @param waitSeconds - Base back-off delay in seconds for retrying rate-limited API calls
+ * @param waitSeconds - Seconds to wait between consecutive write API calls (throttle) and as the
+ *   base back-off delay when retrying rate-limited calls (HTTP 429/503).  Must be ≥ 1.
  * @param autoTranslate - Whether to add Google Translate formulas for missing translations (default: false)
  * @param localeMapping - Mapping from normalized locale codes to original spreadsheet headers
  * @param override - When true AND autoTranslate is true, existing translations in other language
@@ -274,7 +300,7 @@ export async function updateSpreadsheetWithLocalChanges(
                                         const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                                         row.set(
                                             exactTargetHeader,
-                                            `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());$${sourceColumnLetter}$1;${targetColumnLetter}$1)`
+                                            `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`
                                         );
                                     }
                                 }
@@ -287,6 +313,11 @@ export async function updateSpreadsheetWithLocalChanges(
                                 `save row ${rowIndex} in ${sheetTitle}`,
                                 baseDelayMs,
                             );
+                            // Proactive throttle: pause between consecutive writes to avoid
+                            // exhausting Google's "Write requests per minute per user" quota.
+                            if (baseDelayMs > 0) {
+                                await delay(baseDelayMs);
+                            }
                         } catch (err) {
                             console.error(
                                 `Failed to save row for key "${keyLower}" in sheet "${sheetTitle}":`,
@@ -350,12 +381,11 @@ export async function updateSpreadsheetWithLocalChanges(
                                 const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
                                 const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                                 
-                                // Create improved Google Translate formula using INDIRECT and cell references
-                                // This formula dynamically references:
-                                // - INDIRECT(sourceColumn&ROW()) for the source text
-                                // - $sourceColumn$1 for the source language code from header
-                                // - targetColumn$1 for the target language code from header
-                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());$${sourceColumnLetter}$1;${targetColumnLetter}$1)`;
+                                // Create Google Translate formula with language-prefix extraction.
+                                // GOOGLETRANSLATE requires ISO 639-1 codes (e.g. "tr"), not
+                                // region-qualified codes (e.g. "tr-TR"), so we strip the region
+                                // part from the header cell value at evaluation time.
+                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`;
                             }
                         }
                     }
@@ -374,6 +404,10 @@ export async function updateSpreadsheetWithLocalChanges(
                     `addRows chunk ${Math.floor(i / CHUNK_SIZE) + 1} in ${sheetTitle}`,
                     baseDelayMs,
                 );
+                // Proactive throttle between chunk writes to respect Google's quota.
+                if (baseDelayMs > 0 && i + CHUNK_SIZE < newRows.length) {
+                    await delay(baseDelayMs);
+                }
             }
         }
     }

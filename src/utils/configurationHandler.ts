@@ -7,9 +7,10 @@ import { DEFAULT_WAIT_SECONDS } from "../constants";
 export interface SpreadsheetOptions {
 	rowLimit?: number;
 	/**
-	 * Base back-off delay in seconds used when retrying Google Sheets API
-	 * calls that fail with a rate-limit response (HTTP 429 / 503).
-	 * The actual delay for each retry attempt is `waitSeconds * 2^attempt`,
+	 * Seconds to wait between consecutive Google Sheets write API calls
+	 * (proactive throttle) and as the base back-off delay when retrying calls
+	 * that fail with a rate-limit response (HTTP 429 / 503).
+	 * The actual retry delay for each attempt is `waitSeconds * 2^attempt`,
 	 * capped at 30 seconds.  Defaults to 1.
 	 */
 	waitSeconds?: number;

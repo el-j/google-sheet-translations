@@ -28,7 +28,11 @@ inputs:
     required: false
     default: '100'
   wait-seconds:
-    description: 'Base back-off delay in seconds for retrying rate-limited API calls (HTTP 429/503)'
+    description: >
+      Seconds to wait between consecutive Google Sheets write API calls
+      (proactive throttle) and as the base back-off delay when retrying
+      rate-limited calls (HTTP 429/503). Increase this value if you hit quota
+      errors during sync or fresh-push with many keys.
     required: false
     default: '1'
   translations-output-dir:

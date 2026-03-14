@@ -54,10 +54,11 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     // Check for auto-translate formula in other columns (assuming 'de' exists)
     const formulaValue = addedRow.de;
     if (formulaValue) {
-      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);\$\w+\$1;\w+\$1\)$/);
+      // The formula now uses LOWER(IFERROR(...)) to extract language prefix from header cells
+      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);LOWER\(IFERROR\(/);
       expect(formulaValue).toContain('INDIRECT');
       expect(formulaValue).toContain('&ROW()');
-      expect(formulaValue).toContain('$1');
+      expect(formulaValue).toContain('LOWER(IFERROR(');
     }
   });
 
@@ -91,7 +92,8 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     // Formula should use the correct column references for this structure
     const formulaValue = addedRow.german;
     if (formulaValue) {
-      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);\$\w+\$1;\w+\$1\)$/);
+      // The formula now uses LOWER(IFERROR(...)) to extract language prefix from header cells
+      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);LOWER\(IFERROR\(/);
     }
   });
 });
