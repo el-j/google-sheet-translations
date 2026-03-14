@@ -1,3 +1,10 @@
+## [2.1.1](https://github.com/el-j/google-sheet-translations/compare/v2.1.0...v2.1.1) (2026-03-14)
+
+### 🐛 Bug Fixes
+
+* resolve CodeQL vulnerabilities and update deps ([13699eb](https://github.com/el-j/google-sheet-translations/commit/13699ebc14b78b14eb81f47f7fb893f25ad5b9b3))
+* update flatted dep via npm audit fix ([b7697f6](https://github.com/el-j/google-sheet-translations/commit/b7697f6301d36543fd111dd900655e73afeb9986))
+
 ## [2.1.0](https://github.com/el-j/google-sheet-translations/compare/v2.0.1...v2.1.0) (2026-03-14)
 
 ### 🚀 Features
