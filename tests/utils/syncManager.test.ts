@@ -284,3 +284,5 @@ describe('handleBidirectionalSync', () => {
 		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
 		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
 	});
+
+});
