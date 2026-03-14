@@ -179,6 +179,7 @@ export async function getSpreadSheetData(
 			config.waitSeconds,
 			globalLocaleMapping,
 			config.override,
+			config.cleanPush,
 		);
 
 		if (syncResult.shouldRefresh && _refreshDepth < MAX_SYNC_REFRESH_DEPTH) {

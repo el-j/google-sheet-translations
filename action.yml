@@ -63,6 +63,14 @@ inputs:
       receive a formula – existing translations are preserved.
     required: false
     default: 'false'
+  clean-push:
+    description: >
+      When "true", ALL keys from the local languageData.json are pushed to the
+      spreadsheet and existing cell values are overwritten.  Useful when the
+      file has been copied from another project and the spreadsheet needs a
+      complete refresh.  The file-timestamp guard is bypassed.  Default: "false".
+    required: false
+    default: 'false'
   auto-create:
     description: >
       Automatically create a new Google Spreadsheet when no spreadsheet ID is

@@ -57,6 +57,14 @@ export interface SpreadsheetOptions {
 	 * formula – cells that already contain a translation are left untouched.
 	 */
 	override?: boolean;
+	/**
+	 * When `true`, **all** keys from the local `languageData.json` are pushed to
+	 * the spreadsheet regardless of whether they already exist there.  This is
+	 * useful when the file has been copied from another project and the spreadsheet
+	 * needs a complete refresh.  The file-timestamp guard (`isDataJsonNewer`) is
+	 * also bypassed.  Implies `syncLocalChanges`.  Default: `false`.
+	 */
+	cleanPush?: boolean;
 }
 
 /**
@@ -77,6 +85,7 @@ export interface NormalizedConfig {
 	sourceLocale: string;
 	targetLocales: string[];
 	override: boolean;
+	cleanPush: boolean;
 }
 
 /**
@@ -98,5 +107,6 @@ export function normalizeConfig(options: SpreadsheetOptions = {}): NormalizedCon
 		sourceLocale: options.sourceLocale ?? 'en',
 		targetLocales: options.targetLocales ?? ['de', 'fr', 'es', 'it', 'pt', 'ja', 'zh'],
 		override: options.override === true, // Default to false
+		cleanPush: options.cleanPush === true, // Default to false
 	};
 }

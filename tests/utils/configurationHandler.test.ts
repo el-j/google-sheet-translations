@@ -13,6 +13,8 @@ describe('configurationHandler', () => {
 			expect(config.translationsOutputDir).toBe(path.join(process.cwd(), "translations"));
 			expect(config.syncLocalChanges).toBe(true);
 			expect(config.autoTranslate).toBe(false);
+			expect(config.override).toBe(false);
+			expect(config.cleanPush).toBe(false);
 		});
 
 		it('should override defaults with provided options', () => {
@@ -50,6 +52,16 @@ describe('configurationHandler', () => {
 			// Defaults should be preserved for other options
 			expect(config.rowLimit).toBe(100);
 			expect(config.syncLocalChanges).toBe(true);
+		});
+
+		it('should set cleanPush to true when specified', () => {
+			const config = normalizeConfig({ cleanPush: true });
+			expect(config.cleanPush).toBe(true);
+		});
+
+		it('should keep cleanPush false when not specified', () => {
+			const config = normalizeConfig({});
+			expect(config.cleanPush).toBe(false);
 		});
 	});
 });

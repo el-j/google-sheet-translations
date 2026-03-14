@@ -44,6 +44,7 @@ export async function run(): Promise<void> {
 			syncLocalChanges: core.getInput('sync-local-changes') !== 'false',
 			autoTranslate: core.getInput('auto-translate') === 'true',
 			override: core.getInput('override') === 'true',
+			cleanPush: core.getInput('clean-push') === 'true',
 			spreadsheetId: spreadsheetIdInput || undefined,
 			autoCreate: core.getInput('auto-create') !== 'false',
 			spreadsheetTitle: core.getInput('spreadsheet-title') || 'google-sheet-translations',
