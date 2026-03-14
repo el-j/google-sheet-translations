@@ -66,9 +66,12 @@ inputs:
   clean-push:
     description: >
       When "true", ALL keys from the local languageData.json are pushed to the
-      spreadsheet and existing cell values are overwritten.  Useful when the
-      file has been copied from another project and the spreadsheet needs a
-      complete refresh.  The file-timestamp guard is bypassed.  Default: "false".
+      spreadsheet – including keys that already exist there – and the
+      file-timestamp guard is bypassed.  Existing cell values are updated with
+      the local value when they differ; whether other language columns receive
+      GOOGLETRANSLATE formulas depends on the auto-translate and override flags.
+      Useful when the file has been copied from another project and the
+      spreadsheet needs a complete refresh.  Default: "false".
     required: false
     default: 'false'
   auto-create:

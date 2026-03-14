@@ -59,10 +59,12 @@ export interface SpreadsheetOptions {
 	override?: boolean;
 	/**
 	 * When `true`, **all** keys from the local `languageData.json` are pushed to
-	 * the spreadsheet regardless of whether they already exist there.  This is
-	 * useful when the file has been copied from another project and the spreadsheet
-	 * needs a complete refresh.  The file-timestamp guard (`isDataJsonNewer`) is
-	 * also bypassed.  Implies `syncLocalChanges`.  Default: `false`.
+	 * the spreadsheet – including keys that already exist there.  This is useful
+	 * when the file has been copied from another project and the spreadsheet needs
+	 * a complete refresh.  The file-timestamp guard (`isDataJsonNewer`) is
+	 * bypassed.  Whether existing cell values are overwritten depends on the usual
+	 * `override` + `autoTranslate` flags.  Implies `syncLocalChanges`.
+	 * Default: `false`.
 	 */
 	cleanPush?: boolean;
 }

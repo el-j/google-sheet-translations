@@ -245,7 +245,9 @@ export async function updateSpreadsheetWithLocalChanges(
 
                             if (sourceHeaderIndex >= 0) {
                                 const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
-                                // Snapshot current cell values before our set() calls
+                                // Snapshot current cell values each time so that formula-fills made
+                                // by an earlier locale iteration for the same key are visible here
+                                // (and therefore not duplicated for that target column).
                                 const rowObj = row.toObject();
                                 const pushedHeaders = pushedLocaleHeadersPerKey.get(keyLower) ?? new Set<string>();
 
