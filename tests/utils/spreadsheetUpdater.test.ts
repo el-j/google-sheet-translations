@@ -626,7 +626,8 @@ describe('updateSpreadsheetWithLocalChanges', () => {
   // ── Language-prefix extraction in GOOGLETRANSLATE formula ────────────────
 
   test('should use language-prefix extraction in formula for region-qualified headers like tr-TR', async () => {
-    // Regression: GOOGLETRANSLATE stopped accepting "tr-TR"; only "tr" works.
+    // Regression: GOOGLETRANSLATE does not reliably accept region-qualified codes like
+    // "tr-TR" – only bare ISO 639-1 codes (e.g. "tr") work consistently across languages.
     // The formula now wraps header cell refs with LOWER(IFERROR(LEFT(col$1,FIND("-",col$1)-1),col$1))
     // so "tr-TR" → "tr", "en-US" → "en", while bare codes like "tr" stay unchanged.
     mockRow.toObject.mockReturnValue({

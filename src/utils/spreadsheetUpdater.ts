@@ -405,6 +405,9 @@ export async function updateSpreadsheetWithLocalChanges(
                     baseDelayMs,
                 );
                 // Proactive throttle between chunk writes to respect Google's quota.
+                // Skip the delay after the last chunk so we don't wait unnecessarily
+                // before the next sheet's getRows (which is a read operation and
+                // does not count against the write quota).
                 if (baseDelayMs > 0 && i + CHUNK_SIZE < newRows.length) {
                     await delay(baseDelayMs);
                 }
