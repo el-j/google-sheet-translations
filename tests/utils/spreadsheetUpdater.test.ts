@@ -531,4 +531,101 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(mockSheet.getRows).toHaveBeenCalledTimes(1);
     expect(mockOtherSheet.getRows).toHaveBeenCalledTimes(1);
   });
+
+  // ── autoTranslate on existing keys ───────────────────────────────────────
+
+  test('should add GOOGLETRANSLATE formulas to empty cells of existing key when autoTranslate=true', async () => {
+    // Row exists: 'en' has a value, 'fr' and 'de' are empty
+    mockRow.toObject.mockReturnValue({ key: 'hero_title', en: 'Hero Title', fr: '', de: '' });
+
+    const changes: TranslationData = {
+      en: { home: { hero_title: 'Hero Title Updated' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    // Source locale should be updated with the actual value
+    expect(mockRow.set).toHaveBeenCalledWith('en', 'Hero Title Updated');
+    // Empty columns should receive GOOGLETRANSLATE formulas
+    expect(mockRow.set).toHaveBeenCalledWith('fr', expect.stringMatching(/^=GOOGLETRANSLATE\(INDIRECT\(/));
+    expect(mockRow.set).toHaveBeenCalledWith('de', expect.stringMatching(/^=GOOGLETRANSLATE\(INDIRECT\(/));
+    expect(mockRow.save).toHaveBeenCalled();
+  });
+
+  test('should NOT overwrite non-empty cells of existing key when autoTranslate=true and override=false', async () => {
+    // Row exists: 'en' has a value, 'fr' has a translation, 'de' is empty
+    mockRow.toObject.mockReturnValue({ key: 'nav_home', en: 'Home', fr: 'Accueil', de: '' });
+
+    const changes: TranslationData = {
+      en: { home: { nav_home: 'Home Updated' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true, {}, false);
+
+    expect(mockRow.set).toHaveBeenCalledWith('en', 'Home Updated');
+    // 'fr' already has a value and override=false → must NOT be overwritten with a formula
+    const frCalls = (mockRow.set as jest.Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
+    expect(frCalls).toHaveLength(0);
+    // 'de' is empty → should get a formula
+    expect(mockRow.set).toHaveBeenCalledWith('de', expect.stringMatching(/^=GOOGLETRANSLATE\(INDIRECT\(/));
+  });
+
+  test('should overwrite non-empty cells of existing key when autoTranslate=true and override=true', async () => {
+    // Row exists: all cells have values
+    mockRow.toObject.mockReturnValue({ key: 'nav_home', en: 'Home', fr: 'Accueil', de: 'Startseite' });
+
+    const changes: TranslationData = {
+      en: { home: { nav_home: 'Home Revised' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true, {}, true);
+
+    expect(mockRow.set).toHaveBeenCalledWith('en', 'Home Revised');
+    // Both non-empty columns must be overwritten with formulas
+    expect(mockRow.set).toHaveBeenCalledWith('fr', expect.stringMatching(/^=GOOGLETRANSLATE\(INDIRECT\(/));
+    expect(mockRow.set).toHaveBeenCalledWith('de', expect.stringMatching(/^=GOOGLETRANSLATE\(INDIRECT\(/));
+    expect(mockRow.save).toHaveBeenCalled();
+  });
+
+  test('should NOT add autoTranslate formulas to existing key when autoTranslate=false', async () => {
+    mockRow.toObject.mockReturnValue({ key: 'cta', en: 'Click me', fr: '', de: '' });
+
+    const changes: TranslationData = {
+      en: { home: { cta: 'Click me now' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false);
+
+    expect(mockRow.set).toHaveBeenCalledWith('en', 'Click me now');
+    // autoTranslate=false → other columns must not be touched
+    const otherCalls = (mockRow.set as jest.Mock).mock.calls.filter(([h]: [string]) => h !== 'en');
+    expect(otherCalls).toHaveLength(0);
+  });
+
+  test('should not add formula for a locale that is also being pushed in the same batch', async () => {
+    // Both 'en' and 'fr' are being pushed for the same existing key.
+    // When processing 'en', the auto-translate logic must NOT add a formula for 'fr'
+    // because 'fr' will be set to an actual value in the same batch.
+    const rowEn = { toObject: jest.fn(), set: jest.fn(), save: jest.fn() };
+    rowEn.toObject.mockReturnValue({ key: 'title', en: 'Old', fr: '' });
+    rowEn.save.mockResolvedValue(undefined);
+
+    mockSheet.getRows.mockResolvedValueOnce([rowEn]);
+
+    const changes: TranslationData = {
+      en: { home: { title: 'Title EN' } },
+      fr: { home: { title: 'Titre FR' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    // 'fr' should have been set with the actual value (from the 'fr' locale iteration),
+    // not a GOOGLETRANSLATE formula (which would have come from the 'en' locale iteration).
+    const frCalls = (rowEn.set as jest.Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
+    // All 'fr' calls must be actual string values, not GOOGLETRANSLATE formulas
+    frCalls.forEach(([, val]: [string, string]) => {
+      expect(val).not.toMatch(/^=GOOGLETRANSLATE/);
+    });
+    expect(rowEn.set).toHaveBeenCalledWith('fr', 'Titre FR');
+  });
 });

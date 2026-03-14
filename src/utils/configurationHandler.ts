@@ -50,6 +50,23 @@ export interface SpreadsheetOptions {
 	 * Default: ['de', 'fr', 'es', 'it', 'pt', 'ja', 'zh'].
 	 */
 	targetLocales?: string[];
+	/**
+	 * When `true`, existing translations in other language columns are overwritten
+	 * with GOOGLETRANSLATE formulas when `autoTranslate` is also enabled and keys
+	 * are pushed.  When `false` (the default), only **empty** cells receive a
+	 * formula – cells that already contain a translation are left untouched.
+	 */
+	override?: boolean;
+	/**
+	 * When `true`, **all** keys from the local `languageData.json` are pushed to
+	 * the spreadsheet – including keys that already exist there.  This is useful
+	 * when the file has been copied from another project and the spreadsheet needs
+	 * a complete refresh.  The file-timestamp guard (`isDataJsonNewer`) is
+	 * bypassed.  Whether existing cell values are overwritten depends on the usual
+	 * `override` + `autoTranslate` flags.  Implies `syncLocalChanges`.
+	 * Default: `false`.
+	 */
+	cleanPush?: boolean;
 }
 
 /**
@@ -69,6 +86,8 @@ export interface NormalizedConfig {
 	spreadsheetTitle: string;
 	sourceLocale: string;
 	targetLocales: string[];
+	override: boolean;
+	cleanPush: boolean;
 }
 
 /**
@@ -89,5 +108,7 @@ export function normalizeConfig(options: SpreadsheetOptions = {}): NormalizedCon
 		spreadsheetTitle: options.spreadsheetTitle ?? 'google-sheet-translations',
 		sourceLocale: options.sourceLocale ?? 'en',
 		targetLocales: options.targetLocales ?? ['de', 'fr', 'es', 'it', 'pt', 'ja', 'zh'],
+		override: options.override === true, // Default to false
+		cleanPush: options.cleanPush === true, // Default to false
 	};
 }

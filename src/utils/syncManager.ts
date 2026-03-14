@@ -23,6 +23,8 @@ export interface SyncResult {
  * @param spreadsheetData Current data from the spreadsheet
  * @param waitSeconds Time to wait between API calls
  * @param localeMapping Mapping from normalized locale codes to original spreadsheet headers
+ * @param override When true AND autoTranslate is true, overwrite existing translations with formulas
+ * @param cleanPush When true, push ALL keys from localData (bypasses timestamp guard and diff)
  * @returns Sync operation result
  */
 export async function handleBidirectionalSync(
@@ -33,7 +35,9 @@ export async function handleBidirectionalSync(
 	autoTranslate: boolean,
 	spreadsheetData: TranslationData,
 	waitSeconds: number,
-	localeMapping: Record<string, string> = {}
+	localeMapping: Record<string, string> = {},
+	override = false,
+	cleanPush = false
 ): Promise<SyncResult> {
 	const result: SyncResult = {
 		shouldRefresh: false,
@@ -44,19 +48,26 @@ export async function handleBidirectionalSync(
 	const localData = readDataJson(dataJsonPath);
 	const dataJsonExists = localData !== null;
 	
-	// Check if we need to sync local changes to the spreadsheet
-	const shouldSyncToSheet = syncLocalChanges && 
-		dataJsonExists && 
-		isDataJsonNewer(dataJsonPath, translationsOutputDir);
+	// cleanPush bypasses the timestamp guard and syncs everything.
+	// Normal path: only sync when the local file is newer than the output dir.
+	const shouldSyncToSheet = dataJsonExists && (
+		cleanPush ||
+		(syncLocalChanges && isDataJsonNewer(dataJsonPath, translationsOutputDir))
+	);
 
 	if (!shouldSyncToSheet || !localData) {
 		return result;
 	}
 
-	console.log("Local languageData.json is newer than translation files. Checking for changes...");
+	if (cleanPush) {
+		console.log("Clean push enabled – pushing ALL keys from languageData.json to the spreadsheet...");
+	} else {
+		console.log("Local languageData.json is newer than translation files. Checking for changes...");
+	}
 	
-	// Find differences between local data and spreadsheet data
-	const changes = findLocalChanges(localData, spreadsheetData);
+	// cleanPush: use the full local dataset so every key is pushed/updated.
+	// Normal path: only include keys that differ from the spreadsheet.
+	const changes = cleanPush ? localData : findLocalChanges(localData, spreadsheetData);
 	
 	// Check if there are any actual changes
 	const hasChanges = Object.keys(changes).length > 0 && 
@@ -73,11 +84,12 @@ export async function handleBidirectionalSync(
 	const keysCount = Object.values(changes)
 		.flatMap(l => Object.values(l))
 		.flatMap(s => Object.keys(s)).length;
-	console.log(`Found local changes: ${localesCount} locale(s), ~${keysCount} key(s) to sync to the spreadsheet.`);
+	const pushMode = cleanPush ? 'clean push' : 'incremental sync';
+	console.log(`Found local changes (${pushMode}): ${localesCount} locale(s), ~${keysCount} key(s) to sync to the spreadsheet.`);
 	
 	// Update the spreadsheet with the changes, passing the autoTranslate option and locale mapping
 	try {
-		await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate, localeMapping);
+		await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate, localeMapping, override);
 		result.shouldRefresh = true;
 		result.hasChanges = true;
 	} catch (err) {

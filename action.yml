@@ -55,6 +55,25 @@ inputs:
       when new keys are pushed to the spreadsheet. Set to "true" to enable.
     required: false
     default: 'false'
+  override:
+    description: >
+      When "true" and auto-translate is also "true", existing translations in
+      other language columns are overwritten with GOOGLETRANSLATE formulas
+      whenever a key is pushed.  When "false" (the default) only empty cells
+      receive a formula – existing translations are preserved.
+    required: false
+    default: 'false'
+  clean-push:
+    description: >
+      When "true", ALL keys from the local languageData.json are pushed to the
+      spreadsheet – including keys that already exist there – and the
+      file-timestamp guard is bypassed.  Existing cell values are updated with
+      the local value when they differ; whether other language columns receive
+      GOOGLETRANSLATE formulas depends on the auto-translate and override flags.
+      Useful when the file has been copied from another project and the
+      spreadsheet needs a complete refresh.  Default: "false".
+    required: false
+    default: 'false'
   auto-create:
     description: >
       Automatically create a new Google Spreadsheet when no spreadsheet ID is

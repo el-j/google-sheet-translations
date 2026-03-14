@@ -87,4 +87,110 @@ describe('handleBidirectionalSync', () => {
 		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
 		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
 	});
+
+	// ── cleanPush ─────────────────────────────────────────────────────────────
+
+	test('cleanPush: should push ALL localData without calling findLocalChanges', async () => {
+		const localData = { 'en': { 'home': { 'hello': 'Hello', 'bye': 'Goodbye' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		// Timestamp guard returns false – but cleanPush should bypass it
+		mockIsDataJsonNewer.mockReturnValue(false);
+		mockUpdateSpreadsheet.mockResolvedValue(undefined);
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			false, // syncLocalChanges=false – cleanPush overrides this
+			false,
+			{},
+			0,
+			{},
+			false,
+			true, // cleanPush
+		);
+
+		expect(result).toEqual({ shouldRefresh: true, hasChanges: true });
+		// findLocalChanges must NOT have been called – full data is used directly
+		expect(mockFindLocalChanges).not.toHaveBeenCalled();
+		// updateSpreadsheet must have been called with the full localData
+		expect(mockUpdateSpreadsheet).toHaveBeenCalledWith(
+			mockDoc,
+			localData,
+			0,
+			false,
+			{},
+			false,
+		);
+	});
+
+	test('cleanPush: should bypass isDataJsonNewer timestamp check', async () => {
+		const localData = { 'en': { 'shop': { 'cart': 'Cart' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		// Normally this would prevent the sync
+		mockIsDataJsonNewer.mockReturnValue(false);
+		mockUpdateSpreadsheet.mockResolvedValue(undefined);
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			true,
+			false,
+			{},
+			0,
+			{},
+			false,
+			true, // cleanPush
+		);
+
+		expect(result.hasChanges).toBe(true);
+		expect(mockIsDataJsonNewer).not.toHaveBeenCalled();
+	});
+
+	test('cleanPush: should return no changes when localData is null', async () => {
+		mockReadDataJson.mockReturnValue(null);
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			false,
+			false,
+			{},
+			0,
+			{},
+			false,
+			true, // cleanPush
+		);
+
+		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
+		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
+	});
+
+	test('cleanPush: false falls back to normal incremental sync behaviour', async () => {
+		const localData = { 'en': { 'home': { 'hello': 'Hello' } } };
+		const spreadsheetData = { 'en': { 'home': { 'hello': 'Hello' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		mockIsDataJsonNewer.mockReturnValue(true);
+		// No differences
+		mockFindLocalChanges.mockReturnValue({});
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			true,
+			false,
+			spreadsheetData,
+			0,
+			{},
+			false,
+			false, // cleanPush = false → normal path
+		);
+
+		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
+		expect(mockFindLocalChanges).toHaveBeenCalledWith(localData, spreadsheetData);
+		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
+	});
 });
