@@ -193,4 +193,96 @@ describe('handleBidirectionalSync', () => {
 		expect(mockFindLocalChanges).toHaveBeenCalledWith(localData, spreadsheetData);
 		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
 	});
+
+	// ── missing sheets ──────────────────────────────────────────────────────────
+
+	test('missing sheets: should trigger sync when localData has a sheet absent from spreadsheetData', async () => {
+		// localData has a "nav" sheet; spreadsheetData has no sheets at all (fresh spreadsheet)
+		const localData = { 'en': { 'nav': { 'home': 'Home' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		// Timestamp guard returns false (simulates equal CI checkout timestamps)
+		mockIsDataJsonNewer.mockReturnValue(false);
+		mockFindLocalChanges.mockReturnValue(localData);
+		mockUpdateSpreadsheet.mockResolvedValue(undefined);
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			true,
+			false,
+			{}, // spreadsheetData is empty — "nav" sheet is missing
+			0,
+		);
+
+		expect(result).toEqual({ shouldRefresh: true, hasChanges: true });
+		// findLocalChanges must have been called to build the diff
+		expect(mockFindLocalChanges).toHaveBeenCalledWith(localData, {});
+		// updateSpreadsheetWithLocalChanges must have been called
+		expect(mockUpdateSpreadsheet).toHaveBeenCalled();
+	});
+
+	test('missing sheets: should NOT trigger sync when syncLocalChanges is false', async () => {
+		const localData = { 'en': { 'nav': { 'home': 'Home' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		mockIsDataJsonNewer.mockReturnValue(false);
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			false, // syncLocalChanges = false
+			false,
+			{}, // spreadsheetData is empty
+			0,
+		);
+
+		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
+		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
+	});
+
+	test('missing sheets: should NOT trigger sync when all local sheets already exist in spreadsheet', async () => {
+		const localData = { 'en': { 'nav': { 'home': 'Home' } } };
+		const spreadsheetData = { 'en': { 'nav': { 'home': 'Home' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		mockIsDataJsonNewer.mockReturnValue(false);
+		// All keys are the same → no diff
+		mockFindLocalChanges.mockReturnValue({});
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			true,
+			false,
+			spreadsheetData, // "nav" already exists in spreadsheet
+			0,
+		);
+
+		// hasMissingSheets=false + isDataJsonNewer=false → no sync
+		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
+		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
+	});
+
+	test('missing sheets: i18n sheet in localData should not trigger sync on its own', async () => {
+		// localData only has the reserved "i18n" sheet — that sheet must be skipped
+		const localData = { 'en': { 'i18n': { 'en': 'English' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		mockIsDataJsonNewer.mockReturnValue(false);
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			true,
+			false,
+			{}, // no spreadsheet data
+			0,
+		);
+
+		// i18n is reserved; having only i18n locally should NOT trigger sync
+		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
+		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
+	});
+
 });

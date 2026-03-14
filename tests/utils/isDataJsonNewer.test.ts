@@ -83,13 +83,31 @@ describe('isDataJsonNewer', () => {
     expect(result).toBe(false);
   });
 
-  test('should return false and log warning if an error occurs', () => {
+  test('should return true if the translations directory does not exist (ENOENT)', () => {
+    // Mock getFileLastModified to return a date for languageData.json
+    (getFileLastModified as jest.Mock).mockReturnValue(new Date());
+
+    // Mock readdirSync to throw an ENOENT error (directory not found)
+    const enoentError = Object.assign(new Error('no such file or directory'), { code: 'ENOENT' });
+    (fs.readdirSync as jest.Mock).mockImplementation(() => {
+      throw enoentError;
+    });
+
+    const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
+
+    // No output directory means no translations exist yet — local data is newer
+    expect(result).toBe(true);
+    // Should NOT warn because ENOENT is an expected/handled condition
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  test('should return false and log warning if a non-ENOENT error occurs', () => {
     // Mock getFileLastModified to return a date for languageData.json
     (getFileLastModified as jest.Mock).mockReturnValue(new Date());
     
-    // Mock readdirSync to throw an error
+    // Mock readdirSync to throw a generic (non-ENOENT) error
     (fs.readdirSync as jest.Mock).mockImplementation(() => {
-      throw new Error('Directory not found');
+      throw new Error('Permission denied');
     });
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
@@ -199,13 +217,30 @@ describe('isDataJsonNewer', () => {
     expect(result).toBe(false);
   });
 
-  test('should return false and log warning if an error occurs', () => {
+  test('should return true if the translations directory does not exist (ENOENT)', () => {
+    // Mock getFileLastModified to return a date for languageData.json
+    (getFileLastModified as jest.Mock).mockReturnValue(new Date());
+
+    // Mock readdirSync to throw an ENOENT error (directory not found)
+    const enoentError = Object.assign(new Error('no such file or directory'), { code: 'ENOENT' });
+    (fs.readdirSync as jest.Mock).mockImplementation(() => {
+      throw enoentError;
+    });
+
+    const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
+
+    // No output directory means no translations exist yet — local data is newer
+    expect(result).toBe(true);
+    expect(console.warn).not.toHaveBeenCalled();
+  });
+
+  test('should return false and log warning if a non-ENOENT error occurs', () => {
     // Mock getFileLastModified to return a date for languageData.json
     (getFileLastModified as jest.Mock).mockReturnValue(new Date());
     
-    // Mock readdirSync to throw an error
+    // Mock readdirSync to throw a generic (non-ENOENT) error
     (fs.readdirSync as jest.Mock).mockImplementation(() => {
-      throw new Error('Directory not found');
+      throw new Error('Permission denied');
     });
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');

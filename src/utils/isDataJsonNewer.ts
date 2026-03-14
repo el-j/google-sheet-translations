@@ -32,6 +32,11 @@ export function isDataJsonNewer(dataJsonPath: string, translationsOutputDir: str
 		if (!mostRecentTranslationMtime) return true;
 		return dataJsonMtime > mostRecentTranslationMtime;
 	} catch (error) {
+		// If the directory doesn't exist yet there are no translation outputs,
+		// so local data is effectively newer — sync should proceed.
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+			return true;
+		}
 		console.warn("Error comparing file modification times:", error);
 		return false;
 	}
