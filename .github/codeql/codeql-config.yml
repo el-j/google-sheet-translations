@@ -2,8 +2,8 @@
 # https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning
 
 paths-ignore:
-  # dist-action/ is a bundled build artifact committed for the GitHub Action
-  # runner (node20 requires it in-repo). The SHA-1 used inside undici's
-  # WebSocket implementation is mandated by RFC 6455 and cannot be changed;
-  # scanning it produces irreducible false positives.
-  - dist-action
+  # dist-action/ is a bundled build artifact (esbuild output) committed for the
+  # GitHub Action runner (node20 requires it in-repo). Only scan source files.
+  - 'dist-action/**'
+  # dist/ is the published npm package build artifact; not source code.
+  - 'dist/**'
