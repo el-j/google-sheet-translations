@@ -67,6 +67,10 @@ export { getMultipleSpreadSheetsData } from './getMultipleSpreadSheetsData';
 export type { MultiSpreadsheetOptions } from './getMultipleSpreadSheetsData';
 export { mergeMultipleTranslationData } from './utils/multiSpreadsheetMerger';
 
+// Drive folder scanner (discover spreadsheets in a Drive folder)
+export { scanDriveFolderForSpreadsheets } from './utils/driveFolderScanner';
+export type { DriveSpreadsheetFile, ScanDriveFolderOptions } from './utils/driveFolderScanner';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;
