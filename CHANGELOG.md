@@ -1,3 +1,14 @@
+## [2.1.5-beta.1](https://github.com/el-j/google-sheet-translations/compare/v2.1.4...v2.1.5-beta.1) (2026-03-28)
+
+### 🐛 Bug Fixes
+
+* restore dynamic formula approach with locale-aware separators and zh-TW guard ([4c93b4e](https://github.com/el-j/google-sheet-translations/commit/4c93b4e74affb58a20d5cae32963af45f02fa222))
+* use hard-coded GOOGLETRANSLATE language codes instead of broken dynamic extraction ([a5cc95c](https://github.com/el-j/google-sheet-translations/commit/a5cc95ce9f2ea859562a470501253d3b2a32806e))
+
+### 📝 Documentation
+
+* update formula examples and rebuild dist-action bundle ([1a99632](https://github.com/el-j/google-sheet-translations/commit/1a99632bde1d9697ad43cf8236aa8f8e1a3bd998))
+
 ## [2.1.4](https://github.com/el-j/google-sheet-translations/compare/v2.1.3...v2.1.4) (2026-03-28)
 
 ### 🐛 Bug Fixes

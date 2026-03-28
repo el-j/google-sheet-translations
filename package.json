@@ -1,6 +1,6 @@
 {
   "name": "@el-j/google-sheet-translations",
-  "version": "2.1.4",
+  "version": "2.1.5-beta.1",
   "description": "A package to manage translations stored in Google Spreadsheets",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
