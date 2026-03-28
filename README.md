@@ -245,18 +245,20 @@ When enabled, the auto-translation feature automatically adds Google Translate f
 
 The formula follows this format:
 ```
-=GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());$sourceColumn$1;targetColumn$1)
+=GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());"sourceCode";"targetCode")
 ```
 
-For example, if you add a new key with an English translation in column B but no German translation in column C, the system will automatically add:
+For example, if you add a new key with an English translation in column B but no Turkish translation (header `tr-TR`) in column C, the system will automatically add:
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"tr")
 ```
 
 Where:
 - `INDIRECT("B"&ROW())` dynamically references the source text cell in the same row
-- `$B$1` references the header cell containing the source language code
-- `C$1` references the header cell containing the target language code
+- `"en"` is the GOOGLETRANSLATE-compatible code derived from the source locale header (e.g. `en`, `en-US` → `"en"`)
+- `"tr"` is the GOOGLETRANSLATE-compatible code derived from the target locale header (e.g. `tr-TR` → `"tr"`)
+
+Region qualifiers are stripped because `GOOGLETRANSLATE` only accepts bare ISO 639-1 codes for most languages. The exception is Chinese (`zh-TW` / `zh-CN`) where the region is preserved.
 
 [View the complete Auto-Translation Guide](docs/auto-translation-guide.md) for more details and best practices.
 

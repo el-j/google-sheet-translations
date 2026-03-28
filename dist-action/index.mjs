@@ -41938,6 +41938,14 @@ function filterValidLocales(headerRow, keyColumn) {
 function getLanguagePrefix(locale) {
   return locale.toLowerCase().split(/[-_]/)[0];
 }
+var GOOGLE_TRANSLATE_CODES_REQUIRING_REGION = /* @__PURE__ */ new Set(["zh-tw", "zh-cn"]);
+function getGoogleTranslateCode(locale) {
+  const normalized = locale.toLowerCase().trim().replace("_", "-");
+  if (GOOGLE_TRANSLATE_CODES_REQUIRING_REGION.has(normalized)) {
+    return normalized;
+  }
+  return normalized.split(/[-_]/)[0];
+}
 var LANGUAGE_TO_COUNTRY_MAP = {
   "en": "en-GB",
   "de": "de-DE",
@@ -42297,8 +42305,10 @@ function columnIndexToLetter(index) {
   } while (i2 >= 0);
   return result;
 }
-function langCodeFormula(cellRef) {
-  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+function buildTranslateFormula(sourceColumnLetter, sourceLocaleHeader, targetLocaleHeader) {
+  const srcCode = getGoogleTranslateCode(sourceLocaleHeader);
+  const tgtCode = getGoogleTranslateCode(targetLocaleHeader);
+  return `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());"${srcCode}";"${tgtCode}")`;
 }
 async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate = false, localeMapping = {}, override = false) {
   console.log("Updating spreadsheet with local changes...");
@@ -42443,10 +42453,9 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                   const existingValue = rowObj[exactTargetHeader];
                   const isEmpty = !existingValue || existingValue.toString().trim() === "";
                   if (isEmpty || override) {
-                    const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                     row.set(
                       exactTargetHeader,
-                      `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`
+                      buildTranslateFormula(sourceColumnLetter, localeHeader, exactTargetHeader)
                     );
                   }
                 }
@@ -42489,13 +42498,11 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
               );
               if (exactHeaderName) {
                 const sourceHeaderIndex = headerRow.indexOf(sourceHeader.toLowerCase());
-                const targetHeaderIndex = headerRow.indexOf(exactHeaderName.toLowerCase());
-                if (sourceHeaderIndex < 0 || targetHeaderIndex < 0) {
+                if (sourceHeaderIndex < 0) {
                   continue;
                 }
                 const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
-                const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
-                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`;
+                rowData[exactHeaderName] = buildTranslateFormula(sourceColumnLetter, sourceHeader, exactHeaderName);
               }
             }
           }
@@ -42750,9 +42757,6 @@ function colLetter(index) {
   } while (i2 >= 0);
   return result;
 }
-function langCodeFormula2(cellRef) {
-  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
-}
 var DEFAULT_TARGET_LOCALES = ["de", "fr", "es", "it", "pt", "ja", "zh"];
 var STARTER_KEYS = {
   "app.name": "My App",
@@ -42833,11 +42837,12 @@ async function createSpreadsheet(authClient, options = {}) {
       "setHeaderRow"
     );
     const sourceColLetter = colLetter(1);
+    const srcCode = getGoogleTranslateCode(sourceLocale);
     const rows = Object.entries(seedKeys).map(([key, sourceValue]) => {
       const row = { key, [sourceLocale]: sourceValue };
-      targetLocales.forEach((locale, idx) => {
-        const targetColLetter = colLetter(2 + idx);
-        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());${langCodeFormula2(`$${sourceColLetter}$1`)};${langCodeFormula2(`${targetColLetter}$1`)})`;
+      targetLocales.forEach((locale) => {
+        const tgtCode = getGoogleTranslateCode(locale);
+        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());"${srcCode}";"${tgtCode}")`;
       });
       return row;
     });

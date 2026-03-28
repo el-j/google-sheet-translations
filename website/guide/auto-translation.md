@@ -19,16 +19,16 @@ For every new key pushed to the spreadsheet:
 2. For every other locale that is **missing** a translation, it injects:
 
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"de")
 ```
 
 Where:
 - `B` = the source column letter
-- `C` = the target column letter
+- `"en"` = the GOOGLETRANSLATE-compatible code for the source locale (e.g. `en-US` → `"en"`)
+- `"de"` = the GOOGLETRANSLATE-compatible code for the target locale (e.g. `de-DE` → `"de"`)
 - `INDIRECT("B"&ROW())` dynamically references the source text in the same row
-- `$B$1` / `C$1` reference the language-code headers
 
-The formula uses the actual language codes in your header row, so the translation is always correct regardless of which row it's in.
+The language codes are resolved at generation time — region qualifiers (e.g. `"-TR"` in `tr-TR`) are stripped because `GOOGLETRANSLATE` only accepts bare ISO 639-1 codes for most languages. The exception is Chinese (`zh-TW` / `zh-CN`) where the region is preserved.
 
 > [!NOTE]
 > The package supports spreadsheets with more than 26 columns — column letters are generated correctly up to ZZ and beyond.

@@ -14,7 +14,8 @@ When enabled through the `autoTranslate: true` option:
 2. For each new key, it checks which languages have translations and which are missing
 3. For each language missing a translation:
    - It finds the first available translation in another language to use as the source
-   - It adds a Google Translate formula in the appropriate cell: `=GOOGLETRANSLATE(sourceCell, "sourceLocale", "targetLocale")`
+   - It determines the correct GOOGLETRANSLATE language code for both source and target (e.g. `"tr-TR"` → `"tr"`, `"zh-TW"` → `"zh-tw"`)
+   - It adds a Google Translate formula in the appropriate cell: `=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"tr")`
 
 ## Benefits
 
@@ -24,21 +25,18 @@ When enabled through the `autoTranslate: true` option:
 
 ## Example Formula
 
-If you add a new key "welcome_message" with an English translation in column B but no German translation in column C, the system will add:
+If you add a new key "welcome_message" with an English translation in column B but no Turkish translation in column C (header `tr-TR`), the system will add:
 
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"tr")
 ```
 
 Where:
 - `INDIRECT("B"&ROW())` dynamically references the cell containing the source text in the same row
-- `$B$1` references the header cell containing the source language code
-- `C$1` references the header cell containing the target language code
+- `"en"` is the GOOGLETRANSLATE-compatible code extracted from the source header (e.g. `en`, `en-US` → `"en"`)
+- `"tr"` is the GOOGLETRANSLATE-compatible code extracted from the target header (e.g. `tr-TR` → `"tr"`)
 
-This improved formula is more flexible because:
-- It automatically adapts to any row position
-- It uses the actual language codes from your spreadsheet headers
-- It's more maintainable if you reorganize your columns
+The language codes are resolved at generation time — region qualifiers like `"-TR"` are stripped because `GOOGLETRANSLATE` only accepts ISO 639-1 codes for most languages. The exception is Chinese (`zh-TW` and `zh-CN`) where the region is preserved.
 
 ## How to Enable
 
