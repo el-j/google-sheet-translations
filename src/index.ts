@@ -62,6 +62,11 @@ export type {
   GoogleEnvVars,
 } from './types';
 
+// Multi-spreadsheet support
+export { getMultipleSpreadSheetsData } from './getMultipleSpreadSheetsData';
+export type { MultiSpreadsheetOptions } from './getMultipleSpreadSheetsData';
+export { mergeMultipleTranslationData } from './utils/multiSpreadsheetMerger';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;
