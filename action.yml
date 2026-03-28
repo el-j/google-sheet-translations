@@ -104,6 +104,24 @@ inputs:
     description: 'DEPRECATED – no longer used. The bundled package version is fixed at release time.'
     required: false
     default: 'latest'
+  drive_folder_id:
+    description: 'Google Drive folder ID to scan for spreadsheets and/or images'
+    required: false
+  scan_for_spreadsheets:
+    description: 'Scan Drive folder for spreadsheets automatically (default: true when drive_folder_id set)'
+    required: false
+    default: 'true'
+  spreadsheet_ids:
+    description: 'Comma-separated list of additional spreadsheet IDs to include'
+    required: false
+  sync_images:
+    description: 'Download images from Drive folder to image_output_path'
+    required: false
+    default: 'false'
+  image_output_path:
+    description: 'Local path to download Drive images into'
+    required: false
+    default: './public/remote-images'
 
 outputs:
   translations-dir:

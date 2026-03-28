@@ -75,6 +75,10 @@ export type { DriveSpreadsheetFile, ScanDriveFolderOptions } from './utils/drive
 export { syncDriveImages } from './utils/driveImageSync';
 export type { DriveImageSyncOptions, DriveImageSyncResult } from './utils/driveImageSync';
 
+// Drive translations orchestrator (headless CMS bridge)
+export { manageDriveTranslations } from './utils/getDriveTranslations';
+export type { GoogleDriveManagerOptions, GoogleDriveManagerResult } from './utils/getDriveTranslations';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;

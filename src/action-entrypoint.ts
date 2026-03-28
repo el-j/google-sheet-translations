@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import path from 'node:path';
 import { getSpreadSheetData } from './getSpreadSheetData';
+import { manageDriveTranslations } from './utils/getDriveTranslations';
 import type { SpreadsheetOptions } from './utils/configurationHandler';
 
 export async function run(): Promise<void> {
@@ -56,13 +57,41 @@ export async function run(): Promise<void> {
 				.filter(Boolean),
 		};
 
-		const translations = await getSpreadSheetData(sheetTitles, options);
+		const driveFolderId = core.getInput('drive_folder_id') || undefined;
+		const scanForSpreadsheets = core.getInput('scan_for_spreadsheets') !== 'false';
+		const spreadsheetIdsRaw = core.getInput('spreadsheet_ids');
+		const spreadsheetIds = spreadsheetIdsRaw
+			? spreadsheetIdsRaw
+					.split(',')
+					.map((s) => s.trim())
+					.filter(Boolean)
+			: undefined;
+		const syncImages = core.getInput('sync_images') === 'true';
+		const imageOutputPath = core.getInput('image_output_path') || './public/remote-images';
+
+		let localeCount: number;
+
+		if (driveFolderId || (spreadsheetIds && spreadsheetIds.length > 0)) {
+			const driveResult = await manageDriveTranslations({
+				driveFolderId,
+				scanForSpreadsheets,
+				spreadsheetIds,
+				syncImages,
+				imageOutputPath: syncImages ? imageOutputPath : undefined,
+				docTitles: sheetTitles,
+				translationOptions: options,
+			});
+			localeCount = Object.keys(driveResult.translations).length;
+		} else {
+			const translations = await getSpreadSheetData(sheetTitles, options);
+			localeCount = Object.keys(translations).length;
+		}
 
 		core.setOutput('translations-dir', path.resolve(workspaceDir, translationsOutputDir));
 		core.setOutput('locales-file', path.resolve(workspaceDir, localesOutputPath));
 		core.setOutput('data-json-file', path.resolve(workspaceDir, dataJsonPath));
 
-		core.info(`✅ Fetched translations for ${Object.keys(translations).length} locales`);
+		core.info(`✅ Fetched translations for ${localeCount} locales`);
 	} catch (error) {
 		core.setFailed(error instanceof Error ? error.message : String(error));
 	}
