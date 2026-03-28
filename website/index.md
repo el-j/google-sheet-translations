@@ -59,6 +59,18 @@ features:
     details: Sensible defaults for every option. Set three environment variables and call getSpreadSheetData(). That's it.
     link: /guide/getting-started
     linkText: Quick start
+
+  - icon: 🗂️
+    title: Google Drive Folder Management
+    details: Point the package at a Drive folder and it auto-discovers every translation spreadsheet inside — across any sub-folder depth. One call, many sheets, one merged result.
+    link: /guide/drive-folder
+    linkText: Learn more
+
+  - icon: 🖼️
+    title: Built-in Image Sync
+    details: Download images from your Drive folder to a local asset directory with concurrency control, subfolder-structure preservation, and optional stale-file cleanup. No rclone needed.
+    link: /guide/drive-folder#image-sync
+    linkText: Learn more
 ---
 
 ## Installation

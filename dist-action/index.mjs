@@ -7903,7 +7903,7 @@ var require_client_h2 = __commonJS({
   "node_modules/undici/lib/dispatcher/client-h2.js"(exports, module) {
     "use strict";
     var assert = __require("node:assert");
-    var { pipeline: pipeline2 } = __require("node:stream");
+    var { pipeline: pipeline3 } = __require("node:stream");
     var util = require_util();
     var {
       RequestContentLengthMismatchError,
@@ -8536,7 +8536,7 @@ var require_client_h2 = __commonJS({
     }
     function writeStream(abort, socket, expectsPayload, h2stream, body, client, request, contentLength) {
       assert(contentLength !== 0 || client[kRunning] === 0, "stream body cannot be pipelined");
-      const pipe = pipeline2(
+      const pipe = pipeline3(
         body,
         h2stream,
         (err) => {
@@ -11321,7 +11321,7 @@ var require_readable = __commonJS({
   "node_modules/undici/lib/api/readable.js"(exports, module) {
     "use strict";
     var assert = __require("node:assert");
-    var { Readable } = __require("node:stream");
+    var { Readable: Readable2 } = __require("node:stream");
     var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError2 } = require_errors();
     var util = require_util();
     var { ReadableStreamFrom } = require_util();
@@ -11335,7 +11335,7 @@ var require_readable = __commonJS({
     var kBytesRead = /* @__PURE__ */ Symbol("kBytesRead");
     var noop3 = () => {
     };
-    var BodyReadable = class extends Readable {
+    var BodyReadable = class extends Readable2 {
       /**
        * @param {object} opts
        * @param {(this: Readable, size: number) => void} opts.resume
@@ -11724,7 +11724,7 @@ var require_api_request = __commonJS({
     "use strict";
     var assert = __require("node:assert");
     var { AsyncResource } = __require("node:async_hooks");
-    var { Readable } = require_readable();
+    var { Readable: Readable2 } = require_readable();
     var { InvalidArgumentError, RequestAbortedError } = require_errors();
     var util = require_util();
     function noop3() {
@@ -11805,7 +11805,7 @@ var require_api_request = __commonJS({
         const parsedHeaders = responseHeaders === "raw" ? util.parseHeaders(rawHeaders) : headers;
         const contentType = parsedHeaders["content-type"];
         const contentLength = parsedHeaders["content-length"];
-        const res = new Readable({
+        const res = new Readable2({
           resume,
           abort,
           contentType,
@@ -12114,7 +12114,7 @@ var require_api_pipeline = __commonJS({
   "node_modules/undici/lib/api/api-pipeline.js"(exports, module) {
     "use strict";
     var {
-      Readable,
+      Readable: Readable2,
       Duplex,
       PassThrough: PassThrough3
     } = __require("node:stream");
@@ -12130,7 +12130,7 @@ var require_api_pipeline = __commonJS({
     function noop3() {
     }
     var kResume = /* @__PURE__ */ Symbol("resume");
-    var PipelineRequest = class extends Readable {
+    var PipelineRequest = class extends Readable2 {
       constructor() {
         super({ autoDestroy: true });
         this[kResume] = null;
@@ -12147,7 +12147,7 @@ var require_api_pipeline = __commonJS({
         callback(err);
       }
     };
-    var PipelineResponse = class extends Readable {
+    var PipelineResponse = class extends Readable2 {
       constructor(resume) {
         super({ autoDestroy: true });
         this[kResume] = resume;
@@ -12297,7 +12297,7 @@ var require_api_pipeline = __commonJS({
         util.destroy(ret, err);
       }
     };
-    function pipeline2(opts, handler) {
+    function pipeline3(opts, handler) {
       try {
         const pipelineHandler = new PipelineHandler(opts, handler);
         this.dispatch({ ...opts, body: pipelineHandler.req }, pipelineHandler);
@@ -12306,7 +12306,7 @@ var require_api_pipeline = __commonJS({
         return new PassThrough3().destroy(err);
       }
     }
-    module.exports = pipeline2;
+    module.exports = pipeline3;
   }
 });
 
@@ -13743,7 +13743,7 @@ var require_snapshot_recorder = __commonJS({
   "node_modules/undici/lib/mock/snapshot-recorder.js"(exports, module) {
     "use strict";
     var { writeFile: writeFile2, readFile, mkdir: mkdir2 } = __require("node:fs/promises");
-    var { dirname, resolve } = __require("node:path");
+    var { dirname: dirname2, resolve } = __require("node:path");
     var { setTimeout: setTimeout2, clearTimeout: clearTimeout2 } = __require("node:timers");
     var { InvalidArgumentError, UndiciError } = require_errors();
     var { hashId, isUrlExcludedFactory, normalizeHeaders, createHeaderFilters } = require_snapshot_utils();
@@ -13974,7 +13974,7 @@ var require_snapshot_recorder = __commonJS({
           throw new InvalidArgumentError("Snapshot path is required");
         }
         const resolvedPath = resolve(path6);
-        await mkdir2(dirname(resolvedPath), { recursive: true });
+        await mkdir2(dirname2(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot]) => ({
           hash,
           snapshot
@@ -16724,7 +16724,7 @@ var require_cache2 = __commonJS({
   "node_modules/undici/lib/interceptor/cache.js"(exports, module) {
     "use strict";
     var assert = __require("node:assert");
-    var { Readable } = __require("node:stream");
+    var { Readable: Readable2 } = __require("node:stream");
     var util = require_util();
     var CacheHandler = require_cache_handler();
     var MemoryCacheStore = require_memory_cache_store();
@@ -16813,7 +16813,7 @@ var require_cache2 = __commonJS({
       return dispatch(opts, new CacheHandler(globalOpts, cacheKey, handler));
     }
     function sendCachedValue(handler, opts, result, age, context, isStale2) {
-      const stream = util.isStream(result.body) ? result.body : Readable.from(result.body ?? []);
+      const stream = util.isStream(result.body) ? result.body : Readable2.from(result.body ?? []);
       assert(!stream.destroyed, "stream should not be destroyed");
       assert(!stream.readableDidRead, "stream should not be readableDidRead");
       const controller = {
@@ -17060,7 +17060,7 @@ var require_decompress = __commonJS({
   "node_modules/undici/lib/interceptor/decompress.js"(exports, module) {
     "use strict";
     var { createInflate, createGunzip, createBrotliDecompress, createZstdDecompress } = __require("node:zlib");
-    var { pipeline: pipeline2 } = __require("node:stream");
+    var { pipeline: pipeline3 } = __require("node:stream");
     var DecoratorHandler = require_decorator_handler();
     var { runtimeFeatures } = require_runtime_features();
     var supportedEncodings = {
@@ -17169,7 +17169,7 @@ var require_decompress = __commonJS({
       #setupMultipleDecompressors(controller) {
         const lastDecompressor = this.#decompressors[this.#decompressors.length - 1];
         this.#setupDecompressorEvents(lastDecompressor, controller);
-        pipeline2(this.#decompressors, (err) => {
+        pipeline3(this.#decompressors, (err) => {
           if (err) {
             super.onResponseError(controller, err);
             return;
@@ -19909,7 +19909,7 @@ var require_fetch = __commonJS({
       subresourceSet
     } = require_constants3();
     var EE = __require("node:events");
-    var { Readable, pipeline: pipeline2, finished, isErrored, isReadable } = __require("node:stream");
+    var { Readable: Readable2, pipeline: pipeline3, finished, isErrored, isReadable } = __require("node:stream");
     var { addAbortListener, bufferToLowerCasedHeaderName } = require_util();
     var { dataURLProcessor, serializeAMimeType, minimizeSupportedMimeType } = require_data_url();
     var { getGlobalDispatcher } = require_global2();
@@ -19956,7 +19956,7 @@ var require_fetch = __commonJS({
     function handleFetchDone(response) {
       finalizeAndReportTiming(response, "fetch");
     }
-    function fetch2(input, init = void 0) {
+    function fetch3(input, init = void 0) {
       webidl.argumentLengthCheck(arguments, 1, "globalThis.fetch");
       let p = createDeferredPromise();
       let requestObject;
@@ -20842,7 +20842,7 @@ var require_fetch = __commonJS({
                 headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i2]), rawHeaders[i2 + 1].toString("latin1"), true);
               }
               const location = headersList.get("location", true);
-              this.body = new Readable({ read: resume });
+              this.body = new Readable2({ read: resume });
               const willFollow = location && request.redirect === "follow" && redirectStatusSet.has(status);
               const decoders = [];
               if (request.method !== "HEAD" && request.method !== "CONNECT" && !nullBodyStatus.includes(status) && !willFollow) {
@@ -20890,7 +20890,7 @@ var require_fetch = __commonJS({
                 status,
                 statusText,
                 headersList,
-                body: decoders.length ? pipeline2(this.body, ...decoders, (err) => {
+                body: decoders.length ? pipeline3(this.body, ...decoders, (err) => {
                   if (err) {
                     this.onError(err);
                   }
@@ -20968,7 +20968,7 @@ var require_fetch = __commonJS({
       }
     }
     module.exports = {
-      fetch: fetch2,
+      fetch: fetch3,
       Fetch,
       fetching,
       finalizeAndReportTiming
@@ -24507,7 +24507,7 @@ ${value}`;
 var require_eventsource = __commonJS({
   "node_modules/undici/lib/web/eventsource/eventsource.js"(exports, module) {
     "use strict";
-    var { pipeline: pipeline2 } = __require("node:stream");
+    var { pipeline: pipeline3 } = __require("node:stream");
     var { fetching } = require_fetch();
     var { makeRequest } = require_request2();
     var { webidl } = require_webidl();
@@ -24665,7 +24665,7 @@ var require_eventsource = __commonJS({
               ));
             }
           });
-          pipeline2(
+          pipeline3(
             response.body.stream,
             eventSourceStream,
             (error2) => {
@@ -24947,7 +24947,7 @@ var require_undici = __commonJS({
       err.stack = stack ? `${stack}
 ${captureLines}` : capture.stack;
     }
-    module.exports.fetch = function fetch2(init, options = void 0) {
+    module.exports.fetch = function fetch3(init, options = void 0) {
       return fetchImpl(init, options).catch((err) => {
         if (currentFilename) {
           appendFetchStackTrace(err, currentFilename);
@@ -33020,7 +33020,7 @@ __export(src_exports, {
   Response: () => Response2,
   blobFrom: () => blobFrom,
   blobFromSync: () => blobFromSync,
-  default: () => fetch,
+  default: () => fetch2,
   fileFrom: () => fileFrom,
   fileFromSync: () => fileFromSync,
   isRedirect: () => isRedirect
@@ -33030,7 +33030,7 @@ import https from "node:https";
 import zlib from "node:zlib";
 import Stream2, { PassThrough as PassThrough2, pipeline as pump } from "node:stream";
 import { Buffer as Buffer3 } from "node:buffer";
-async function fetch(url, options_) {
+async function fetch2(url, options_) {
   return new Promise((resolve, reject) => {
     const request = new Request2(url, options_);
     const { parsedURL, options } = getNodeRequestOptions(request);
@@ -33162,7 +33162,7 @@ async function fetch(url, options_) {
             if (responseReferrerPolicy) {
               requestOptions.referrerPolicy = responseReferrerPolicy;
             }
-            resolve(fetch(new Request2(locationURL, requestOptions)));
+            resolve(fetch2(new Request2(locationURL, requestOptions)));
             finalize();
             return;
           }
@@ -42043,7 +42043,7 @@ var require_googleauth = __commonJS({
       NO_ADC_FOUND: "Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.",
       NO_UNIVERSE_DOMAIN_FOUND: "Unable to detect a Universe Domain in the current environment.\nTo learn more about Universe Domain retrieval, visit: \nhttps://cloud.google.com/compute/docs/metadata/predefined-metadata-keys"
     };
-    var GoogleAuth = class {
+    var GoogleAuth3 = class {
       /**
        * Caches a value indicating whether the auth layer is running on Google
        * Compute Engine.
@@ -42798,7 +42798,7 @@ var require_googleauth = __commonJS({
         return res.data.signedBlob;
       }
     };
-    exports.GoogleAuth = GoogleAuth;
+    exports.GoogleAuth = GoogleAuth3;
   }
 });
 
@@ -49431,6 +49431,367 @@ async function getSpreadSheetData(_docTitle, options = {}, _refreshDepth = 0) {
   return finalTranslations;
 }
 
+// src/utils/multiSpreadsheetMerger.ts
+function mergeMultipleTranslationData(results, mergeStrategy = "later-wins") {
+  const merged = {};
+  for (const result of results) {
+    for (const [locale, sheets] of Object.entries(result)) {
+      if (!merged[locale]) {
+        merged[locale] = {};
+      }
+      for (const [sheet, keys2] of Object.entries(sheets)) {
+        if (!merged[locale][sheet]) {
+          merged[locale][sheet] = {};
+        }
+        for (const [key, value] of Object.entries(keys2)) {
+          if (mergeStrategy === "first-wins" && key in merged[locale][sheet]) {
+            continue;
+          }
+          merged[locale][sheet][key] = value;
+        }
+      }
+    }
+  }
+  return merged;
+}
+
+// src/getMultipleSpreadSheetsData.ts
+async function getMultipleSpreadSheetsData(docTitles, options = {}) {
+  const { spreadsheetIds, mergeStrategy = "later-wins", ...baseOptions } = options;
+  if (!spreadsheetIds || spreadsheetIds.length === 0) {
+    return getSpreadSheetData(docTitles, baseOptions);
+  }
+  console.log(`[getMultipleSpreadSheetsData] Fetching ${spreadsheetIds.length} spreadsheets...`);
+  const results = [];
+  for (let i2 = 0; i2 < spreadsheetIds.length; i2++) {
+    const id = spreadsheetIds[i2];
+    console.log(`[getMultipleSpreadSheetsData] (${i2 + 1}/${spreadsheetIds.length}) "${id}"...`);
+    const result = await getSpreadSheetData(docTitles, { ...baseOptions, spreadsheetId: id });
+    results.push(result);
+  }
+  return mergeMultipleTranslationData(results, mergeStrategy);
+}
+
+// src/utils/driveFolderScanner.ts
+var import_google_auth_library2 = __toESM(require_src5());
+var SPREADSHEET_MIME = "application/vnd.google-apps.spreadsheet";
+var FOLDER_MIME = "application/vnd.google-apps.folder";
+var DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
+async function getAccessToken(credentials) {
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+    );
+  }
+  const normalizedKey = privateKey.replace(/\\n/g, "\n");
+  const auth = new import_google_auth_library2.GoogleAuth({
+    credentials: { client_email: clientEmail, private_key: normalizedKey },
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  return tokenResponse.token;
+}
+async function listFilesInFolder(folderId, mimeType, token) {
+  const results = [];
+  let pageToken;
+  do {
+    const query = `'${folderId}' in parents and mimeType = '${mimeType}' and trashed = false`;
+    const params = new URLSearchParams({
+      q: query,
+      fields: "nextPageToken,files(id,name,mimeType,modifiedTime,parents)",
+      pageSize: "1000"
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const response = await fetch(`${DRIVE_FILES_URL}?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Drive API error ${response.status}: ${text}`
+      );
+    }
+    const data = await response.json();
+    results.push(...data.files);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return results;
+}
+async function scanFolder(folderId, folderPath, token, recursive, nameFilter, seen = /* @__PURE__ */ new Set()) {
+  console.log(`[driveFolderScanner] Scanning folder: ${folderId} (path: "${folderPath}")`);
+  const spreadsheets = await listFilesInFolder(folderId, SPREADSHEET_MIME, token);
+  const results = [];
+  for (const file of spreadsheets) {
+    if (seen.has(file.id)) continue;
+    seen.add(file.id);
+    if (nameFilter && !nameFilter.test(file.name)) continue;
+    results.push({
+      id: file.id,
+      name: file.name,
+      folderPath,
+      mimeType: file.mimeType,
+      modifiedTime: file.modifiedTime
+    });
+  }
+  if (recursive) {
+    const subfolders = await listFilesInFolder(folderId, FOLDER_MIME, token);
+    for (const folder of subfolders) {
+      const subPath = folderPath ? `${folderPath}/${folder.name}` : folder.name;
+      const subResults = await scanFolder(
+        folder.id,
+        subPath,
+        token,
+        recursive,
+        nameFilter,
+        seen
+      );
+      results.push(...subResults);
+    }
+  }
+  return results;
+}
+async function scanDriveFolderForSpreadsheets(options) {
+  const { folderId, recursive = true, nameFilter, credentials } = options;
+  const token = await getAccessToken(credentials);
+  return scanFolder(folderId, "", token, recursive, nameFilter);
+}
+
+// src/utils/driveImageSync.ts
+var import_google_auth_library3 = __toESM(require_src5());
+import { createWriteStream, mkdirSync, existsSync as existsSync2, readdirSync, unlinkSync, statSync as statSync2 } from "node:fs";
+import { join, dirname } from "node:path";
+import { pipeline as pipeline2 } from "node:stream/promises";
+import { Readable } from "node:stream";
+var DEFAULT_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+  "image/svg+xml",
+  "image/tiff",
+  "image/bmp",
+  "image/ico",
+  "image/x-icon"
+];
+var FOLDER_MIME2 = "application/vnd.google-apps.folder";
+var DRIVE_FILES_URL2 = "https://www.googleapis.com/drive/v3/files";
+async function getAccessToken2(credentials) {
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+    );
+  }
+  const normalizedKey = privateKey.replace(/\\n/g, "\n");
+  const auth = new import_google_auth_library3.GoogleAuth({
+    credentials: { client_email: clientEmail, private_key: normalizedKey },
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  return tokenResponse.token;
+}
+async function listFilesInFolder2(folderId, token, mimeTypeFilter) {
+  const results = [];
+  let pageToken;
+  do {
+    const mimeClause = mimeTypeFilter ? ` and mimeType = '${mimeTypeFilter}'` : "";
+    const query = `'${folderId}' in parents${mimeClause} and trashed = false`;
+    const params = new URLSearchParams({
+      q: query,
+      fields: "nextPageToken,files(id,name,mimeType,parents)",
+      pageSize: "1000"
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const response = await fetch(`${DRIVE_FILES_URL2}?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Drive API error ${response.status}: ${text}`);
+    }
+    const data = await response.json();
+    results.push(...data.files);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return results;
+}
+async function collectFiles(folderId, folderRelPath, outputPath, token, allowedMimeTypes, recursive, folderPattern) {
+  console.log(`[driveImageSync] Scanning folder: ${folderId} (path: "${folderRelPath}")`);
+  const allItems = await listFilesInFolder2(folderId, token);
+  const entries = [];
+  for (const item of allItems) {
+    if (item.mimeType === FOLDER_MIME2) {
+      if (!recursive) continue;
+      const subRelPath = folderRelPath ? `${folderRelPath}/${item.name}` : item.name;
+      if (folderPattern && !folderPattern.test(subRelPath)) continue;
+      const subEntries = await collectFiles(
+        item.id,
+        subRelPath,
+        outputPath,
+        token,
+        allowedMimeTypes,
+        recursive,
+        folderPattern
+      );
+      entries.push(...subEntries);
+    } else if (allowedMimeTypes.includes(item.mimeType)) {
+      const localPath = folderRelPath ? join(outputPath, folderRelPath, item.name) : join(outputPath, item.name);
+      entries.push({ id: item.id, name: item.name, localPath, mimeType: item.mimeType });
+    }
+  }
+  return entries;
+}
+async function downloadFile(fileId, localPath, token) {
+  const url = `${DRIVE_FILES_URL2}/${fileId}?alt=media`;
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) {
+    throw new Error(`Failed to download ${fileId}: ${response.status}`);
+  }
+  mkdirSync(dirname(localPath), { recursive: true });
+  const dest = createWriteStream(localPath);
+  await pipeline2(Readable.fromWeb(response.body), dest);
+}
+function collectLocalFiles(dir, base) {
+  const results = [];
+  if (!existsSync2(dir)) return results;
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat3 = statSync2(fullPath);
+    if (stat3.isDirectory()) {
+      results.push(...collectLocalFiles(fullPath, base));
+    } else {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+async function runConcurrent(tasks, concurrency) {
+  const results = [];
+  for (let i2 = 0; i2 < tasks.length; i2 += concurrency) {
+    const batch = tasks.slice(i2, i2 + concurrency).map((t2) => t2());
+    results.push(...await Promise.all(batch));
+  }
+  return results;
+}
+async function syncDriveImages(options) {
+  const {
+    folderId,
+    outputPath,
+    mimeTypes = DEFAULT_IMAGE_MIME_TYPES,
+    recursive = true,
+    folderPattern,
+    credentials,
+    cleanSync = false,
+    concurrency = 3
+  } = options;
+  const token = await getAccessToken2(credentials);
+  mkdirSync(outputPath, { recursive: true });
+  const entries = await collectFiles(
+    folderId,
+    "",
+    outputPath,
+    token,
+    mimeTypes,
+    recursive,
+    folderPattern
+  );
+  const downloaded = [];
+  const skipped = [];
+  const errors = [];
+  const tasks = entries.map((entry) => async () => {
+    if (existsSync2(entry.localPath)) {
+      console.log(`[driveImageSync] Skipping (exists): ${entry.localPath}`);
+      skipped.push(entry.localPath);
+      return;
+    }
+    console.log(`[driveImageSync] Downloading: ${entry.localPath}`);
+    try {
+      await downloadFile(entry.id, entry.localPath, token);
+      downloaded.push(entry.localPath);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[driveImageSync] Error downloading ${entry.localPath}: ${msg}`);
+      errors.push(entry.localPath);
+    }
+  });
+  await runConcurrent(tasks, concurrency);
+  const deleted = [];
+  if (cleanSync) {
+    const driveLocalPaths = new Set(entries.map((e2) => e2.localPath));
+    const localFiles = collectLocalFiles(outputPath, outputPath);
+    for (const localFile of localFiles) {
+      if (!driveLocalPaths.has(localFile)) {
+        console.log(`[driveImageSync] Deleting (not in Drive): ${localFile}`);
+        unlinkSync(localFile);
+        deleted.push(localFile);
+      }
+    }
+  }
+  console.log(
+    `[driveImageSync] Synced ${downloaded.length} files, skipped ${skipped.length}, deleted ${deleted.length}, errors ${errors.length}`
+  );
+  return { downloaded, skipped, deleted, errors };
+}
+
+// src/utils/getDriveTranslations.ts
+async function manageDriveTranslations(options) {
+  const {
+    driveFolderId,
+    scanForSpreadsheets = true,
+    spreadsheetIds: explicitIds = [],
+    spreadsheetNameFilter,
+    syncImages = false,
+    imageOutputPath,
+    imageSyncOptions,
+    translationOptions = {},
+    docTitles
+  } = options;
+  if (syncImages && !imageOutputPath) {
+    throw new Error(
+      "[manageDriveTranslations] imageOutputPath is required when syncImages is true"
+    );
+  }
+  const discoveredIds = [];
+  const discoveredNames = /* @__PURE__ */ new Map();
+  if (driveFolderId && scanForSpreadsheets) {
+    const scanOptions = { folderId: driveFolderId };
+    const discovered = await scanDriveFolderForSpreadsheets(scanOptions);
+    console.log(
+      `[manageDriveTranslations] Found ${discovered.length} spreadsheet(s) in Drive folder`
+    );
+    for (const file of discovered) {
+      discoveredIds.push(file.id);
+      discoveredNames.set(file.id, file.name);
+    }
+  }
+  const allIds = [.../* @__PURE__ */ new Set([...discoveredIds, ...explicitIds])];
+  const filteredIds = spreadsheetNameFilter ? allIds.filter((id) => {
+    const name = discoveredNames.get(id);
+    if (!name) return true;
+    return spreadsheetNameFilter.test(name);
+  }) : allIds;
+  const translations = await getMultipleSpreadSheetsData(docTitles, {
+    ...translationOptions,
+    spreadsheetIds: filteredIds.length > 0 ? filteredIds : void 0
+  });
+  let imageSync;
+  if (syncImages && driveFolderId && imageOutputPath) {
+    imageSync = await syncDriveImages({
+      ...imageSyncOptions,
+      folderId: driveFolderId,
+      outputPath: imageOutputPath
+    });
+  }
+  return { translations, spreadsheetIds: filteredIds, imageSync };
+}
+
 // src/action-entrypoint.ts
 async function run() {
   try {
@@ -49471,11 +49832,32 @@ async function run() {
       sourceLocale: getInput("source-locale") || "en",
       targetLocales: getInput("target-locales").split(",").map((s2) => s2.trim()).filter(Boolean)
     };
-    const translations = await getSpreadSheetData(sheetTitles, options);
+    const driveFolderId = getInput("drive-folder-id") || void 0;
+    const scanForSpreadsheets = getInput("scan-for-spreadsheets") !== "false";
+    const spreadsheetIdsRaw = getInput("spreadsheet-ids");
+    const spreadsheetIds = spreadsheetIdsRaw ? spreadsheetIdsRaw.split(",").map((s2) => s2.trim()).filter(Boolean) : void 0;
+    const syncImages = getInput("sync-images") === "true";
+    const imageOutputPath = getInput("image-output-path") || "./public/remote-images";
+    let localeCount;
+    if (driveFolderId || spreadsheetIds && spreadsheetIds.length > 0) {
+      const driveResult = await manageDriveTranslations({
+        driveFolderId,
+        scanForSpreadsheets,
+        spreadsheetIds,
+        syncImages,
+        imageOutputPath: syncImages ? imageOutputPath : void 0,
+        docTitles: sheetTitles,
+        translationOptions: options
+      });
+      localeCount = Object.keys(driveResult.translations).length;
+    } else {
+      const translations = await getSpreadSheetData(sheetTitles, options);
+      localeCount = Object.keys(translations).length;
+    }
     setOutput("translations-dir", path5.resolve(workspaceDir, translationsOutputDir));
     setOutput("locales-file", path5.resolve(workspaceDir, localesOutputPath));
     setOutput("data-json-file", path5.resolve(workspaceDir, dataJsonPath));
-    info(`\u2705 Fetched translations for ${Object.keys(translations).length} locales`);
+    info(`\u2705 Fetched translations for ${localeCount} locales`);
   } catch (error2) {
     setFailed(error2 instanceof Error ? error2.message : String(error2));
   }

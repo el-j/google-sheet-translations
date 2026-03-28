@@ -67,6 +67,12 @@ export default defineConfig({
           ],
         },
         {
+          text: 'Google Drive',
+          items: [
+            { text: 'Drive Folder Management', link: '/guide/drive-folder' },
+          ],
+        },
+        {
           text: 'Advanced',
           items: [
             { text: 'Spreadsheet Setup', link: '/guide/spreadsheet-setup' },
@@ -83,6 +89,15 @@ export default defineConfig({
             { text: 'validateEnv', link: '/api/validate-env' },
             { text: 'Locale Utilities', link: '/api/locale-utilities' },
             { text: 'Types', link: '/api/types' },
+          ],
+        },
+        {
+          text: 'Google Drive',
+          items: [
+            { text: 'manageDriveTranslations', link: '/api/manage-drive-translations' },
+            { text: 'getMultipleSpreadSheetsData', link: '/api/get-multiple-spreadsheets-data' },
+            { text: 'scanDriveFolderForSpreadsheets', link: '/api/drive-folder-scanner' },
+            { text: 'syncDriveImages', link: '/api/drive-image-sync' },
           ],
         },
       ],

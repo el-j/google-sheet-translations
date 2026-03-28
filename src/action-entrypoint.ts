@@ -57,17 +57,17 @@ export async function run(): Promise<void> {
 				.filter(Boolean),
 		};
 
-		const driveFolderId = core.getInput('drive_folder_id') || undefined;
-		const scanForSpreadsheets = core.getInput('scan_for_spreadsheets') !== 'false';
-		const spreadsheetIdsRaw = core.getInput('spreadsheet_ids');
+		const driveFolderId = core.getInput('drive-folder-id') || undefined;
+		const scanForSpreadsheets = core.getInput('scan-for-spreadsheets') !== 'false';
+		const spreadsheetIdsRaw = core.getInput('spreadsheet-ids');
 		const spreadsheetIds = spreadsheetIdsRaw
 			? spreadsheetIdsRaw
 					.split(',')
 					.map((s) => s.trim())
 					.filter(Boolean)
 			: undefined;
-		const syncImages = core.getInput('sync_images') === 'true';
-		const imageOutputPath = core.getInput('image_output_path') || './public/remote-images';
+		const syncImages = core.getInput('sync-images') === 'true';
+		const imageOutputPath = core.getInput('image-output-path') || './public/remote-images';
 
 		let localeCount: number;
 
