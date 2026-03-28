@@ -27,7 +27,7 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     mockDoc.sheetsByTitle.test.getRows.mockResolvedValue(mockRows);
   });
 
-  it('should create improved GOOGLETRANSLATE formulas with INDIRECT and hard-coded language codes', async () => {
+  it('should create GOOGLETRANSLATE formulas with dynamic language-code extraction from headers', async () => {
     const changes: TranslationData = {
       en: {
         test: {
@@ -45,20 +45,22 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     const addedRows = mockDoc.sheetsByTitle.test.addRows.mock.calls[0][0];
     const addedRow = addedRows[0];
 
-    // Verify the improved formula format
-    // Expecting: =GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"de")
+    // Verify the formula format uses dynamic extraction from header cells
     expect(addedRow).toHaveProperty('key', 'newkey');
     expect(addedRow).toHaveProperty('en', 'New Key Value');
     
     // Check for auto-translate formula in other columns (assuming 'de' exists)
     const formulaValue = addedRow.de;
     if (formulaValue) {
-      // The formula now uses hard-coded language codes instead of cell references
-      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);"\w+";"de"\)$/);
+      // The formula must use dynamic language-code extraction (IFERROR+FIND pattern)
+      // and reference header cells, not hard-coded language codes
+      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\)/);
       expect(formulaValue).toContain('INDIRECT');
       expect(formulaValue).toContain('&ROW()');
-      // Must NOT contain old-style LOWER(IFERROR(...)) wrappers
-      expect(formulaValue).not.toContain('LOWER(IFERROR(');
+      expect(formulaValue).toContain('IFERROR');
+      expect(formulaValue).toContain('FIND("-"');
+      // Must reference header cells (e.g. $B$1, C$1)
+      expect(formulaValue).toContain('$1');
     }
   });
 
@@ -92,8 +94,9 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     // Formula should use the correct column references for this structure
     const formulaValue = addedRow.german;
     if (formulaValue) {
-      // The formula now uses hard-coded language codes instead of cell references
-      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);"\w+";"german"\)$/);
+      // The formula must use dynamic language-code extraction
+      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\)/);
+      expect(formulaValue).toContain('IFERROR');
     }
   });
 });

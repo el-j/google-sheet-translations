@@ -16,19 +16,20 @@ await getSpreadSheetData(['home', 'common'], {
 For every new key pushed to the spreadsheet:
 
 1. It picks the **first locale** that already has a translation as the **source**.
-2. For every other locale that is **missing** a translation, it injects:
+2. For every other locale that is **missing** a translation, it injects a formula like:
 
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"de")
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());IF(LOWER(LEFT($B$1;3))="zh-";LOWER($B$1);LOWER(IFERROR(LEFT($B$1;FIND("-";$B$1)-1);$B$1)));IF(LOWER(LEFT(C$1;3))="zh-";LOWER(C$1);LOWER(IFERROR(LEFT(C$1;FIND("-";C$1)-1);C$1))))
 ```
 
 Where:
 - `B` = the source column letter
-- `"en"` = the GOOGLETRANSLATE-compatible code for the source locale (e.g. `en-US` → `"en"`)
-- `"de"` = the GOOGLETRANSLATE-compatible code for the target locale (e.g. `de-DE` → `"de"`)
+- `C` = the target column letter
 - `INDIRECT("B"&ROW())` dynamically references the source text in the same row
-
-The language codes are resolved at generation time — region qualifiers (e.g. `"-TR"` in `tr-TR`) are stripped because `GOOGLETRANSLATE` only accepts bare ISO 639-1 codes for most languages. The exception is Chinese (`zh-TW` / `zh-CN`) where the region is preserved.
+- The `IF(…)` wrapper extracts the GOOGLETRANSLATE-compatible code from the header cells:
+  - For Chinese variants (`zh-TW`, `zh-CN`): preserves the full code
+  - For all others: extracts the ISO 639-1 prefix (e.g. `"tr-TR"` → `"tr"`)
+- All separators (`;` or `,`) are matched to the spreadsheet's locale
 
 > [!NOTE]
 > The package supports spreadsheets with more than 26 columns — column letters are generated correctly up to ZZ and beyond.

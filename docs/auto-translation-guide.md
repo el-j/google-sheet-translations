@@ -28,15 +28,16 @@ When enabled through the `autoTranslate: true` option:
 If you add a new key "welcome_message" with an English translation in column B but no Turkish translation in column C (header `tr-TR`), the system will add:
 
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"tr")
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());IF(LOWER(LEFT($B$1;3))="zh-";LOWER($B$1);LOWER(IFERROR(LEFT($B$1;FIND("-";$B$1)-1);$B$1)));IF(LOWER(LEFT(C$1;3))="zh-";LOWER(C$1);LOWER(IFERROR(LEFT(C$1;FIND("-";C$1)-1);C$1))))
 ```
 
 Where:
 - `INDIRECT("B"&ROW())` dynamically references the cell containing the source text in the same row
-- `"en"` is the GOOGLETRANSLATE-compatible code extracted from the source header (e.g. `en`, `en-US` → `"en"`)
-- `"tr"` is the GOOGLETRANSLATE-compatible code extracted from the target header (e.g. `tr-TR` → `"tr"`)
-
-The language codes are resolved at generation time — region qualifiers like `"-TR"` are stripped because `GOOGLETRANSLATE` only accepts ISO 639-1 codes for most languages. The exception is Chinese (`zh-TW` and `zh-CN`) where the region is preserved.
+- The `IF(LOWER(LEFT(…;3))="zh-"…)` wrapper dynamically extracts the GOOGLETRANSLATE-compatible language code from the header cell:
+  - For Chinese variants (`zh-TW`, `zh-CN`): preserves the full code (e.g. `"zh-tw"`)
+  - For all other locales: extracts the ISO 639-1 prefix before the first `"-"` (e.g. `"tr-TR"` → `"tr"`, `"en-US"` → `"en"`)
+  - Bare codes without `"-"` are returned as-is (e.g. `"en"` → `"en"`)
+- All formula separators (`;` or `,`) are automatically matched to the spreadsheet's locale
 
 ## How to Enable
 

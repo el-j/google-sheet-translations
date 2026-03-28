@@ -245,20 +245,19 @@ When enabled, the auto-translation feature automatically adds Google Translate f
 
 The formula follows this format:
 ```
-=GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());"sourceCode";"targetCode")
+=GOOGLETRANSLATE(INDIRECT(srcCol&ROW()); langCodeFormula($srcCol$1); langCodeFormula(tgtCol$1))
 ```
+
+The `langCodeFormula` dynamically extracts the GOOGLETRANSLATE-compatible language code from the header cell — stripping region qualifiers (e.g. `"tr-TR"` → `"tr"`) while preserving Chinese variants (`zh-TW` / `zh-CN`).  All formula separators are automatically matched to the spreadsheet's locale.
 
 For example, if you add a new key with an English translation in column B but no Turkish translation (header `tr-TR`) in column C, the system will automatically add:
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"tr")
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());IF(LOWER(LEFT($B$1;3))="zh-";LOWER($B$1);LOWER(IFERROR(LEFT($B$1;FIND("-";$B$1)-1);$B$1)));IF(LOWER(LEFT(C$1;3))="zh-";LOWER(C$1);LOWER(IFERROR(LEFT(C$1;FIND("-";C$1)-1);C$1))))
 ```
 
 Where:
 - `INDIRECT("B"&ROW())` dynamically references the source text cell in the same row
-- `"en"` is the GOOGLETRANSLATE-compatible code derived from the source locale header (e.g. `en`, `en-US` → `"en"`)
-- `"tr"` is the GOOGLETRANSLATE-compatible code derived from the target locale header (e.g. `tr-TR` → `"tr"`)
-
-Region qualifiers are stripped because `GOOGLETRANSLATE` only accepts bare ISO 639-1 codes for most languages. The exception is Chinese (`zh-TW` / `zh-CN`) where the region is preserved.
+- Each `IF(…)` wrapper extracts the language code from the header cell (`$B$1` / `C$1`), producing `"en"` and `"tr"` respectively at evaluation time
 
 [View the complete Auto-Translation Guide](docs/auto-translation-guide.md) for more details and best practices.
 
