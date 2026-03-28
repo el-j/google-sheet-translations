@@ -1,4 +1,49 @@
-import { getNormalizedLocaleForHeader, getOriginalHeaderForLocale, resolveLocaleWithFallback } from '../../src/utils/localeNormalizer';
+import { getNormalizedLocaleForHeader, getOriginalHeaderForLocale, resolveLocaleWithFallback, getGoogleTranslateCode } from '../../src/utils/localeNormalizer';
+
+describe('getGoogleTranslateCode', () => {
+	test('strips region qualifier from simple locale codes', () => {
+		expect(getGoogleTranslateCode('tr-TR')).toBe('tr');
+		expect(getGoogleTranslateCode('ru-RU')).toBe('ru');
+		expect(getGoogleTranslateCode('pl-PL')).toBe('pl');
+		expect(getGoogleTranslateCode('de-DE')).toBe('de');
+		expect(getGoogleTranslateCode('fr-FR')).toBe('fr');
+		expect(getGoogleTranslateCode('en-US')).toBe('en');
+		expect(getGoogleTranslateCode('en-GB')).toBe('en');
+		expect(getGoogleTranslateCode('es-ES')).toBe('es');
+		expect(getGoogleTranslateCode('it-IT')).toBe('it');
+	});
+
+	test('preserves zh-TW and zh-CN for Chinese variants', () => {
+		expect(getGoogleTranslateCode('zh-TW')).toBe('zh-tw');
+		expect(getGoogleTranslateCode('zh-CN')).toBe('zh-cn');
+	});
+
+	test('handles underscore-separated locales', () => {
+		expect(getGoogleTranslateCode('zh_TW')).toBe('zh-tw');
+		expect(getGoogleTranslateCode('zh_CN')).toBe('zh-cn');
+		expect(getGoogleTranslateCode('de_DE')).toBe('de');
+	});
+
+	test('returns bare codes unchanged', () => {
+		expect(getGoogleTranslateCode('en')).toBe('en');
+		expect(getGoogleTranslateCode('de')).toBe('de');
+		expect(getGoogleTranslateCode('tr')).toBe('tr');
+		expect(getGoogleTranslateCode('ru')).toBe('ru');
+		expect(getGoogleTranslateCode('pl')).toBe('pl');
+		expect(getGoogleTranslateCode('zh')).toBe('zh');
+	});
+
+	test('is case-insensitive', () => {
+		expect(getGoogleTranslateCode('TR-TR')).toBe('tr');
+		expect(getGoogleTranslateCode('ZH-TW')).toBe('zh-tw');
+		expect(getGoogleTranslateCode('EN')).toBe('en');
+	});
+
+	test('trims whitespace', () => {
+		expect(getGoogleTranslateCode(' tr-TR ')).toBe('tr');
+		expect(getGoogleTranslateCode(' zh-TW ')).toBe('zh-tw');
+	});
+});
 
 describe('getNormalizedLocaleForHeader', () => {
 	test('should return the mapped value for a matching key', () => {

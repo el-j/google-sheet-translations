@@ -48716,12 +48716,23 @@ function columnIndexToLetter(index) {
   } while (i2 >= 0);
   return result;
 }
-function langCodeFormula(cellRef) {
-  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+function getFormulaSeparator(doc) {
+  try {
+    const locale = doc._rawProperties?.locale || "";
+    if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ",";
+  } catch {
+  }
+  return ";";
+}
+function langCodeFormula(cellRef, sep) {
+  const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
+  const full = `LOWER(${cellRef})`;
+  return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
 async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate = false, localeMapping = {}, override = false) {
   console.log("Updating spreadsheet with local changes...");
   const baseDelayMs = waitSeconds * 1e3;
+  const sep = getFormulaSeparator(doc);
   for (const sheetTitle of new Set(
     Object.values(changes).flatMap((locale) => Object.keys(locale))
   )) {
@@ -48865,7 +48876,7 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                     const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                     row.set(
                       exactTargetHeader,
-                      `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`
+                      `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColumnLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColumnLetter}$1`, sep)})`
                     );
                   }
                 }
@@ -48914,7 +48925,7 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                 }
                 const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
                 const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
-                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`;
+                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColumnLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColumnLetter}$1`, sep)})`;
               }
             }
           }
@@ -49169,8 +49180,18 @@ function colLetter(index) {
   } while (i2 >= 0);
   return result;
 }
-function langCodeFormula2(cellRef) {
-  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+function getFormulaSeparator2(doc) {
+  try {
+    const locale = doc._rawProperties?.locale || "";
+    if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ",";
+  } catch {
+  }
+  return ";";
+}
+function langCodeFormula2(cellRef, sep) {
+  const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
+  const full = `LOWER(${cellRef})`;
+  return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
 var DEFAULT_TARGET_LOCALES = ["de", "fr", "es", "it", "pt", "ja", "zh"];
 var STARTER_KEYS = {
@@ -49252,11 +49273,12 @@ async function createSpreadsheet(authClient, options = {}) {
       "setHeaderRow"
     );
     const sourceColLetter = colLetter(1);
+    const sep = getFormulaSeparator2(doc);
     const rows = Object.entries(seedKeys).map(([key, sourceValue]) => {
       const row = { key, [sourceLocale]: sourceValue };
       targetLocales.forEach((locale, idx) => {
         const targetColLetter = colLetter(2 + idx);
-        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());${langCodeFormula2(`$${sourceColLetter}$1`)};${langCodeFormula2(`${targetColLetter}$1`)})`;
+        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW())${sep}${langCodeFormula2(`$${sourceColLetter}$1`, sep)}${sep}${langCodeFormula2(`${targetColLetter}$1`, sep)})`;
       });
       return row;
     });

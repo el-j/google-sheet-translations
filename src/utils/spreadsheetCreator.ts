@@ -16,16 +16,29 @@ function colLetter(index: number): string {
 }
 
 /**
- * Wraps a spreadsheet cell reference in a formula that extracts the language
- * prefix (the part before the first "-") and lowercases it.
- *
- * GOOGLETRANSLATE only accepts ISO 639-1 two-letter codes (e.g. "tr") for most
- * languages – region-qualified codes like "tr-TR" no longer work reliably.
- *
- * @param cellRef - A spreadsheet cell reference string, e.g. `$B$1` or `C$1`
+ * Determines the formula argument separator based on the spreadsheet's locale.
+ * Mirrors the logic in spreadsheetUpdater.ts.
  */
-function langCodeFormula(cellRef: string): string {
-	return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+function getFormulaSeparator(doc: GoogleSpreadsheet): string {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const locale: string = (doc as any)._rawProperties?.locale || '';
+		if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ',';
+	} catch {
+		// Fall through to default
+	}
+	return ';';
+}
+
+/**
+ * Wraps a cell reference in a formula that extracts the GOOGLETRANSLATE-
+ * compatible language code from a locale header cell.
+ * Mirrors the logic in spreadsheetUpdater.ts.
+ */
+function langCodeFormula(cellRef: string, sep: string): string {
+	const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
+	const full = `LOWER(${cellRef})`;
+	return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
 
 export interface CreateSpreadsheetOptions {
@@ -154,14 +167,17 @@ export async function createSpreadsheet(
 		// Build rows: source column has real text; other columns get GOOGLETRANSLATE formula.
 		// Source is always column B (index 1 after 'key')
 		const sourceColLetter = colLetter(1); // B
+		// Detect the formula argument separator from the newly created spreadsheet's locale
+		const sep = getFormulaSeparator(doc);
 		const rows = Object.entries(seedKeys).map(([key, sourceValue]) => {
 			const row: Record<string, string> = { key, [sourceLocale]: sourceValue };
 			targetLocales.forEach((locale, idx) => {
 				const targetColLetter = colLetter(2 + idx); // C, D, E, …
-				// Use language-prefix extraction so region-qualified headers (e.g. "tr-TR")
-				// are reduced to the ISO 639-1 code ("tr") that GOOGLETRANSLATE requires.
+				// Use dynamic language-code extraction so region-qualified headers
+				// (e.g. "tr-TR") are reduced to the ISO 639-1 code ("tr") that
+				// GOOGLETRANSLATE requires, while preserving Chinese variants.
 				row[locale] =
-					`=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());${langCodeFormula(`$${sourceColLetter}$1`)};${langCodeFormula(`${targetColLetter}$1`)})`;
+					`=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColLetter}$1`, sep)})`;
 			});
 			return row;
 		});

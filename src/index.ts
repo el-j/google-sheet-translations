@@ -32,6 +32,7 @@ export { isValidLocale, filterValidLocales } from './utils/localeFilter';
 // Locale normalisation utilities
 export {
   getLanguagePrefix,
+  getGoogleTranslateCode,
   normalizeLocaleCode,
   createLocaleMapping,
   getOriginalHeaderForLocale,
