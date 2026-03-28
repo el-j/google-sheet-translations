@@ -71,6 +71,10 @@ export { mergeMultipleTranslationData } from './utils/multiSpreadsheetMerger';
 export { scanDriveFolderForSpreadsheets } from './utils/driveFolderScanner';
 export type { DriveSpreadsheetFile, ScanDriveFolderOptions } from './utils/driveFolderScanner';
 
+// Drive image sync (download images/assets from a Drive folder to local disk)
+export { syncDriveImages } from './utils/driveImageSync';
+export type { DriveImageSyncOptions, DriveImageSyncResult } from './utils/driveImageSync';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;
