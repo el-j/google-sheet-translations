@@ -27,7 +27,7 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     mockDoc.sheetsByTitle.test.getRows.mockResolvedValue(mockRows);
   });
 
-  it('should create improved GOOGLETRANSLATE formulas with INDIRECT and cell references', async () => {
+  it('should create improved GOOGLETRANSLATE formulas with INDIRECT and hard-coded language codes', async () => {
     const changes: TranslationData = {
       en: {
         test: {
@@ -46,19 +46,19 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     const addedRow = addedRows[0];
 
     // Verify the improved formula format
-    // Expecting something like: =GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
-    // The exact column letters depend on the header structure
+    // Expecting: =GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"de")
     expect(addedRow).toHaveProperty('key', 'newkey');
     expect(addedRow).toHaveProperty('en', 'New Key Value');
     
     // Check for auto-translate formula in other columns (assuming 'de' exists)
     const formulaValue = addedRow.de;
     if (formulaValue) {
-      // The formula now uses LOWER(IFERROR(...)) to extract language prefix from header cells
-      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);LOWER\(IFERROR\(/);
+      // The formula now uses hard-coded language codes instead of cell references
+      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);"\w+";"de"\)$/);
       expect(formulaValue).toContain('INDIRECT');
       expect(formulaValue).toContain('&ROW()');
-      expect(formulaValue).toContain('LOWER(IFERROR(');
+      // Must NOT contain old-style LOWER(IFERROR(...)) wrappers
+      expect(formulaValue).not.toContain('LOWER(IFERROR(');
     }
   });
 
@@ -92,8 +92,8 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     // Formula should use the correct column references for this structure
     const formulaValue = addedRow.german;
     if (formulaValue) {
-      // The formula now uses LOWER(IFERROR(...)) to extract language prefix from header cells
-      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);LOWER\(IFERROR\(/);
+      // The formula now uses hard-coded language codes instead of cell references
+      expect(formulaValue).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("\w+"&ROW\(\)\);"\w+";"german"\)$/);
     }
   });
 });
