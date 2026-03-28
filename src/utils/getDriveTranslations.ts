@@ -113,8 +113,8 @@ export async function manageDriveTranslations(
 	}
 
 	// Scan Drive folder for spreadsheets if requested
-	let discoveredIds: string[] = [];
-	let discoveredNames: Map<string, string> = new Map();
+	const discoveredIds: string[] = [];
+	const discoveredNames: Map<string, string> = new Map();
 
 	if (driveFolderId && scanForSpreadsheets) {
 		const scanOptions: ScanDriveFolderOptions = { folderId: driveFolderId };

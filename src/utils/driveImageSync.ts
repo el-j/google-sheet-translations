@@ -1,5 +1,5 @@
 import { createWriteStream, mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from 'node:fs';
-import { join, dirname, relative } from 'node:path';
+import { join, dirname } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import { GoogleAuth } from 'google-auth-library';
@@ -183,7 +183,7 @@ async function downloadFile(fileId: string, localPath: string, token: string): P
 
   mkdirSync(dirname(localPath), { recursive: true });
   const dest = createWriteStream(localPath);
-  await pipeline(Readable.fromWeb(response.body as any), dest);
+  await pipeline(Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]), dest);
 }
 
 function collectLocalFiles(dir: string, base: string): string[] {
