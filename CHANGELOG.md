@@ -1,3 +1,9 @@
+## [2.1.4](https://github.com/el-j/google-sheet-translations/compare/v2.1.3...v2.1.4) (2026-03-28)
+
+### 🐛 Bug Fixes
+
+* replace weak SHA-1 createHash with crypto.hash() by upgrading undici to 7.x ([4c3f97d](https://github.com/el-j/google-sheet-translations/commit/4c3f97d0e64793f955dbf93546c33452ebd25bee))
+
 ## [2.1.3](https://github.com/el-j/google-sheet-translations/compare/v2.1.2...v2.1.3) (2026-03-14)
 
 ### 🐛 Bug Fixes
