@@ -75,6 +75,12 @@ export type { DriveSpreadsheetFile, ScanDriveFolderOptions } from './utils/drive
 // Drive image sync (download images/assets from a Drive folder to local disk)
 export { syncDriveImages, normalizeExtension } from './utils/driveImageSync';
 export type { DriveImageSyncOptions, DriveImageSyncResult } from './utils/driveImageSync';
+export { walkDirectory, validateImageDirectory, DEFAULT_IMAGE_EXTENSIONS } from './utils/localImageUtils';
+export type {
+  WalkDirectoryOptions,
+  ImageDirectoryValidationOptions,
+  ImageDirectoryValidationResult,
+} from './utils/localImageUtils';
 
 // Drive translations orchestrator (headless CMS bridge)
 export { manageDriveTranslations } from './utils/getDriveTranslations';
