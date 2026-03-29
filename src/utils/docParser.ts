@@ -167,7 +167,8 @@ function parseWithMarkers(
   content: string,
   defaultSheetName: string,
 ): ParsedDocEntry[] {
-  const MARKER_RE = /\[\[key:([^\]]+)\]\]/g;
+  // Bound the key-path length (≤ 200 chars) to prevent ReDoS on crafted input
+  const MARKER_RE = /\[\[key:([^\]]{1,200})\]\]/g;
   const entries: ParsedDocEntry[] = [];
 
   // Split with capturing group: [textBefore, key1, text1, key2, text2, …]

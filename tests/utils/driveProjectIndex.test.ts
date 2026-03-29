@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { buildManifest, writeManifest } from '../../src/utils/driveProjectIndex';
+import { buildManifest, writeManifest, readManifest } from '../../src/utils/driveProjectIndex';
 import type { BuildManifestOptions, DriveProjectManifest } from '../../src/utils/driveProjectIndex';
 import type { TranslationData } from '../../src/types';
 
@@ -135,11 +135,6 @@ describe('writeManifest', () => {
 // ── readManifest ──────────────────────────────────────────────────────────────
 
 describe('readManifest', () => {
-  // We need to import readManifest - add to the import at the top won't work here
-  // so we re-require with the full module
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { readManifest } = require('../../src/utils/driveProjectIndex');
-
   it('returns the parsed manifest when the file exists', () => {
     const manifest: DriveProjectManifest = {
       version: '1',

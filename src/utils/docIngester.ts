@@ -179,20 +179,33 @@ export function entriesToTranslationData(
   const counts = new Map<string, number>();
 
   for (const entry of entries) {
-    if (!data[locale][entry.sheetName]) {
-      (data[locale] as Record<string, Record<string, string>>)[
-        entry.sheetName
-      ] = {};
+    const sheetName = entry.sheetName;
+    const entryKey = entry.key;
+
+    // Guard against prototype-polluting property names.
+    // slugifyKey() already prevents these in normal parsing paths, but we
+    // defend explicitly here since entries may come from external callers.
+    if (
+      sheetName === '__proto__' ||
+      sheetName === 'constructor' ||
+      sheetName === 'prototype' ||
+      entryKey === '__proto__' ||
+      entryKey === 'constructor' ||
+      entryKey === 'prototype'
+    ) {
+      continue;
     }
 
-    const base = `${entry.sheetName}::${entry.key}`;
+    if (!data[locale][sheetName]) {
+      (data[locale] as Record<string, Record<string, string>>)[sheetName] = {};
+    }
+
+    const base = `${sheetName}::${entryKey}`;
     const count = (counts.get(base) ?? 0) + 1;
     counts.set(base, count);
-    const finalKey = count > 1 ? `${entry.key}_${count}` : entry.key;
+    const finalKey = count > 1 ? `${entryKey}_${count}` : entryKey;
 
-    (
-      data[locale][entry.sheetName] as Record<string, string>
-    )[finalKey] = entry.value;
+    (data[locale][sheetName] as Record<string, string>)[finalKey] = entry.value;
   }
 
   return data;
