@@ -80,6 +80,10 @@ export type { DriveImageSyncOptions, DriveImageSyncResult } from './utils/driveI
 export { manageDriveTranslations } from './utils/getDriveTranslations';
 export type { GoogleDriveManagerOptions, GoogleDriveManagerResult } from './utils/getDriveTranslations';
 
+// Drive project manifest (index file for multi-spreadsheet projects)
+export { buildManifest, writeManifest } from './utils/driveProjectIndex';
+export type { DriveProjectManifest, SpreadsheetManifestEntry, BuildManifestOptions } from './utils/driveProjectIndex';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;
