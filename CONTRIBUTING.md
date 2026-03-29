@@ -86,3 +86,43 @@ The semantic-release bot will:
 - Create a git tag
 - Create a GitHub release
 - Publish to npm
+
+## Release Gate & Branch Ruleset
+
+Merges to `main` are protected by a branch ruleset (`.github/rulesets/main-branch.json`).
+Before any PR can be merged, **all of the following status checks must pass**:
+
+| Check | Workflow |
+|-------|----------|
+| `Quality Gate (Node 20)` | `release.yml` |
+| `Quality Gate (Node 22)` | `release.yml` |
+| `Quality Gate (Node 24)` | `release.yml` |
+| `test (20)` | `ci.yml` |
+| `test (22)` | `ci.yml` |
+| `test (24)` | `ci.yml` |
+
+Additionally, at least **1 pull-request review** is required.
+
+To apply or update the ruleset from the stored JSON file, run the **Apply Branch Rulesets** workflow (`apply-ruleset.yml`) via GitHub Actions → Manual dispatch. You need an `ADMIN_TOKEN` secret (a fine-grained PAT with repo rule administration access).
+
+## Changelog Preview
+
+Before pushing a batch of commits, you can preview what the next changelog entry would look like:
+
+```bash
+npm run changelog:preview
+```
+
+This runs `semantic-release --dry-run` and prints the planned release notes without publishing anything. Requires `GITHUB_TOKEN` set in your environment for a complete preview.
+
+## Docs Automation
+
+Documentation is automatically rebuilt and deployed to [GitHub Pages](https://el-j.github.io/google-sheet-translations/) on every:
+
+- Successful release (via `workflow_run` trigger in `docs.yml`)
+- Push to `main` that changes `website/**`, `README.md`, or `CHANGELOG.md`
+- Manual dispatch of the **Deploy Documentation** workflow
+
+The `website/changelog.md` page automatically includes the root `CHANGELOG.md` via VitePress file includes — no manual sync needed.
+
+See [Release Process guide](https://el-j.github.io/google-sheet-translations/guide/release-process) for the full pipeline.

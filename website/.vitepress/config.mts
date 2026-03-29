@@ -79,6 +79,12 @@ export default defineConfig({
             { text: 'Environment Variables', link: '/guide/environment-variables' },
           ],
         },
+        {
+          text: 'Contributing',
+          items: [
+            { text: 'Release Process', link: '/guide/release-process' },
+          ],
+        },
       ],
       '/api/': [
         {

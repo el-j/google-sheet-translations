@@ -1,73 +1,126 @@
+import path from 'node:path';
 import type { TranslationData } from '../types';
 import type { MultiSpreadsheetOptions } from '../getMultipleSpreadSheetsData';
 import { getMultipleSpreadSheetsData } from '../getMultipleSpreadSheetsData';
+import { getSpreadSheetData } from '../getSpreadSheetData';
+import { mergeMultipleTranslationData } from './multiSpreadsheetMerger';
 import type { ScanDriveFolderOptions } from './driveFolderScanner';
 import { scanDriveFolderForSpreadsheets } from './driveFolderScanner';
 import type { DriveImageSyncOptions, DriveImageSyncResult } from './driveImageSync';
 import { syncDriveImages } from './driveImageSync';
+import type { DriveProjectManifest, SpreadsheetManifestEntry } from './driveProjectIndex';
+import { buildManifest, writeManifest } from './driveProjectIndex';
 
 export interface GoogleDriveManagerOptions {
-	/**
-	 * Google Drive folder ID to scan for spreadsheets and/or images.
-	 * If provided without explicit spreadsheetIds, the folder is scanned
-	 * automatically for spreadsheet files.
-	 */
-	driveFolderId?: string;
+  /**
+   * Google Drive folder ID to scan for spreadsheets and/or images.
+   * If provided without explicit spreadsheetIds, the folder is scanned
+   * automatically for spreadsheet files.
+   */
+  driveFolderId?: string;
 
-	/**
-	 * When true, scans driveFolderId for all Google Spreadsheet files and
-	 * fetches translations from each. Requires driveFolderId. (default: true when driveFolderId set)
-	 */
-	scanForSpreadsheets?: boolean;
+  /**
+   * When true, scans driveFolderId for all Google Spreadsheet files and
+   * fetches translations from each. Requires driveFolderId. (default: true when driveFolderId set)
+   */
+  scanForSpreadsheets?: boolean;
 
-	/**
-	 * Explicit list of spreadsheet IDs to fetch from.
-	 * If provided together with driveFolderId + scanForSpreadsheets, the
-	 * explicit list is merged with the discovered ones (deduped).
-	 */
-	spreadsheetIds?: string[];
+  /**
+   * Explicit list of spreadsheet IDs to fetch from.
+   * If provided together with driveFolderId + scanForSpreadsheets, the
+   * explicit list is merged with the discovered ones (deduped).
+   */
+  spreadsheetIds?: string[];
 
-	/**
-	 * Optional filter: only process spreadsheets whose name matches this pattern.
-	 * Useful when the Drive folder contains non-translation spreadsheets.
-	 * @example /^translations-/i
-	 */
-	spreadsheetNameFilter?: RegExp;
+  /**
+   * Optional filter: only process spreadsheets whose name matches this pattern.
+   * Useful when the Drive folder contains non-translation spreadsheets.
+   * @example /^translations-/i
+   */
+  spreadsheetNameFilter?: RegExp;
 
-	/**
-	 * When true, also sync images from driveFolderId to imageOutputPath.
-	 * Requires driveFolderId. (default: false)
-	 */
-	syncImages?: boolean;
+  /**
+   * When true, also sync images from driveFolderId to imageOutputPath.
+   * Requires driveFolderId. (default: false)
+   */
+  syncImages?: boolean;
 
-	/**
-	 * Local directory to download Drive images into.
-	 * Required when syncImages: true.
-	 * @example './src/assets/remote-images'
-	 */
-	imageOutputPath?: string;
+  /**
+   * Local directory to download Drive images into.
+   * Required when syncImages: true.
+   * @example './src/assets/remote-images'
+   */
+  imageOutputPath?: string;
 
-	/**
-	 * Image sync options passed to syncDriveImages (mimeTypes, concurrency, etc.)
-	 */
-	imageSyncOptions?: Partial<DriveImageSyncOptions>;
+  /**
+   * Image sync options passed to syncDriveImages (mimeTypes, concurrency, etc.)
+   */
+  imageSyncOptions?: Partial<DriveImageSyncOptions>;
 
-	/**
-	 * Options forwarded to getMultipleSpreadSheetsData (rowLimit, waitSeconds,
-	 * translationsOutputDir, autoTranslate, etc.)
-	 */
-	translationOptions?: MultiSpreadsheetOptions;
+  /**
+   * Options forwarded to getMultipleSpreadSheetsData (rowLimit, waitSeconds,
+   * translationsOutputDir, autoTranslate, etc.)
+   */
+  translationOptions?: MultiSpreadsheetOptions;
 
-	/** Sheet names to fetch from each discovered spreadsheet */
-	docTitles?: string[];
+  /** Sheet names to fetch from each discovered spreadsheet */
+  docTitles?: string[];
+
+  /**
+   * When `false`, each spreadsheet writes translations to its own subdirectory
+   * inside `translationsOutputDir`, named after the spreadsheet (sanitized).
+   * Example with `flatten: false`:
+   *   `translations/app-i18n/en.json`
+   *   `translations/marketing/de.json`
+   * When `true` (default), all spreadsheets are merged into a flat set:
+   *   `translations/en.json`
+   */
+  flatten?: boolean;
+
+  /**
+   * Write an `i18n-manifest.json` index file after each run.
+   * Default: `true` when `driveFolderId` is set, `false` otherwise.
+   */
+  createManifest?: boolean;
+
+  /**
+   * Path for the manifest file.
+   * Default: `path.join(translationsOutputDir, 'i18n-manifest.json')`
+   */
+  manifestPath?: string;
+
+  /** Human-readable project name stored in the manifest */
+  projectName?: string;
+
+  /** Site domain / URL stored in the manifest */
+  domain?: string;
+
+  /** Primary locale code stored in the manifest (e.g. "en") */
+  defaultLocale?: string;
+
+  /** Arbitrary metadata stored in the manifest */
+  projectMetadata?: Record<string, unknown>;
 }
 
 export interface GoogleDriveManagerResult {
-	translations: TranslationData;
-	/** List of spreadsheet IDs that were processed */
-	spreadsheetIds: string[];
-	/** Image sync result (only present if syncImages: true) */
-	imageSync?: DriveImageSyncResult;
+  translations: TranslationData;
+  /** List of spreadsheet IDs that were processed */
+  spreadsheetIds: string[];
+  /** Image sync result (only present if syncImages: true) */
+  imageSync?: DriveImageSyncResult;
+  /** Project manifest written during this run (only present when `createManifest: true`) */
+  manifest?: DriveProjectManifest;
+}
+
+/** Turns a spreadsheet name / ID into a safe directory segment */
+function sanitizeFolderName(name: string): string {
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '') || 'sheet'
+  );
 }
 
 /**
@@ -92,71 +145,150 @@ export interface GoogleDriveManagerResult {
  * console.log(result.imageSync?.downloaded.length + ' images downloaded');
  */
 export async function manageDriveTranslations(
-	options: GoogleDriveManagerOptions,
+  options: GoogleDriveManagerOptions,
 ): Promise<GoogleDriveManagerResult> {
-	const {
-		driveFolderId,
-		scanForSpreadsheets = true,
-		spreadsheetIds: explicitIds = [],
-		spreadsheetNameFilter,
-		syncImages = false,
-		imageOutputPath,
-		imageSyncOptions,
-		translationOptions = {},
-		docTitles,
-	} = options;
+  const {
+    driveFolderId,
+    scanForSpreadsheets = true,
+    spreadsheetIds: explicitIds = [],
+    spreadsheetNameFilter,
+    syncImages = false,
+    imageOutputPath,
+    imageSyncOptions,
+    translationOptions = {},
+    docTitles,
+    flatten = true,
+    createManifest,
+    manifestPath,
+    projectName,
+    domain,
+    defaultLocale,
+    projectMetadata,
+  } = options;
 
-	if (syncImages && !imageOutputPath) {
-		throw new Error(
-			'[manageDriveTranslations] imageOutputPath is required when syncImages is true',
-		);
-	}
+  if (syncImages && !imageOutputPath) {
+    throw new Error(
+      '[manageDriveTranslations] imageOutputPath is required when syncImages is true',
+    );
+  }
 
-	// Scan Drive folder for spreadsheets if requested
-	const discoveredIds: string[] = [];
-	const discoveredNames: Map<string, string> = new Map();
+  const shouldCreateManifest = createManifest ?? driveFolderId !== undefined;
 
-	if (driveFolderId && scanForSpreadsheets) {
-		const scanOptions: ScanDriveFolderOptions = { folderId: driveFolderId };
-		const discovered = await scanDriveFolderForSpreadsheets(scanOptions);
-		console.log(
-			`[manageDriveTranslations] Found ${discovered.length} spreadsheet(s) in Drive folder`,
-		);
+  // Scan Drive folder for spreadsheets if requested
+  const discoveredIds: string[] = [];
+  const discoveredNames: Map<string, string> = new Map();
+  const discoveredFolderPaths: Map<string, string> = new Map();
+  const discoveredModifiedTimes: Map<string, string> = new Map();
 
-		for (const file of discovered) {
-			discoveredIds.push(file.id);
-			discoveredNames.set(file.id, file.name);
-		}
-	}
+  if (driveFolderId && scanForSpreadsheets) {
+    const scanOptions: ScanDriveFolderOptions = { folderId: driveFolderId };
+    const discovered = await scanDriveFolderForSpreadsheets(scanOptions);
+    console.log(
+      `[manageDriveTranslations] Found ${discovered.length} spreadsheet(s) in Drive folder`,
+    );
 
-	// Merge discovered IDs with explicit IDs (dedup)
-	const allIds = [...new Set([...discoveredIds, ...explicitIds])];
+    for (const file of discovered) {
+      discoveredIds.push(file.id);
+      discoveredNames.set(file.id, file.name);
+      discoveredFolderPaths.set(file.id, file.folderPath);
+      if (file.modifiedTime) discoveredModifiedTimes.set(file.id, file.modifiedTime);
+    }
+  }
 
-	// Apply spreadsheetNameFilter (only filter discovered ones; explicit IDs pass through)
-	const filteredIds = spreadsheetNameFilter
-		? allIds.filter((id) => {
-				const name = discoveredNames.get(id);
-				// Explicit IDs that weren't discovered have no name — allow them through
-				if (!name) return true;
-				return spreadsheetNameFilter.test(name);
-			})
-		: allIds;
+  // Merge discovered IDs with explicit IDs (dedup)
+  const allIds = [...new Set([...discoveredIds, ...explicitIds])];
 
-	// Fetch translations
-	const translations = await getMultipleSpreadSheetsData(docTitles, {
-		...translationOptions,
-		spreadsheetIds: filteredIds.length > 0 ? filteredIds : undefined,
-	});
+  // Apply spreadsheetNameFilter (only filter discovered ones; explicit IDs pass through)
+  const filteredIds = spreadsheetNameFilter
+    ? allIds.filter((id) => {
+        const name = discoveredNames.get(id);
+        if (!name) return true;
+        return spreadsheetNameFilter.test(name);
+      })
+    : allIds;
 
-	// Optionally sync images
-	let imageSync: DriveImageSyncResult | undefined;
-	if (syncImages && driveFolderId && imageOutputPath) {
-		imageSync = await syncDriveImages({
-			...imageSyncOptions,
-			folderId: driveFolderId,
-			outputPath: imageOutputPath,
-		});
-	}
+  // Fetch translations
+  let translations: TranslationData;
+  const spreadsheetEntries: SpreadsheetManifestEntry[] = [];
+  const baseOutputDir = translationOptions.translationsOutputDir ?? 'translations';
 
-	return { translations, spreadsheetIds: filteredIds, imageSync };
+  if (!flatten) {
+    // Per-spreadsheet mode: write each to its own subdirectory
+    const { mergeStrategy = 'later-wins', ...baseOptions } = translationOptions;
+    const perResults: TranslationData[] = [];
+
+    for (const id of filteredIds) {
+      const name = discoveredNames.get(id) ?? id;
+      const subDir = sanitizeFolderName(name);
+      const subOutputDir = path.join(baseOutputDir, subDir);
+
+      console.log(
+        `[manageDriveTranslations] (flatten: false) Fetching "${name}" → ${subOutputDir}`,
+      );
+
+      const result = await getSpreadSheetData(docTitles, {
+        ...baseOptions,
+        spreadsheetId: id,
+        translationsOutputDir: subOutputDir,
+      });
+
+      perResults.push(result);
+      spreadsheetEntries.push({
+        id,
+        name,
+        folderPath: discoveredFolderPaths.get(id) ?? '',
+        sheets: docTitles ?? [],
+        modifiedTime: discoveredModifiedTimes.get(id),
+        outputSubDirectory: subDir,
+      });
+    }
+
+    translations = mergeMultipleTranslationData(perResults, mergeStrategy);
+  } else {
+    // Flat (merged) mode — existing behaviour
+    translations = await getMultipleSpreadSheetsData(docTitles, {
+      ...translationOptions,
+      spreadsheetIds: filteredIds.length > 0 ? filteredIds : undefined,
+    });
+
+    for (const id of filteredIds) {
+      spreadsheetEntries.push({
+        id,
+        name: discoveredNames.get(id) ?? id,
+        folderPath: discoveredFolderPaths.get(id) ?? '',
+        sheets: docTitles ?? [],
+        modifiedTime: discoveredModifiedTimes.get(id),
+      });
+    }
+  }
+
+  // Optionally sync images
+  let imageSync: DriveImageSyncResult | undefined;
+  if (syncImages && driveFolderId && imageOutputPath) {
+    imageSync = await syncDriveImages({
+      ...imageSyncOptions,
+      folderId: driveFolderId,
+      outputPath: imageOutputPath,
+    });
+  }
+
+  // Write project manifest
+  let manifest: DriveProjectManifest | undefined;
+  if (shouldCreateManifest) {
+    const resolvedManifestPath =
+      manifestPath ?? path.join(baseOutputDir, 'i18n-manifest.json');
+    manifest = buildManifest({
+      translations,
+      spreadsheets: spreadsheetEntries,
+      outputDirectory: baseOutputDir,
+      flatten,
+      projectName,
+      domain,
+      defaultLocale,
+      projectMetadata,
+    });
+    writeManifest(manifest, resolvedManifestPath);
+  }
+
+  return { translations, spreadsheetIds: filteredIds, imageSync, manifest };
 }

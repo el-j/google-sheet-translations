@@ -39,7 +39,8 @@
     "docs:build": "vitepress build website",
     "docs:preview": "vitepress preview website",
     "test:integration": "INTEGRATION=true jest --testPathPatterns=integration --testTimeout=60000 --coverage=false",
-    "sync:translations": "node scripts/sync-demo-translations.mjs"
+    "sync:translations": "node scripts/sync-demo-translations.mjs",
+    "changelog:preview": "node scripts/changelog-preview.mjs"
   },
   "keywords": [
     "google-sheets",

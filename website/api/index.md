@@ -16,6 +16,8 @@
 |--------|-------------|
 | [`scanDriveFolderForSpreadsheets`](/api/drive-folder-scanner) | Discover all spreadsheet files in a Google Drive folder (recursive) |
 | [`syncDriveImages`](/api/drive-image-sync) | Download images from a Drive folder to a local directory |
+| [`walkDirectory`](/api/drive-image-sync#walkdirectory) | Async recursive file-tree walker |
+| [`validateImageDirectory`](/api/drive-image-sync#validateimagedirectory) | Validate the structure of a synced image directory |
 
 ## Other utilities
 
@@ -37,6 +39,9 @@
 | [`ScanDriveFolderOptions`](/api/drive-folder-scanner#scandrivefolderoptions) | Options for `scanDriveFolderForSpreadsheets` |
 | [`DriveImageSyncOptions`](/api/drive-image-sync#driveimagesyncoptions) | Options for `syncDriveImages` |
 | [`DriveImageSyncResult`](/api/drive-image-sync#driveimagesyncresult) | Return type of `syncDriveImages` |
+| [`WalkDirectoryOptions`](/api/drive-image-sync#walkdirectoryoptions) | Options for `walkDirectory` |
+| [`ImageDirectoryValidationOptions`](/api/drive-image-sync#imagedirectoryvalidationoptions) | Options for `validateImageDirectory` |
+| [`ImageDirectoryValidationResult`](/api/drive-image-sync#imagedirectoryvalidationresult) | Return type of `validateImageDirectory` |
 | [`TranslationData`](/api/types#translationdata) | The return type of `getSpreadSheetData` |
 | [`TranslationValue`](/api/types#translationvalue) | A single translation value |
 | [`SheetRow`](/api/types#sheetrow) | A raw row from a Google Sheet |

@@ -73,12 +73,22 @@ export { scanDriveFolderForSpreadsheets } from './utils/driveFolderScanner';
 export type { DriveSpreadsheetFile, ScanDriveFolderOptions } from './utils/driveFolderScanner';
 
 // Drive image sync (download images/assets from a Drive folder to local disk)
-export { syncDriveImages } from './utils/driveImageSync';
+export { syncDriveImages, normalizeExtension } from './utils/driveImageSync';
 export type { DriveImageSyncOptions, DriveImageSyncResult } from './utils/driveImageSync';
+export { walkDirectory, validateImageDirectory, DEFAULT_IMAGE_EXTENSIONS } from './utils/localImageUtils';
+export type {
+  WalkDirectoryOptions,
+  ImageDirectoryValidationOptions,
+  ImageDirectoryValidationResult,
+} from './utils/localImageUtils';
 
 // Drive translations orchestrator (headless CMS bridge)
 export { manageDriveTranslations } from './utils/getDriveTranslations';
 export type { GoogleDriveManagerOptions, GoogleDriveManagerResult } from './utils/getDriveTranslations';
+
+// Drive project manifest (index file for multi-spreadsheet projects)
+export { buildManifest, writeManifest } from './utils/driveProjectIndex';
+export type { DriveProjectManifest, SpreadsheetManifestEntry, BuildManifestOptions } from './utils/driveProjectIndex';
 
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
