@@ -19,14 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Load ruleset JSON
-        id: ruleset
-        run: |
-          RULESET=$(cat .github/rulesets/main-branch.json)
-          echo "payload<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$RULESET" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
       - name: Print ruleset payload (dry run)
         if: inputs.dry_run == 'true'
         run: |
