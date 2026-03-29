@@ -1,3 +1,17 @@
+## [2.2.0-beta.1](https://github.com/el-j/google-sheet-translations/compare/v2.1.5-beta.1...v2.2.0-beta.1) (2026-03-29)
+
+### 🚀 Features
+
+* add Drive folder scanner utility ([f5ca785](https://github.com/el-j/google-sheet-translations/commit/f5ca785458a258e1b8b614d0a3b3c63207776299))
+* add driveImageSync utility for syncing Drive images to local disk ([23cb96d](https://github.com/el-j/google-sheet-translations/commit/23cb96dbe8b82253939b29ef81d271150af95444))
+* add getMultipleSpreadSheetsData for multi-spreadsheet support ([f241bda](https://github.com/el-j/google-sheet-translations/commit/f241bda7a936b819eb7428587584178f16a690b9))
+* add manageDriveTranslations orchestrator ([35c0d37](https://github.com/el-j/google-sheet-translations/commit/35c0d37a34cc25d20960f1b5db4bd577e18b4078))
+* Google Drive folder management – multi-spreadsheet, folder scanner, image sync, headless CMS orchestrator ([2e917f2](https://github.com/el-j/google-sheet-translations/commit/2e917f22f2dbb3f7bb247064ee2aed3471cf712f))
+
+### 🐛 Bug Fixes
+
+* rebuild dist-action, normalize action inputs to kebab-case, add Drive docs ([f851942](https://github.com/el-j/google-sheet-translations/commit/f8519425cbf99b4afa7b69def5088247ba770aa5))
+
 ## [2.1.5-beta.1](https://github.com/el-j/google-sheet-translations/compare/v2.1.4...v2.1.5-beta.1) (2026-03-28)
 
 ### 🐛 Bug Fixes
