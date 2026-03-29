@@ -1,5 +1,11 @@
 # Google Sheet Translations
 
+[![CI](https://github.com/el-j/google-sheet-translations/actions/workflows/ci.yml/badge.svg)](https://github.com/el-j/google-sheet-translations/actions/workflows/ci.yml)
+[![Release](https://github.com/el-j/google-sheet-translations/actions/workflows/release.yml/badge.svg)](https://github.com/el-j/google-sheet-translations/actions/workflows/release.yml)
+[![Docs](https://github.com/el-j/google-sheet-translations/actions/workflows/docs.yml/badge.svg)](https://github.com/el-j/google-sheet-translations/actions/workflows/docs.yml)
+[![npm version](https://img.shields.io/npm/v/@el-j/google-sheet-translations.svg)](https://www.npmjs.com/package/@el-j/google-sheet-translations)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A Node.js package for managing translations stored in Google Sheets.
 
 ## Features
