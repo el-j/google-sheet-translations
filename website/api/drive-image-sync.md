@@ -60,6 +60,24 @@ interface DriveImageSyncOptions {
 
   /** Max concurrent downloads (default: 3) */
   concurrency?: number;
+
+  /**
+   * When `true` (default), a file that already exists locally is only
+   * re-downloaded when Drive's `modifiedTime` is strictly newer than the
+   * local file's last-modified timestamp. Files that have not changed in
+   * Drive are skipped without a download.
+   * When `false`, any file that already exists locally is always skipped
+   * regardless of whether Drive has a newer version.
+   */
+  incrementalSync?: boolean;
+
+  /**
+   * When `true` (default), local filenames are written with lowercase
+   * file extensions and `jpeg` is normalized to `jpg`.
+   * Examples: `Photo.JPEG` → `Photo.jpg`, `banner.PNG` → `banner.png`.
+   * Only the extension is changed; the base name is preserved as-is.
+   */
+  normalizeExtensions?: boolean;
 }
 ```
 
@@ -108,6 +126,69 @@ const result = await syncDriveImages({
   concurrency: 8,
   cleanSync: true,  // remove stale local images
 });
+```
+
+### Incremental sync — only changed or new files
+
+By default, `incrementalSync: true` compares Drive's `modifiedTime` with the
+local file's last-modified timestamp and skips files that have not changed:
+
+```typescript
+const result = await syncDriveImages({
+  folderId: 'your-folder-id',
+  outputPath: './public/images',
+  // incrementalSync: true is the default — only downloads new / updated files
+});
+
+console.log(`Downloaded: ${result.downloaded.length}`);  // new + updated files
+console.log(`Skipped:    ${result.skipped.length}`);     // already up-to-date
+```
+
+Set `incrementalSync: false` to use the original behaviour where any file that
+already exists locally is always skipped:
+
+```typescript
+await syncDriveImages({
+  folderId: 'your-folder-id',
+  outputPath: './public/images',
+  incrementalSync: false,  // never re-download an existing file
+});
+```
+
+### Extension normalisation
+
+`normalizeExtensions: true` (the default) ensures every downloaded file has a
+lowercase extension, and `jpeg` / `JPEG` is written as `jpg`:
+
+| Drive filename    | Local filename   |
+|-------------------|------------------|
+| `Photo.JPEG`      | `Photo.jpg`      |
+| `banner.PNG`      | `banner.png`     |
+| `icon.SVG`        | `icon.svg`       |
+| `image.jpg`       | `image.jpg`      |
+
+```typescript
+// Default — normalisation is on
+await syncDriveImages({ folderId: 'id', outputPath: './images', credentials });
+
+// Opt out — keep original filenames exactly as they appear in Drive
+await syncDriveImages({
+  folderId: 'id',
+  outputPath: './images',
+  normalizeExtensions: false,
+  credentials,
+});
+```
+
+You can also use the `normalizeExtension` helper directly:
+
+```typescript
+import { normalizeExtension } from '@el-j/google-sheet-translations';
+
+normalizeExtension('Photo.JPEG');      // 'Photo.jpg'
+normalizeExtension('banner.PNG');      // 'banner.png'
+normalizeExtension('image.jpg');       // 'image.jpg'
+normalizeExtension('Makefile');        // 'Makefile' (no extension → unchanged)
 ```
 
 ### Specific MIME types only

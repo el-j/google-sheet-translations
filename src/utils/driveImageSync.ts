@@ -27,6 +27,22 @@ export interface DriveImageSyncOptions {
   cleanSync?: boolean;
   /** Max concurrent downloads (default: 3) */
   concurrency?: number;
+  /**
+   * When `true` (default), a file that already exists locally is re-downloaded
+   * only when Drive's `modifiedTime` is strictly newer than the local file's
+   * last-modified timestamp. This avoids re-downloading unchanged assets on
+   * every run. When `false`, any file that already exists locally is always
+   * skipped regardless of whether Drive has a newer version.
+   */
+  incrementalSync?: boolean;
+  /**
+   * When `true` (default), local filenames are written with lowercase file
+   * extensions and `jpeg` is normalized to `jpg`.
+   * Examples: `Photo.JPEG` → `Photo.jpg`, `banner.PNG` → `banner.png`,
+   *           `icon.Svg` → `icon.svg`.
+   * Applies only to the extension; the base name is left unchanged.
+   */
+  normalizeExtensions?: boolean;
 }
 
 export interface DriveImageSyncResult {
@@ -40,6 +56,7 @@ interface DriveFile {
   id: string;
   name: string;
   mimeType: string;
+  modifiedTime?: string;
   parents?: string[];
 }
 
@@ -53,6 +70,7 @@ interface FileEntry {
   name: string;
   localPath: string;
   mimeType: string;
+  driveModifiedTime?: string;
 }
 
 const DEFAULT_IMAGE_MIME_TYPES = [
@@ -71,6 +89,22 @@ const DEFAULT_IMAGE_MIME_TYPES = [
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
+
+/**
+ * Normalises a filename's extension:
+ * - Converts the extension to lowercase
+ * - Canonicalises `jpeg` → `jpg`
+ *
+ * The base name is left unchanged so that `MyPhoto.JPEG` becomes `MyPhoto.jpg`.
+ */
+export function normalizeExtension(name: string): string {
+  const dot = name.lastIndexOf('.');
+  if (dot === -1) return name;
+  const base = name.slice(0, dot);
+  let ext = name.slice(dot + 1).toLowerCase();
+  if (ext === 'jpeg') ext = 'jpg';
+  return `${base}.${ext}`;
+}
 
 async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
   const clientEmail =
@@ -111,7 +145,7 @@ async function listFilesInFolder(
     const query = `'${folderId}' in parents${mimeClause} and trashed = false`;
     const params = new URLSearchParams({
       q: query,
-      fields: 'nextPageToken,files(id,name,mimeType,parents)',
+      fields: 'nextPageToken,files(id,name,mimeType,modifiedTime,parents)',
       pageSize: '1000',
     });
     if (pageToken) params.set('pageToken', pageToken);
@@ -140,7 +174,8 @@ async function collectFiles(
   token: string,
   allowedMimeTypes: string[],
   recursive: boolean,
-  folderPattern?: RegExp
+  folderPattern?: RegExp,
+  normalizeExts = true
 ): Promise<FileEntry[]> {
   console.log(`[driveImageSync] Scanning folder: ${folderId} (path: "${folderRelPath}")`);
 
@@ -159,14 +194,22 @@ async function collectFiles(
         token,
         allowedMimeTypes,
         recursive,
-        folderPattern
+        folderPattern,
+        normalizeExts
       );
       entries.push(...subEntries);
     } else if (allowedMimeTypes.includes(item.mimeType)) {
+      const localName = normalizeExts ? normalizeExtension(item.name) : item.name;
       const localPath = folderRelPath
-        ? join(outputPath, folderRelPath, item.name)
-        : join(outputPath, item.name);
-      entries.push({ id: item.id, name: item.name, localPath, mimeType: item.mimeType });
+        ? join(outputPath, folderRelPath, localName)
+        : join(outputPath, localName);
+      entries.push({
+        id: item.id,
+        name: item.name,
+        localPath,
+        mimeType: item.mimeType,
+        driveModifiedTime: item.modifiedTime,
+      });
     }
   }
 
@@ -238,6 +281,8 @@ export async function syncDriveImages(
     credentials,
     cleanSync = false,
     concurrency = 3,
+    incrementalSync = true,
+    normalizeExtensions = true,
   } = options;
 
   const token = await getAccessToken(credentials);
@@ -251,7 +296,8 @@ export async function syncDriveImages(
     token,
     mimeTypes,
     recursive,
-    folderPattern
+    folderPattern,
+    normalizeExtensions
   );
 
   const downloaded: string[] = [];
@@ -259,10 +305,31 @@ export async function syncDriveImages(
   const errors: string[] = [];
 
   const tasks = entries.map((entry) => async () => {
-    if (existsSync(entry.localPath)) {
-      console.log(`[driveImageSync] Skipping (exists): ${entry.localPath}`);
-      skipped.push(entry.localPath);
-      return;
+    const localExists = existsSync(entry.localPath);
+
+    if (localExists) {
+      if (incrementalSync && entry.driveModifiedTime) {
+        // Compare Drive's modifiedTime with the local file's mtime.
+        // Re-download only when Drive is strictly newer.
+        try {
+          const localMtimeMs = statSync(entry.localPath).mtimeMs;
+          const driveMtimeMs = new Date(entry.driveModifiedTime).getTime();
+          if (driveMtimeMs <= localMtimeMs) {
+            console.log(`[driveImageSync] Skipping (up to date): ${entry.localPath}`);
+            skipped.push(entry.localPath);
+            return;
+          }
+          console.log(`[driveImageSync] Re-downloading (changed in Drive): ${entry.localPath}`);
+        } catch {
+          // If stat fails for any reason, proceed to download to be safe.
+          console.log(`[driveImageSync] Downloading (could not stat local): ${entry.localPath}`);
+        }
+      } else {
+        // incrementalSync disabled or no modifiedTime available → skip existing files.
+        console.log(`[driveImageSync] Skipping (exists): ${entry.localPath}`);
+        skipped.push(entry.localPath);
+        return;
+      }
     }
 
     console.log(`[driveImageSync] Downloading: ${entry.localPath}`);

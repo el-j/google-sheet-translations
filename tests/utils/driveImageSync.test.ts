@@ -1,4 +1,4 @@
-import { syncDriveImages } from '../../src/utils/driveImageSync';
+import { syncDriveImages, normalizeExtension } from '../../src/utils/driveImageSync';
 
 // Mock node:fs
 jest.mock('node:fs', () => ({
@@ -13,7 +13,7 @@ jest.mock('node:fs', () => ({
   }),
   readdirSync: jest.fn().mockReturnValue([]),
   unlinkSync: jest.fn(),
-  statSync: jest.fn().mockReturnValue({ isDirectory: () => false }),
+  statSync: jest.fn().mockReturnValue({ isDirectory: () => false, mtimeMs: 0 }),
 }));
 
 jest.mock('node:stream/promises', () => ({
@@ -286,5 +286,267 @@ describe('syncDriveImages', () => {
 
     expect(result.downloaded).toHaveLength(1);
     expect(result.downloaded[0]).toContain('thumb.webp');
+  });
+});
+
+describe('normalizeExtension', () => {
+  it('lowercases an uppercase extension', () => {
+    expect(normalizeExtension('banner.PNG')).toBe('banner.png');
+    expect(normalizeExtension('icon.SVG')).toBe('icon.svg');
+    expect(normalizeExtension('photo.WebP')).toBe('photo.webp');
+  });
+
+  it('converts jpeg / JPEG to jpg', () => {
+    expect(normalizeExtension('photo.jpeg')).toBe('photo.jpg');
+    expect(normalizeExtension('photo.JPEG')).toBe('photo.jpg');
+    expect(normalizeExtension('photo.Jpeg')).toBe('photo.jpg');
+  });
+
+  it('leaves already-correct extensions unchanged', () => {
+    expect(normalizeExtension('image.jpg')).toBe('image.jpg');
+    expect(normalizeExtension('icon.png')).toBe('icon.png');
+  });
+
+  it('preserves the base name exactly', () => {
+    expect(normalizeExtension('MyPhoto.JPEG')).toBe('MyPhoto.jpg');
+    expect(normalizeExtension('Hero_Banner.PNG')).toBe('Hero_Banner.png');
+  });
+
+  it('returns the name unchanged when there is no extension', () => {
+    expect(normalizeExtension('Makefile')).toBe('Makefile');
+    expect(normalizeExtension('README')).toBe('README');
+  });
+});
+
+describe('incrementalSync', () => {
+  const driveModifiedOld = new Date(1000).toISOString();  // 1 second since epoch
+  const driveModifiedNew = new Date(9000).toISOString();  // 9 seconds since epoch
+  const localMtimeMid = 5000;                              // 5 seconds since epoch
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const fs = require('node:fs');
+    fs.existsSync.mockReturnValue(false);
+    fs.readdirSync.mockReturnValue([]);
+    fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: localMtimeMid });
+  });
+
+  it('re-downloads a file when Drive modifiedTime is newer than local mtime', async () => {
+    const fs = require('node:fs');
+    fs.existsSync.mockReturnValue(true); // file exists locally
+
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedNew },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.downloaded).toHaveLength(1);
+    expect(result.skipped).toHaveLength(0);
+  });
+
+  it('skips a file when Drive modifiedTime is older than local mtime', async () => {
+    const fs = require('node:fs');
+    fs.existsSync.mockReturnValue(true);
+    // statSync returns mtimeMs: 5000 (above), drive has 1000 → local is newer
+
+    mockFetch.mockResolvedValueOnce(
+      makeListResponse([
+        { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedOld },
+      ])
+    );
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.skipped).toHaveLength(1);
+    expect(result.downloaded).toHaveLength(0);
+  });
+
+  it('skips a file when Drive modifiedTime equals local mtime', async () => {
+    const fs = require('node:fs');
+    fs.existsSync.mockReturnValue(true);
+    fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: 5000 });
+    const driveModifiedEqual = new Date(5000).toISOString();
+
+    mockFetch.mockResolvedValueOnce(
+      makeListResponse([
+        { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedEqual },
+      ])
+    );
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.skipped).toHaveLength(1);
+    expect(result.downloaded).toHaveLength(0);
+  });
+
+  it('falls back to skip-existing when modifiedTime is absent (no re-download)', async () => {
+    const fs = require('node:fs');
+    fs.existsSync.mockReturnValue(true);
+
+    // No modifiedTime in response → incremental check is bypassed → skip existing
+    mockFetch.mockResolvedValueOnce(
+      makeListResponse([
+        { id: 'f1', name: 'photo.png', mimeType: 'image/png' },
+      ])
+    );
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.skipped).toHaveLength(1);
+    expect(result.downloaded).toHaveLength(0);
+  });
+
+  it('incrementalSync: false always skips existing files (Drive modifiedTime ignored)', async () => {
+    const fs = require('node:fs');
+    fs.existsSync.mockReturnValue(true);
+
+    mockFetch.mockResolvedValueOnce(
+      makeListResponse([
+        { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedNew },
+      ])
+    );
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+      incrementalSync: false,
+    });
+
+    expect(result.skipped).toHaveLength(1);
+    expect(result.downloaded).toHaveLength(0);
+  });
+
+  it('downloads a new file regardless of incrementalSync setting', async () => {
+    // existsSync returns false (default) → always download
+
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'f1', name: 'new.png', mimeType: 'image/png', modifiedTime: driveModifiedOld },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.downloaded).toHaveLength(1);
+    expect(result.skipped).toHaveLength(0);
+  });
+});
+
+describe('normalizeExtensions option', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const fs = require('node:fs');
+    fs.existsSync.mockReturnValue(false);
+    fs.readdirSync.mockReturnValue([]);
+    fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: 0 });
+  });
+
+  it('normalizeExtensions: true (default) — JPEG becomes .jpg in local path', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'f1', name: 'photo.JPEG', mimeType: 'image/jpeg' },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.downloaded).toHaveLength(1);
+    expect(result.downloaded[0]).toMatch(/photo\.jpg$/);
+    expect(result.downloaded[0]).not.toMatch(/photo\.JPEG$/);
+  });
+
+  it('normalizeExtensions: true — uppercase extension lowercased', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'f1', name: 'banner.PNG', mimeType: 'image/png' },
+          { id: 'f2', name: 'icon.SVG', mimeType: 'image/svg+xml' },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.downloaded).toHaveLength(2);
+    expect(result.downloaded.some((p) => p.endsWith('banner.png'))).toBe(true);
+    expect(result.downloaded.some((p) => p.endsWith('icon.svg'))).toBe(true);
+  });
+
+  it('normalizeExtensions: false — original filename preserved', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'f1', name: 'photo.JPEG', mimeType: 'image/jpeg' },
+          { id: 'f2', name: 'banner.PNG', mimeType: 'image/png' },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+      normalizeExtensions: false,
+    });
+
+    expect(result.downloaded).toHaveLength(2);
+    expect(result.downloaded.some((p) => p.endsWith('photo.JPEG'))).toBe(true);
+    expect(result.downloaded.some((p) => p.endsWith('banner.PNG'))).toBe(true);
+  });
+
+  it('normalizeExtensions: true — base name is not modified, only extension', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'f1', name: 'MyHero_Banner.PNG', mimeType: 'image/png' },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.downloaded[0]).toMatch(/MyHero_Banner\.png$/);
   });
 });
