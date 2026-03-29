@@ -17,7 +17,7 @@ Create GitHub repository rulesets as infrastructure-as-code so that CI + quality
 3. Update `CONTRIBUTING.md` to document the ruleset and how to apply it
 
 ## Acceptance criteria
-- [ ] `.github/rulesets/main-branch.json` is valid GitHub Rulesets API JSON
-- [ ] `.github/workflows/apply-ruleset.yml` uses `gh api` to apply the ruleset
-- [ ] Existing tests unaffected
-- [ ] Status: DONE ✅
+- [x] `.github/rulesets/main-branch.json` is valid GitHub Rulesets API JSON
+- [x] `.github/workflows/apply-ruleset.yml` uses `gh api` to apply the ruleset
+- [x] Existing tests unaffected
+- [x] Status: DONE ✅

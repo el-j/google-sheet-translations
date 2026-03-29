@@ -16,8 +16,8 @@ Auto-sync `CHANGELOG.md` into the VitePress docs site so the changelog page alwa
 4. Add `"changelog:preview": "node scripts/changelog-preview.mjs"` to `package.json` scripts
 
 ## Acceptance criteria
-- [ ] `website/changelog.md` uses VitePress `<!--@include: ../CHANGELOG.md-->` include
-- [ ] `docs.yml` triggers on `CHANGELOG.md` changes
-- [ ] `scripts/changelog-preview.mjs` exists and is documented
-- [ ] `npm run changelog:preview` works locally
-- [ ] Status: DONE ✅
+- [x] `website/changelog.md` uses VitePress `<!--@include: ../CHANGELOG.md-->` include
+- [x] `docs.yml` triggers on `CHANGELOG.md` changes
+- [x] `scripts/changelog-preview.mjs` exists and is documented
+- [x] `npm run changelog:preview` works locally
+- [x] Status: DONE ✅

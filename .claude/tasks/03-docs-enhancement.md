@@ -21,8 +21,8 @@ Ensure documentation is always complete, current, and automatically maintained �
 5. Create `website/guide/release-process.md` that mirrors / includes `docs/release-process.md`
 
 ## Acceptance criteria
-- [ ] README.md has CI, Release, and Docs status badges
-- [ ] CONTRIBUTING.md documents ruleset + changelog-preview
-- [ ] `docs/release-process.md` explains the full pipeline
-- [ ] VitePress sidebar has link to release-process guide
-- [ ] Status: DONE ✅
+- [x] README.md has CI, Release, Docs, npm, and License badges
+- [x] CONTRIBUTING.md documents ruleset + changelog-preview + docs automation
+- [x] `website/guide/release-process.md` explains the full pipeline
+- [x] VitePress sidebar has Contributing → Release Process link
+- [x] Status: DONE ✅
