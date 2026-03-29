@@ -1,3 +1,9 @@
+## [2.2.0-beta.2](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.1...v2.2.0-beta.2) (2026-03-29)
+
+### 🚀 Features
+
+* incremental image sync, extension normalization, and local image utilities ([#56](https://github.com/el-j/google-sheet-translations/issues/56)) ([3749e3e](https://github.com/el-j/google-sheet-translations/commit/3749e3e840ef34c346a131abefec62b6f7baab84))
+
 ## [2.2.0-beta.1](https://github.com/el-j/google-sheet-translations/compare/v2.1.5-beta.1...v2.2.0-beta.1) (2026-03-29)
 
 ### 🚀 Features
