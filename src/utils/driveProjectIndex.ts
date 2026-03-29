@@ -88,7 +88,7 @@ export function buildManifest(options: BuildManifestOptions): DriveProjectManife
  * Writes the project manifest JSON to disk.
  * Creates parent directories as needed.
  *
- * @param manifest  - The manifest to serialise
+ * @param manifest  - The manifest to serialize
  * @param manifestPath - Absolute or relative path for the output file
  */
 export function writeManifest(manifest: DriveProjectManifest, manifestPath: string): void {

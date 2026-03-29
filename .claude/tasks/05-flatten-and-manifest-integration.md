@@ -152,7 +152,7 @@ npx jest tests/utils/getDriveTranslations.test.ts --no-coverage 2>&1 | tail -30
 ```
 
 ## Acceptance criteria
-- [ ] `src/utils/getDriveTranslations.ts` TypeScript compiles
-- [ ] `src/index.ts` exports all new types
-- [ ] All existing + new tests in `getDriveTranslations.test.ts` pass
-- [ ] API docs updated with all new options
+- [x] `src/utils/getDriveTranslations.ts` TypeScript compiles
+- [x] `src/index.ts` exports all new types
+- [x] All existing + new tests in `getDriveTranslations.test.ts` pass
+- [x] API docs updated with all new options

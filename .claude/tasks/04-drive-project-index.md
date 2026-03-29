@@ -265,6 +265,6 @@ npx jest tests/utils/driveProjectIndex.test.ts --no-coverage 2>&1 | tail -20
 ```
 
 ## Acceptance criteria
-- [ ] `src/utils/driveProjectIndex.ts` compiles (tsc)
-- [ ] All tests in `tests/utils/driveProjectIndex.test.ts` pass
-- [ ] No existing tests broken
+- [x] `src/utils/driveProjectIndex.ts` compiles (tsc)
+- [x] All tests in `tests/utils/driveProjectIndex.test.ts` pass
+- [x] No existing tests broken

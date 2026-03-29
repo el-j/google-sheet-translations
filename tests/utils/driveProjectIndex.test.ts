@@ -110,7 +110,7 @@ describe('writeManifest', () => {
     expect(mockFs.mkdirSync).not.toHaveBeenCalled();
   });
 
-  it('writes serialised JSON to the manifest path', () => {
+  it('writes serialized JSON to the manifest path', () => {
     writeManifest(MANIFEST, './translations/i18n-manifest.json');
     expect(mockFs.writeFileSync).toHaveBeenCalledWith(
       './translations/i18n-manifest.json',
