@@ -323,3 +323,154 @@ describe('manifest / createManifest', () => {
     expect(result.manifest).toBeUndefined();
   });
 });
+
+// ── Doc ingestion integration ─────────────────────────────────────────────────
+
+jest.mock('../../src/utils/driveDocScanner');
+jest.mock('../../src/utils/docIngester');
+
+import { scanDriveFolderForDocs } from '../../src/utils/driveDocScanner';
+import { ingestDoc } from '../../src/utils/docIngester';
+
+const mockScanDocs = scanDriveFolderForDocs as jest.MockedFunction<typeof scanDriveFolderForDocs>;
+const mockIngestDoc = ingestDoc as jest.MockedFunction<typeof ingestDoc>;
+const mockReadManifest = jest.fn().mockReturnValue(undefined);
+
+jest.mock('../../src/utils/driveProjectIndex', () => {
+  const actual = jest.requireActual('../../src/utils/driveProjectIndex');
+  return {
+    ...actual,
+    buildManifest: jest.fn().mockReturnValue({ version: '1', generatedAt: '', locales: [], spreadsheets: [], outputDirectory: 'translations', flatten: true }),
+    writeManifest: jest.fn(),
+    readManifest: (...args: unknown[]) => mockReadManifest(...args),
+  };
+});
+
+describe('manageDriveTranslations – scanForDocs', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetMultiple.mockResolvedValue(MOCK_TRANSLATIONS);
+    mockScanDrive.mockResolvedValue([]);
+    mockScanDocs.mockResolvedValue([]);
+    mockIngestDoc.mockResolvedValue({
+      action: 'created',
+      entry: {
+        id: 'doc-id',
+        name: 'content_en',
+        folderPath: '',
+        generatedFromDoc: true,
+        sourceLocale: 'en',
+        linkedSpreadsheetId: 'new-sheet-id',
+        lastIngestedAt: '2024-01-01T00:00:00.000Z',
+      },
+    });
+    mockReadManifest.mockReturnValue(undefined);
+  });
+
+  it('scans for docs when scanForDocs: true', async () => {
+    mockScanDocs.mockResolvedValue([
+      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+    ]);
+
+    const result = await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      scanForDocs: true,
+    });
+
+    expect(mockScanDocs).toHaveBeenCalledWith({ folderId: 'folder-id' });
+    expect(mockIngestDoc).toHaveBeenCalledTimes(1);
+    expect(result.docIngestResults).toHaveLength(1);
+    expect(result.docIngestResults![0].action).toBe('created');
+  });
+
+  it('applies docNameFilter when provided', async () => {
+    mockScanDocs.mockResolvedValue([
+      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+      { id: 'doc2', name: 'draft_de', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'de' },
+    ]);
+
+    await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      scanForDocs: true,
+      docNameFilter: /^content_/,
+    });
+
+    expect(mockIngestDoc).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not scan for docs when scanForDocs is false (default)', async () => {
+    await manageDriveTranslations({ driveFolderId: 'folder-id' });
+    expect(mockScanDocs).not.toHaveBeenCalled();
+  });
+
+  it('applies docSourceLocale fallback when doc has no sourceLocale', async () => {
+    mockScanDocs.mockResolvedValue([
+      { id: 'doc1', name: 'content', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: undefined },
+    ]);
+
+    await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      scanForDocs: true,
+      docSourceLocale: 'fr',
+    });
+
+    const [docArg] = mockIngestDoc.mock.calls[0];
+    expect(docArg.sourceLocale).toBe('fr');
+  });
+
+  it('continues processing other docs when one fails', async () => {
+    mockScanDocs.mockResolvedValue([
+      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+      { id: 'doc2', name: 'content_de', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'de' },
+    ]);
+    mockIngestDoc
+      .mockRejectedValueOnce(new Error('Export failed'))
+      .mockResolvedValueOnce({ action: 'created', entry: { id: 'doc2', name: 'content_de', folderPath: '', generatedFromDoc: true, sourceLocale: 'de', linkedSpreadsheetId: 'sheet-de' } });
+
+    const result = await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      scanForDocs: true,
+    });
+
+    // Second doc should still be processed
+    expect(result.docIngestResults).toHaveLength(1);
+    expect(result.docIngestResults![0].action).toBe('created');
+  });
+
+  it('docIngestResults is undefined when scanForDocs is false', async () => {
+    const result = await manageDriveTranslations({ driveFolderId: 'folder-id' });
+    expect(result.docIngestResults).toBeUndefined();
+  });
+});
+
+  it('passes existing manifest entry to ingestDoc when previous manifest has docs', async () => {
+    const existingDocEntry = {
+      id: 'doc1',
+      name: 'content_en',
+      folderPath: '',
+      generatedFromDoc: true as const,
+      sourceLocale: 'en',
+      linkedSpreadsheetId: 'existing-sheet',
+      lastIngestedAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockReadManifest.mockReturnValueOnce({
+      version: '1',
+      generatedAt: '',
+      locales: ['en'],
+      spreadsheets: [],
+      outputDirectory: 'translations',
+      flatten: true,
+      docs: [existingDocEntry],
+    });
+    mockScanDocs.mockResolvedValue([
+      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+    ]);
+
+    await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      scanForDocs: true,
+    });
+
+    const [, options] = mockIngestDoc.mock.calls[0];
+    expect(options.existingEntry).toEqual(existingDocEntry);
+  });

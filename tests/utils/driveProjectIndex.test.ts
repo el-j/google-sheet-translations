@@ -131,3 +131,46 @@ describe('writeManifest', () => {
     logSpy.mockRestore();
   });
 });
+
+// ── readManifest ──────────────────────────────────────────────────────────────
+
+describe('readManifest', () => {
+  // We need to import readManifest - add to the import at the top won't work here
+  // so we re-require with the full module
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { readManifest } = require('../../src/utils/driveProjectIndex');
+
+  it('returns the parsed manifest when the file exists', () => {
+    const manifest: DriveProjectManifest = {
+      version: '1',
+      generatedAt: '2026-01-01T00:00:00.000Z',
+      locales: ['de', 'en'],
+      spreadsheets: [],
+      outputDirectory: './translations',
+      flatten: true,
+    };
+    mockFs.readFileSync.mockReturnValueOnce(JSON.stringify(manifest) as unknown as Buffer);
+
+    const result = readManifest('./translations/i18n-manifest.json');
+
+    expect(result).toEqual(manifest);
+  });
+
+  it('returns undefined when the file does not exist', () => {
+    mockFs.readFileSync.mockImplementationOnce(() => {
+      throw new Error('ENOENT: no such file or directory');
+    });
+
+    const result = readManifest('./non-existent-path/manifest.json');
+
+    expect(result).toBeUndefined();
+  });
+
+  it('returns undefined when the file contains invalid JSON', () => {
+    mockFs.readFileSync.mockReturnValueOnce('not-json' as unknown as Buffer);
+
+    const result = readManifest('./broken/manifest.json');
+
+    expect(result).toBeUndefined();
+  });
+});

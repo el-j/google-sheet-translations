@@ -8,8 +8,13 @@ import type { ScanDriveFolderOptions } from './driveFolderScanner';
 import { scanDriveFolderForSpreadsheets } from './driveFolderScanner';
 import type { DriveImageSyncOptions, DriveImageSyncResult } from './driveImageSync';
 import { syncDriveImages } from './driveImageSync';
-import type { DriveProjectManifest, SpreadsheetManifestEntry } from './driveProjectIndex';
-import { buildManifest, writeManifest } from './driveProjectIndex';
+import type { DocManifestEntry, DriveProjectManifest, SpreadsheetManifestEntry } from './driveProjectIndex';
+import { buildManifest, readManifest, writeManifest } from './driveProjectIndex';
+import type { ScanDriveFolderForDocsOptions } from './driveDocScanner';
+import { scanDriveFolderForDocs } from './driveDocScanner';
+import type { DocIngesterOptions, DocUpdateMode } from './docIngester';
+import { ingestDoc } from './docIngester';
+import type { DocKeyStrategy } from './docParser';
 
 export interface GoogleDriveManagerOptions {
   /**
@@ -100,6 +105,50 @@ export interface GoogleDriveManagerOptions {
 
   /** Arbitrary metadata stored in the manifest */
   projectMetadata?: Record<string, unknown>;
+
+  // ── Google Docs ingestion ───────────────────────────────────────────────────
+
+  /**
+   * When `true`, scans `driveFolderId` for Google Docs and ingests them as
+   * one-way base-language sources for translation spreadsheets.
+   * Requires `driveFolderId`. (default: `false`)
+   */
+  scanForDocs?: boolean;
+
+  /**
+   * Only process Docs whose names match this pattern.
+   * @example /^content_/
+   */
+  docNameFilter?: RegExp;
+
+  /**
+   * Fallback source locale when a Doc filename contains no `_[lang]` suffix.
+   * @example 'en'
+   */
+  docSourceLocale?: string;
+
+  /**
+   * Key-derivation strategy for parsing exported Doc content.
+   * - `'heading'` (default) – H1 = sheet, H2 = key.
+   * - `'marker'` – explicit `[[key:path.to.key]]` annotations.
+   * - `'numbered'` – sequential `item_1`, `item_2`, … keys.
+   */
+  docKeyStrategy?: DocKeyStrategy;
+
+  /**
+   * Controls when an existing linked spreadsheet is refreshed from the doc.
+   * - `'create-only'` (default) – only creates if no spreadsheet is linked yet.
+   * - `'refresh-if-newer'` – also refreshes when doc `modifiedTime` is newer
+   *   than the manifest's `lastIngestedAt`.
+   */
+  docUpdateMode?: DocUpdateMode;
+
+  /**
+   * Target locales for GOOGLETRANSLATE formulas when **creating** a new
+   * spreadsheet from a doc.
+   * Defaults to the standard set defined in `spreadsheetCreator.ts`.
+   */
+  docTargetLocales?: string[];
 }
 
 export interface GoogleDriveManagerResult {
@@ -110,6 +159,11 @@ export interface GoogleDriveManagerResult {
   imageSync?: DriveImageSyncResult;
   /** Project manifest written during this run (only present when `createManifest: true`) */
   manifest?: DriveProjectManifest;
+  /**
+   * Results from doc ingestion (only present when `scanForDocs: true`).
+   * One entry per discovered doc, recording the action taken.
+   */
+  docIngestResults?: Array<{ docName: string; action: 'created' | 'refreshed' | 'skipped' }>;
 }
 
 /** Turns a spreadsheet name / ID into a safe directory segment */
@@ -164,6 +218,13 @@ export async function manageDriveTranslations(
     domain,
     defaultLocale,
     projectMetadata,
+    // Doc ingestion options
+    scanForDocs = false,
+    docNameFilter,
+    docSourceLocale,
+    docKeyStrategy,
+    docUpdateMode,
+    docTargetLocales,
   } = options;
 
   if (syncImages && !imageOutputPath) {
@@ -274,9 +335,65 @@ export async function manageDriveTranslations(
 
   // Write project manifest
   let manifest: DriveProjectManifest | undefined;
+  let docIngestResults: Array<{ docName: string; action: 'created' | 'refreshed' | 'skipped' }> | undefined;
+  const docEntries: DocManifestEntry[] = [];
+
+  const resolvedManifestPath =
+    manifestPath ?? path.join(baseOutputDir, 'i18n-manifest.json');
+
+  // ── Doc ingestion ───────────────────────────────────────────────────────────
+  if (driveFolderId && scanForDocs) {
+    // Load the previous manifest so we can compare timestamps and find existing doc entries.
+    const previousManifest = readManifest(resolvedManifestPath);
+
+    const docScanOptions: ScanDriveFolderForDocsOptions = {
+      folderId: driveFolderId,
+    };
+    const discoveredDocs = await scanDriveFolderForDocs(docScanOptions);
+    console.log(
+      `[manageDriveTranslations] Found ${discoveredDocs.length} doc(s) in Drive folder`,
+    );
+
+    docIngestResults = [];
+
+    for (const docFile of discoveredDocs) {
+      // Apply optional name filter
+      if (docNameFilter && !docNameFilter.test(docFile.name)) continue;
+
+      // Apply fallback source locale when filename inference yields nothing
+      if (!docFile.sourceLocale && docSourceLocale) {
+        docFile.sourceLocale = docSourceLocale;
+      }
+
+      // Find the previous manifest entry for this doc (if any)
+      const existingEntry = previousManifest?.docs?.find(
+        (d) => d.id === docFile.id,
+      );
+
+      const ingesterOptions: DocIngesterOptions = {
+        targetLocales: docTargetLocales,
+        keyStrategy: docKeyStrategy,
+        updateMode: docUpdateMode,
+        existingEntry,
+        waitSeconds: translationOptions.waitSeconds,
+      };
+
+      try {
+        const result = await ingestDoc(docFile, ingesterOptions);
+        docEntries.push(result.entry);
+        docIngestResults.push({ docName: docFile.name, action: result.action });
+      } catch (err) {
+        console.error(
+          `[manageDriveTranslations] Failed to ingest doc "${docFile.name}":`,
+          err,
+        );
+        // Keep the previous entry intact so we don't lose the linkedSpreadsheetId
+        if (existingEntry) docEntries.push(existingEntry);
+      }
+    }
+  }
+
   if (shouldCreateManifest) {
-    const resolvedManifestPath =
-      manifestPath ?? path.join(baseOutputDir, 'i18n-manifest.json');
     manifest = buildManifest({
       translations,
       spreadsheets: spreadsheetEntries,
@@ -286,9 +403,10 @@ export async function manageDriveTranslations(
       domain,
       defaultLocale,
       projectMetadata,
+      docs: docEntries.length > 0 ? docEntries : undefined,
     });
     writeManifest(manifest, resolvedManifestPath);
   }
 
-  return { translations, spreadsheetIds: filteredIds, imageSync, manifest };
+  return { translations, spreadsheetIds: filteredIds, imageSync, manifest, docIngestResults };
 }

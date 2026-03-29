@@ -3,6 +3,32 @@ import path from 'node:path';
 import type { TranslationData } from '../types';
 
 /**
+ * Metadata for a Google Doc that was used as a one-way input source to seed
+ * or refresh a translation spreadsheet.
+ *
+ * Docs are **never** written back to — this entry is purely informational and
+ * is used to decide whether a subsequent `refresh-if-newer` ingest is needed.
+ */
+export interface DocManifestEntry {
+  /** Google Drive file ID of the source document */
+  id: string;
+  /** Human-readable document name */
+  name: string;
+  /** Relative path within the Drive folder */
+  folderPath: string;
+  /** ISO timestamp of the doc's last Drive modification */
+  modifiedTime?: string;
+  /** Locale inferred from the filename (e.g. `"en"`, `"de"`, `"zh-TW"`) */
+  sourceLocale: string;
+  /** ISO timestamp of the last successful ingest of this doc */
+  lastIngestedAt?: string;
+  /** ID of the spreadsheet that was created / refreshed from this doc */
+  linkedSpreadsheetId?: string;
+  /** Discriminant – always `true` for doc-sourced entries */
+  generatedFromDoc: true;
+}
+
+/**
  * Metadata for a single spreadsheet in the project manifest.
  */
 export interface SpreadsheetManifestEntry {
@@ -42,6 +68,11 @@ export interface DriveProjectManifest {
   defaultLocale?: string;
   /** Every spreadsheet that was processed in the last run */
   spreadsheets: SpreadsheetManifestEntry[];
+  /**
+   * Google Docs that were used as one-way input sources.
+   * Present only when `scanForDocs: true` was used.
+   */
+  docs?: DocManifestEntry[];
   /** Base local directory where translation files are written */
   outputDirectory: string;
   /**
@@ -62,6 +93,8 @@ export interface BuildManifestOptions {
   domain?: string;
   defaultLocale?: string;
   projectMetadata?: Record<string, unknown>;
+  /** Doc entries to include in the manifest (populated when scanForDocs: true) */
+  docs?: DocManifestEntry[];
 }
 
 /**
@@ -78,6 +111,7 @@ export function buildManifest(options: BuildManifestOptions): DriveProjectManife
     locales,
     defaultLocale: options.defaultLocale,
     spreadsheets: options.spreadsheets,
+    docs: options.docs,
     outputDirectory: options.outputDirectory,
     flatten: options.flatten,
     projectMetadata: options.projectMetadata,
@@ -98,4 +132,19 @@ export function writeManifest(manifest: DriveProjectManifest, manifestPath: stri
   }
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
   console.log(`[driveProjectIndex] Wrote project manifest → ${manifestPath}`);
+}
+
+/**
+ * Reads and parses an existing project manifest from disk.
+ * Returns `undefined` when the file does not exist or cannot be parsed.
+ *
+ * @param manifestPath - Absolute or relative path to the manifest file
+ */
+export function readManifest(manifestPath: string): DriveProjectManifest | undefined {
+  try {
+    const content = fs.readFileSync(manifestPath, 'utf8');
+    return JSON.parse(content) as DriveProjectManifest;
+  } catch {
+    return undefined;
+  }
 }
