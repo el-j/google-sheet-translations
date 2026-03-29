@@ -13,16 +13,14 @@ updates:
       time: "09:00"
       timezone: "UTC"
     open-pull-requests-limit: 10
+    
+    # REPLACED: This single catch-all group forces all npm updates (dev, 
+    # production, major, minor, patch) into one continuously updated PR.
     groups:
-      # Group all devDependency updates together to reduce PR noise
-      dev-dependencies:
-        dependency-type: "development"
-        update-types:
-          - "minor"
-          - "patch"
-      # Keep production dependencies separate so they get individual review
-      production-dependencies:
-        dependency-type: "production"
+      all-npm-dependencies:
+        patterns:
+          - "*"
+          
     # Ignore known-unfixable vulnerabilities in the npm CLI bundled inside
     # @semantic-release/npm. These affect ONLY the release toolchain (devDep)
     # and are not reachable from the published package. They require the npm
@@ -44,3 +42,9 @@ updates:
       time: "09:00"
       timezone: "UTC"
     open-pull-requests-limit: 5
+    
+    # ADDED: This bundles all your GitHub Action updates into one PR.
+    groups:
+      all-actions:
+        patterns:
+          - "*"
