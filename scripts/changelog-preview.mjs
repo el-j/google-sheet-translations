@@ -60,7 +60,7 @@ try {
     console.log('ℹ️  No release would be triggered by current commits.')
     console.log('   Add a conventional commit with type feat/fix/perf/refactor to trigger a release.')
   } else {
-    console.error('⚠️  dry-run exited with error (this is normal without Git credentials):')
+    console.error('⚠️  dry-run exited with error (this is normal without GitHub credentials):')
     console.error(stderr || err.message)
     console.log('\nTip: Set GITHUB_TOKEN and NPM_TOKEN env vars for a full dry-run.')
   }

@@ -8,6 +8,6 @@ Every commit to `main` that contains a releasable change type automatically:
 3. Creates a GitHub Release
 4. Publishes to npm
 
-> 💡 **Tip:** Run `npm run changelog:preview` locally to see what the next release entry will look like before pushing.
+> 💡 **Tip:** Run `npm run changelog:preview` locally to see what the next release entry will look like before pushing commits.
 
 <!--@include: ../CHANGELOG.md-->
