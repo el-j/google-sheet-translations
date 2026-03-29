@@ -2,13 +2,22 @@
 
 `@el-j/google-sheet-translations` exports a small, focused public API.
 
-## Main function
+## Main functions
 
 | Export | Description |
 |--------|-------------|
-| [`getSpreadSheetData`](/api/get-spreadsheet-data) | Fetch translations from Google Sheets, write output files, and optionally sync local changes back |
+| [`getSpreadSheetData`](/api/get-spreadsheet-data) | Fetch translations from a single Google Spreadsheet, write output files, and optionally sync local changes back |
+| [`getMultipleSpreadSheetsData`](/api/get-multiple-spreadsheets-data) | Fetch from multiple spreadsheet IDs and deep-merge results |
+| [`manageDriveTranslations`](/api/manage-drive-translations) | Top-level orchestrator — scan a Drive folder, fetch all spreadsheets, and optionally sync images |
 
-## Utilities
+## Google Drive utilities
+
+| Export | Description |
+|--------|-------------|
+| [`scanDriveFolderForSpreadsheets`](/api/drive-folder-scanner) | Discover all spreadsheet files in a Google Drive folder (recursive) |
+| [`syncDriveImages`](/api/drive-image-sync) | Download images from a Drive folder to a local directory |
+
+## Other utilities
 
 | Export | Description |
 |--------|-------------|
@@ -21,6 +30,13 @@
 | Export | Description |
 |--------|-------------|
 | [`SpreadsheetOptions`](/api/types#spreadsheetoptions) | Options for `getSpreadSheetData` |
+| [`MultiSpreadsheetOptions`](/api/get-multiple-spreadsheets-data#multispreadsheetoptions) | Options for `getMultipleSpreadSheetsData` |
+| [`GoogleDriveManagerOptions`](/api/manage-drive-translations#googledrivemangeroptions) | Options for `manageDriveTranslations` |
+| [`GoogleDriveManagerResult`](/api/manage-drive-translations#googledrivemanaagerresult) | Return type of `manageDriveTranslations` |
+| [`DriveSpreadsheetFile`](/api/drive-folder-scanner#drivespreadsheetfile) | A discovered spreadsheet file entry |
+| [`ScanDriveFolderOptions`](/api/drive-folder-scanner#scandrivefolderoptions) | Options for `scanDriveFolderForSpreadsheets` |
+| [`DriveImageSyncOptions`](/api/drive-image-sync#driveimagesyncoptions) | Options for `syncDriveImages` |
+| [`DriveImageSyncResult`](/api/drive-image-sync#driveimagesyncresult) | Return type of `syncDriveImages` |
 | [`TranslationData`](/api/types#translationdata) | The return type of `getSpreadSheetData` |
 | [`TranslationValue`](/api/types#translationvalue) | A single translation value |
 | [`SheetRow`](/api/types#sheetrow) | A raw row from a Google Sheet |
@@ -39,8 +55,20 @@ npm install @el-j/google-sheet-translations
 import getSpreadSheetData from '@el-j/google-sheet-translations';
 
 // Named imports
-import { getSpreadSheetData, validateEnv, isValidLocale } from '@el-j/google-sheet-translations';
+import {
+  getSpreadSheetData,
+  getMultipleSpreadSheetsData,
+  manageDriveTranslations,
+  scanDriveFolderForSpreadsheets,
+  syncDriveImages,
+  validateEnv,
+} from '@el-j/google-sheet-translations';
 
 // Type-only imports (zero runtime cost)
-import type { SpreadsheetOptions, TranslationData } from '@el-j/google-sheet-translations';
+import type {
+  SpreadsheetOptions,
+  MultiSpreadsheetOptions,
+  GoogleDriveManagerOptions,
+  TranslationData,
+} from '@el-j/google-sheet-translations';
 ```

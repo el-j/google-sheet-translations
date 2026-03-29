@@ -63,6 +63,23 @@ export type {
   GoogleEnvVars,
 } from './types';
 
+// Multi-spreadsheet support
+export { getMultipleSpreadSheetsData } from './getMultipleSpreadSheetsData';
+export type { MultiSpreadsheetOptions } from './getMultipleSpreadSheetsData';
+export { mergeMultipleTranslationData } from './utils/multiSpreadsheetMerger';
+
+// Drive folder scanner (discover spreadsheets in a Drive folder)
+export { scanDriveFolderForSpreadsheets } from './utils/driveFolderScanner';
+export type { DriveSpreadsheetFile, ScanDriveFolderOptions } from './utils/driveFolderScanner';
+
+// Drive image sync (download images/assets from a Drive folder to local disk)
+export { syncDriveImages } from './utils/driveImageSync';
+export type { DriveImageSyncOptions, DriveImageSyncResult } from './utils/driveImageSync';
+
+// Drive translations orchestrator (headless CMS bridge)
+export { manageDriveTranslations } from './utils/getDriveTranslations';
+export type { GoogleDriveManagerOptions, GoogleDriveManagerResult } from './utils/getDriveTranslations';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;

@@ -106,3 +106,24 @@ validateEnv(); // throws descriptively if any var is missing
 ```typescript
 import { getSpreadSheetData } from '@el-j/google-sheet-translations';
 ```
+
+---
+
+## Option C — Multiple spreadsheets / Drive folder
+
+For large projects with many sub-projects, each having its own spreadsheet,
+use the Drive folder management features:
+
+```typescript
+import { manageDriveTranslations } from '@el-j/google-sheet-translations';
+
+const result = await manageDriveTranslations({
+  driveFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID,
+  scanForSpreadsheets: true,
+  translationOptions: {
+    translationsOutputDir: './src/translations',
+  },
+});
+```
+
+See the [Drive Folder Management guide](/guide/drive-folder) for the full walkthrough.
