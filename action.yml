@@ -104,6 +104,36 @@ inputs:
     description: 'DEPRECATED – no longer used. The bundled package version is fixed at release time.'
     required: false
     default: 'latest'
+  drive-folder-id:
+    description: >
+      Google Drive folder ID to scan for spreadsheets and/or images.
+      When set, the action automatically discovers all Google Spreadsheet
+      files inside the folder (and sub-folders) and fetches translations
+      from each one.
+    required: false
+  scan-for-spreadsheets:
+    description: >
+      Scan the drive-folder-id for Google Spreadsheet files automatically.
+      Set to "false" to disable auto-discovery (useful when you supply
+      spreadsheet-ids explicitly).
+    required: false
+    default: 'true'
+  spreadsheet-ids:
+    description: >
+      Comma-separated list of additional spreadsheet IDs to fetch translations
+      from, in addition to (or instead of) Drive folder auto-discovery.
+      Example: "1abc…,1def…"
+    required: false
+  sync-images:
+    description: >
+      When "true", downloads image assets from the Drive folder to the local
+      path specified by image-output-path.  Requires drive-folder-id.
+    required: false
+    default: 'false'
+  image-output-path:
+    description: 'Local directory to download Drive images into'
+    required: false
+    default: './public/remote-images'
 
 outputs:
   translations-dir:

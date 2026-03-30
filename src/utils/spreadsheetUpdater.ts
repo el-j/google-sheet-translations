@@ -17,20 +17,56 @@ function columnIndexToLetter(index: number): string {
 }
 
 /**
- * Wraps a spreadsheet cell reference in a formula that extracts the language
- * prefix (the part before the first "-") and lowercases it.
+ * Determines the formula argument separator based on the spreadsheet's locale.
  *
- * GOOGLETRANSLATE only accepts ISO 639-1 two-letter codes (e.g. "tr") for most
- * languages – region-qualified codes like "tr-TR" no longer work reliably.
- * This helper converts "tr-TR" → "tr", "en-US" → "en", "zh-CN" → "zh", and
- * leaves bare codes like "tr" or "en" unchanged.
+ * Google Sheets uses `,` for English, CJK and a few other locales, but `;` for
+ * the majority of European locales (German, French, Spanish, Italian, …).
+ * The Google Sheets API (`valueInputOption: USER_ENTERED`) parses formulas
+ * according to the spreadsheet's locale, so we must match the separator.
+ *
+ * @returns `","` or `";"` – the argument separator to use in generated formulas.
+ */
+function getFormulaSeparator(doc: GoogleSpreadsheet): string {
+    try {
+        // google-spreadsheet v4 stores the raw Sheets API properties after loadInfo()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const locale: string = (doc as any)._rawProperties?.locale || '';
+        // English, Japanese, Korean, Chinese, Thai, Indonesian, Malay use comma
+        if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ',';
+    } catch {
+        // Fall through to default
+    }
+    // Default: semicolon (covers German, French, Spanish, Italian, Russian,
+    // Turkish, Polish, and most other locales)
+    return ';';
+}
+
+/**
+ * Wraps a spreadsheet cell reference in a formula that extracts the
+ * GOOGLETRANSLATE-compatible language code from a locale header cell.
+ *
+ * For most locales the ISO 639-1 prefix before the first `"-"` is extracted
+ * (e.g. header `"tr-TR"` → `"tr"`, `"en-US"` → `"en"`).
+ *
+ * For Chinese variants (`zh-TW`, `zh-CN`) the full lowercased code is
+ * preserved because GOOGLETRANSLATE distinguishes Simplified from Traditional
+ * Chinese.
+ *
+ * Bare codes without a `"-"` are returned as-is (e.g. `"en"` → `"en"`).
+ *
+ * All inner function calls use the supplied `sep` so the generated fragment
+ * is consistent with the spreadsheet's locale.
  *
  * @param cellRef - A spreadsheet cell reference string, e.g. `$B$1` or `C$1`
- * @returns A Google Sheets formula fragment, e.g.
- *   `LOWER(IFERROR(LEFT($B$1,FIND("-",$B$1)-1),$B$1))`
+ * @param sep     - Formula argument separator (`","` or `";"`)
  */
-function langCodeFormula(cellRef: string): string {
-    return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+function langCodeFormula(cellRef: string, sep: string): string {
+    // Strip the region part: LOWER(IFERROR(LEFT(ref, FIND("-",ref)-1), ref))
+    const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
+    // Keep the full lowercased value for Chinese variants
+    const full = `LOWER(${cellRef})`;
+    // IF the code starts with "zh-", keep the full code; otherwise extract the prefix
+    return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
 
 /**
@@ -39,11 +75,12 @@ function langCodeFormula(cellRef: string): string {
  * When autoTranslate is enabled:
  * - For each new key added to the spreadsheet, the system checks which languages have translations
  * - For languages missing translations, it automatically adds Google Translate formulas
- * - The formula extracts the language prefix from the header cell (e.g. "tr-TR" → "tr") because
- *   GOOGLETRANSLATE only accepts ISO 639-1 codes for most languages
+ * - The formula dynamically extracts the GOOGLETRANSLATE-compatible language code from the header
+ *   cell at spreadsheet-evaluation time (e.g. header "tr-TR" → "tr") and also preserves Chinese
+ *   variants (zh-TW, zh-CN) where the region is meaningful
  * - The formula format is:
- *   =GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());LOWER(IFERROR(LEFT($sourceColumn$1,FIND("-",$sourceColumn$1)-1),$sourceColumn$1));LOWER(IFERROR(LEFT(targetColumn$1,FIND("-",targetColumn$1)-1),targetColumn$1)))
- * - This dynamic formula uses cell references for language codes and automatically adapts to the correct row
+ *   =GOOGLETRANSLATE(INDIRECT(srcCol&ROW()); langCodeFormula($srcCol$1); langCodeFormula(tgtCol$1))
+ * - All formula separators are set to match the spreadsheet's locale (`;` or `,`)
  * - For **existing** keys the same logic applies: empty cells in other language columns receive a
  *   formula; cells that already contain a translation are only overwritten when `override` is true.
  *
@@ -82,6 +119,8 @@ export async function updateSpreadsheetWithLocalChanges(
 ): Promise<void> {
     console.log("Updating spreadsheet with local changes...");
     const baseDelayMs = waitSeconds * 1000;
+    // Detect the formula argument separator once (based on the spreadsheet's locale)
+    const sep = getFormulaSeparator(doc);
     
     // Process each sheet in the changes object
     for (const sheetTitle of new Set(
@@ -300,7 +339,7 @@ export async function updateSpreadsheetWithLocalChanges(
                                         const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                                         row.set(
                                             exactTargetHeader,
-                                            `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`
+                                            `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColumnLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColumnLetter}$1`, sep)})`,
                                         );
                                     }
                                 }
@@ -365,10 +404,6 @@ export async function updateSpreadsheetWithLocalChanges(
                             );
                             
                             if (exactHeaderName) {
-                                // Create Google Translate formula referring to the source column
-                                // Since we don't know the exact row number yet, we'll use a special placeholder
-                                // that will be replaced with the actual cell reference after the rows are added
-                                
                                 // headerRow is fully lowercased; normalise both source and target headers to
                                 // lowercase for the index lookup so mixed-case headers (e.g. "en-GB") are found.
                                 const sourceHeaderIndex = headerRow.indexOf(sourceHeader.toLowerCase());
@@ -381,11 +416,12 @@ export async function updateSpreadsheetWithLocalChanges(
                                 const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
                                 const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                                 
-                                // Create Google Translate formula with language-prefix extraction.
-                                // GOOGLETRANSLATE requires ISO 639-1 codes (e.g. "tr"), not
-                                // region-qualified codes (e.g. "tr-TR"), so we strip the region
-                                // part from the header cell value at evaluation time.
-                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`;
+                                // Build GOOGLETRANSLATE formula with dynamic language-code extraction.
+                                // langCodeFormula() generates a spreadsheet sub-expression that extracts
+                                // the ISO 639-1 prefix from the header cell (e.g. "tr-TR" → "tr") while
+                                // preserving Chinese variants (zh-TW, zh-CN).  All separators match the
+                                // spreadsheet's locale.
+                                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColumnLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColumnLetter}$1`, sep)})`;
                             }
                         }
                     }

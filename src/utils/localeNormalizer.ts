@@ -19,6 +19,42 @@ export function getLanguagePrefix(locale: string): string {
 }
 
 /**
+ * Locale codes where the region qualifier is meaningful for GOOGLETRANSLATE
+ * and must be preserved.  Currently only Chinese Traditional vs Simplified
+ * requires the region suffix; all other languages use a bare ISO 639-1 code.
+ */
+const GOOGLE_TRANSLATE_CODES_REQUIRING_REGION = new Set(['zh-tw', 'zh-cn']);
+
+/**
+ * Converts a spreadsheet locale header (e.g. `"tr-TR"`, `"en-US"`, `"zh-TW"`)
+ * into the language code accepted by Google Sheets' `GOOGLETRANSLATE` function.
+ *
+ * Rules:
+ * - Chinese variants (`zh-TW`, `zh-CN`) keep their region qualifier because
+ *   `GOOGLETRANSLATE` distinguishes between Simplified and Traditional Chinese.
+ * - All other locales are stripped to their ISO 639-1 two-letter prefix
+ *   (e.g. `"tr-TR"` → `"tr"`, `"en-US"` → `"en"`).
+ *
+ * @param locale - A locale string from a spreadsheet header or config option.
+ * @returns A lowercased language code suitable for `GOOGLETRANSLATE`.
+ *
+ * @example
+ * ```ts
+ * getGoogleTranslateCode('tr-TR'); // → 'tr'
+ * getGoogleTranslateCode('en-US'); // → 'en'
+ * getGoogleTranslateCode('zh-TW'); // → 'zh-tw'
+ * getGoogleTranslateCode('de');    // → 'de'
+ * ```
+ */
+export function getGoogleTranslateCode(locale: string): string {
+	const normalized = locale.toLowerCase().trim().replace('_', '-');
+	if (GOOGLE_TRANSLATE_CODES_REQUIRING_REGION.has(normalized)) {
+		return normalized;
+	}
+	return normalized.split(/[-_]/)[0];
+}
+
+/**
  * Common language to country mappings for normalization
  * Maps language codes to their most common country variants
  */

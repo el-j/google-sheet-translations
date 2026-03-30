@@ -1,0 +1,46 @@
+name: Apply Branch Rulesets
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (print payload only, do not apply)'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['false', 'true']
+
+jobs:
+  apply:
+    name: Apply ruleset to GitHub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Print ruleset payload (dry run)
+        if: inputs.dry_run == 'true'
+        run: |
+          echo "DRY RUN – would apply this ruleset:"
+          cat .github/rulesets/main-branch.json
+
+      - name: Apply ruleset via GitHub API
+        if: inputs.dry_run == 'false'
+        run: |
+          # List existing rulesets to find by name
+          EXISTING=$(gh api "repos/${{ github.repository }}/rulesets" --jq '.[] | select(.name == "main-branch-protection") | .id' || true)
+
+          if [ -n "$EXISTING" ]; then
+            echo "Updating existing ruleset ID $EXISTING"
+            gh api "repos/${{ github.repository }}/rulesets/$EXISTING" \
+              --method PUT \
+              --input .github/rulesets/main-branch.json
+          else
+            echo "Creating new ruleset"
+            gh api "repos/${{ github.repository }}/rulesets" \
+              --method POST \
+              --input .github/rulesets/main-branch.json
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.ADMIN_TOKEN }}

@@ -14,7 +14,8 @@ When enabled through the `autoTranslate: true` option:
 2. For each new key, it checks which languages have translations and which are missing
 3. For each language missing a translation:
    - It finds the first available translation in another language to use as the source
-   - It adds a Google Translate formula in the appropriate cell: `=GOOGLETRANSLATE(sourceCell, "sourceLocale", "targetLocale")`
+   - It determines the correct GOOGLETRANSLATE language code for both source and target (e.g. `"tr-TR"` → `"tr"`, `"zh-TW"` → `"zh-tw"`)
+   - It adds a Google Translate formula in the appropriate cell: `=GOOGLETRANSLATE(INDIRECT("B"&ROW());"en";"tr")`
 
 ## Benefits
 
@@ -24,21 +25,19 @@ When enabled through the `autoTranslate: true` option:
 
 ## Example Formula
 
-If you add a new key "welcome_message" with an English translation in column B but no German translation in column C, the system will add:
+If you add a new key "welcome_message" with an English translation in column B but no Turkish translation in column C (header `tr-TR`), the system will add:
 
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());IF(LOWER(LEFT($B$1;3))="zh-";LOWER($B$1);LOWER(IFERROR(LEFT($B$1;FIND("-";$B$1)-1);$B$1)));IF(LOWER(LEFT(C$1;3))="zh-";LOWER(C$1);LOWER(IFERROR(LEFT(C$1;FIND("-";C$1)-1);C$1))))
 ```
 
 Where:
 - `INDIRECT("B"&ROW())` dynamically references the cell containing the source text in the same row
-- `$B$1` references the header cell containing the source language code
-- `C$1` references the header cell containing the target language code
-
-This improved formula is more flexible because:
-- It automatically adapts to any row position
-- It uses the actual language codes from your spreadsheet headers
-- It's more maintainable if you reorganize your columns
+- The `IF(LOWER(LEFT(…;3))="zh-"…)` wrapper dynamically extracts the GOOGLETRANSLATE-compatible language code from the header cell:
+  - For Chinese variants (`zh-TW`, `zh-CN`): preserves the full code (e.g. `"zh-tw"`)
+  - For all other locales: extracts the ISO 639-1 prefix before the first `"-"` (e.g. `"tr-TR"` → `"tr"`, `"en-US"` → `"en"`)
+  - Bare codes without `"-"` are returned as-is (e.g. `"en"` → `"en"`)
+- All formula separators (`;` or `,`) are automatically matched to the spreadsheet's locale
 
 ## How to Enable
 

@@ -90,3 +90,26 @@ const options: SpreadsheetOptions = {
   autoTranslate: true,
 };
 ```
+
+---
+
+## Drive folder options
+
+For multi-spreadsheet and Drive folder workflows, use
+[`manageDriveTranslations`](/api/manage-drive-translations) or
+[`getMultipleSpreadSheetsData`](/api/get-multiple-spreadsheets-data).
+The options above can be passed via their `translationOptions` parameter.
+
+```typescript
+import { manageDriveTranslations } from '@el-j/google-sheet-translations';
+
+await manageDriveTranslations({
+  driveFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID,
+  syncImages: true,
+  imageOutputPath: './src/assets/remote-images',
+  translationOptions: {          // ← same SpreadsheetOptions here
+    waitSeconds: 2,
+    translationsOutputDir: './src/translations',
+  },
+});
+```

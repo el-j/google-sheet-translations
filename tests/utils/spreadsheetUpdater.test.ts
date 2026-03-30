@@ -219,15 +219,21 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
     
     // Verify that a new row was added with GOOGLETRANSLATE formulas for missing languages.
-    // The formula now extracts the language prefix from the header cell using
-    // LOWER(IFERROR(LEFT(col$1,FIND("-",col$1)-1),col$1)) so that "tr-TR" → "tr".
+    // The formula dynamically extracts the language code from the header cell using
+    // IF(LOWER(LEFT(...))="zh-"...) with consistent separators.
     const addedRows = mockSheet.addRows.mock.calls[0][0];
     expect(addedRows).toHaveLength(1);
     const addedRow = addedRows[0];
     expect(addedRow['key']).toBe('new_key');
     expect(addedRow['en']).toBe('New Value');
-    expect(addedRow['fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\);LOWER\(IFERROR\(.*\$B\$1.*\)\);LOWER\(IFERROR\(.*C\$1.*\)\)\)$/);
-    expect(addedRow['de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\);LOWER\(IFERROR\(.*\$B\$1.*\)\);LOWER\(IFERROR\(.*D\$1.*\)\)\)$/);
+    // Formulas must contain dynamic language-code extraction (IFERROR+FIND pattern)
+    // and reference the correct source (B) and target (C/D) column letters
+    expect(addedRow['fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\)/);
+    expect(addedRow['fr']).toContain('IFERROR');
+    expect(addedRow['fr']).toContain('FIND("-"');
+    expect(addedRow['fr']).toContain('C$1');
+    expect(addedRow['de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\)/);
+    expect(addedRow['de']).toContain('D$1');
   });
 
   test('should not add auto-translation formulas when disabled', async () => {
@@ -280,22 +286,28 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
     
     // Verify that new rows were added with correct GOOGLETRANSLATE formulas.
-    // Formulas now use LOWER(IFERROR(LEFT(...))) to extract the language prefix.
+    // Formulas now embed the correct language codes directly.
     const addedRows = mockSheet.addRows.mock.calls[0][0];
     
     // First new key should translate from French (column C) to other languages
     const row1 = addedRows.find((r: Record<string, string>) => r['key'] === 'new_key1');
     expect(row1['fr']).toBe('Nouvelle Valeur');
-    expect(row1['en']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\);LOWER\(IFERROR\(.*\$C\$1.*\)\);LOWER\(IFERROR\(.*B\$1.*\)\)\)$/);
-    expect(row1['de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\);LOWER\(IFERROR\(.*\$C\$1.*\)\);LOWER\(IFERROR\(.*D\$1.*\)\)\)$/);
-    expect(row1['es']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\);LOWER\(IFERROR\(.*\$C\$1.*\)\);LOWER\(IFERROR\(.*E\$1.*\)\)\)$/);
+    expect(row1['en']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\)/);
+    expect(row1['en']).toContain('B$1');
+    expect(row1['de']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\)/);
+    expect(row1['de']).toContain('D$1');
+    expect(row1['es']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("C"&ROW\(\)\)/);
+    expect(row1['es']).toContain('E$1');
     
     // Second new key should translate from German (column D) to other languages
     const row2 = addedRows.find((r: Record<string, string>) => r['key'] === 'new_key2');
     expect(row2['de']).toBe('Neuer Wert');
-    expect(row2['en']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\);LOWER\(IFERROR\(.*\$D\$1.*\)\);LOWER\(IFERROR\(.*B\$1.*\)\)\)$/);
-    expect(row2['fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\);LOWER\(IFERROR\(.*\$D\$1.*\)\);LOWER\(IFERROR\(.*C\$1.*\)\)\)$/);
-    expect(row2['es']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\);LOWER\(IFERROR\(.*\$D\$1.*\)\);LOWER\(IFERROR\(.*E\$1.*\)\)\)$/);
+    expect(row2['en']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\)/);
+    expect(row2['en']).toContain('B$1');
+    expect(row2['fr']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\)/);
+    expect(row2['fr']).toContain('C$1');
+    expect(row2['es']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("D"&ROW\(\)\)/);
+    expect(row2['es']).toContain('E$1');
   });
 
   test('should generate GOOGLETRANSLATE formulas when source locale header is mixed-case', async () => {
@@ -625,11 +637,11 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
   // ── Language-prefix extraction in GOOGLETRANSLATE formula ────────────────
 
-  test('should use language-prefix extraction in formula for region-qualified headers like tr-TR', async () => {
-    // Regression: GOOGLETRANSLATE does not reliably accept region-qualified codes like
-    // "tr-TR" – only bare ISO 639-1 codes (e.g. "tr") work consistently across languages.
-    // The formula now wraps header cell refs with LOWER(IFERROR(LEFT(col$1,FIND("-",col$1)-1),col$1))
-    // so "tr-TR" → "tr", "en-US" → "en", while bare codes like "tr" stay unchanged.
+  test('should use dynamic language-code extraction in formula for region-qualified headers like tr-TR', async () => {
+    // Regression: GOOGLETRANSLATE does not accept region-qualified codes like "tr-TR" –
+    // only bare ISO 639-1 codes (e.g. "tr") work.  The formula dynamically extracts
+    // the prefix from the header cell using IF(LOWER(LEFT(...))="zh-",...,IFERROR(LEFT(...),...))
+    // with all separators matching the spreadsheet's locale.
     mockRow.toObject.mockReturnValue({
       key: 'existing',
       'en-US': 'Existing',
@@ -647,10 +659,94 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     const addedRow = addedRows[0];
 
     expect(addedRow['en-US']).toBe('Hello');
-    // The formula for tr-TR must contain LOWER(IFERROR(...)) so "tr-TR" is reduced to "tr"
+    // The formula for tr-TR must contain dynamic extraction (IFERROR+FIND pattern)
     expect(addedRow['tr-TR']).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
-    expect(addedRow['tr-TR']).toContain('LOWER(IFERROR(');
-    // Must NOT use the raw header value directly (old broken format)
+    expect(addedRow['tr-TR']).toContain('IFERROR');
+    expect(addedRow['tr-TR']).toContain('FIND("-"');
+    // Must reference the header cell, NOT hard-code the language code
+    expect(addedRow['tr-TR']).toContain('$1');
+    // Must NOT use the old broken format with raw header cell references
+    // (the old format was ;$B$1;C$1 without any extraction)
     expect(addedRow['tr-TR']).not.toMatch(/;\$B\$1;C\$1\)$/);
+  });
+
+  test('should use consistent semicolons for European-locale spreadsheets (default)', async () => {
+    // When no locale is detected (mock doc has no _rawProperties), default to ";"
+    mockRow.toObject.mockReturnValue({
+      key: 'existing',
+      en: 'Existing',
+      de: '',
+    });
+
+    const changes: TranslationData = {
+      en: { home: { new_key: 'Hello' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0];
+    const addedRow = addedRows[0];
+    const formula = addedRow['de'];
+
+    // All separators in the formula must be semicolons (European locale default)
+    // The formula must NOT contain commas as argument separators
+    expect(formula).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\);/);
+    // Inner IFERROR/LEFT/FIND must also use semicolons
+    expect(formula).toContain('FIND("-";');
+    expect(formula).toContain('IFERROR(LEFT(');
+  });
+
+  test('should use commas for English-locale spreadsheets', async () => {
+    // Simulate an en_US locale spreadsheet
+    (mockDoc as any)._rawProperties = { locale: 'en_US' };
+
+    mockRow.toObject.mockReturnValue({
+      key: 'existing',
+      en: 'Existing',
+      de: '',
+    });
+
+    const changes: TranslationData = {
+      en: { home: { new_key: 'Hello' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0];
+    const addedRow = addedRows[0];
+    const formula = addedRow['de'];
+
+    // All separators must be commas for English locale
+    expect(formula).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\("B"&ROW\(\)\),/);
+    // Inner IFERROR/LEFT/FIND must also use commas
+    expect(formula).toContain('FIND("-",');
+    expect(formula).toContain('IFERROR(LEFT(');
+
+    // Clean up
+    delete (mockDoc as any)._rawProperties;
+  });
+
+  test('should preserve zh-TW in formula via IF(LOWER(LEFT(...))="zh-"...) guard', async () => {
+    mockRow.toObject.mockReturnValue({
+      key: 'existing',
+      en: 'Existing',
+      'zh-TW': '',
+    });
+
+    const changes: TranslationData = {
+      en: { home: { new_key: 'Hello' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true);
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0];
+    const addedRow = addedRows[0];
+    const formula = addedRow['zh-TW'];
+
+    // The formula must contain the zh- guard to preserve Chinese variant codes
+    expect(formula).toMatch(/^=GOOGLETRANSLATE\(INDIRECT\(/);
+    expect(formula).toContain('="zh-"');
+    // The guard ensures zh-TW → "zh-tw" (full) rather than just "zh"
+    expect(formula).toContain('LOWER(');
   });
 });

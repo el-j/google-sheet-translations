@@ -1383,14 +1383,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path6 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path8 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path6 && path6[0] !== "/") {
-          path6 = `/${path6}`;
+        if (path8 && path8[0] !== "/") {
+          path8 = `/${path8}`;
         }
-        return new URL(`${origin}${path6}`);
+        return new URL(`${origin}${path8}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -2201,9 +2201,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path: path6, origin }
+            request: { method, path: path8, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path6);
+          debugLog("sending request to %s %s%s", method, origin, path8);
         }
       );
     }
@@ -2221,14 +2221,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path: path6, origin },
+            request: { method, path: path8, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path6,
+            path8,
             statusCode
           );
         }
@@ -2237,23 +2237,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path: path6, origin }
+            request: { method, path: path8, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path6);
+          debugLog("trailers received from %s %s%s", method, origin, path8);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path: path6, origin },
+            request: { method, path: path8, origin },
             error: error2
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path6,
+            path8,
             error2.message
           );
         }
@@ -2354,7 +2354,7 @@ var require_request = __commonJS({
     var kHandler = /* @__PURE__ */ Symbol("handler");
     var Request3 = class {
       constructor(origin, {
-        path: path6,
+        path: path8,
         method,
         body,
         headers,
@@ -2371,11 +2371,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path6 !== "string") {
+        if (typeof path8 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path6[0] !== "/" && !(path6.startsWith("http://") || path6.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path8[0] !== "/" && !(path8.startsWith("http://") || path8.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path6)) {
+        } else if (invalidPathRegex.test(path8)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -2450,7 +2450,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path6, query) : path6;
+        this.path = query ? serializePathWithQuery(path8, query) : path8;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
@@ -7483,7 +7483,7 @@ var require_client_h1 = __commonJS({
       return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
     }
     function writeH1(client, request) {
-      const { method, path: path6, host, upgrade, blocking, reset } = request;
+      const { method, path: path8, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util.isFormDataLike(body)) {
@@ -7552,7 +7552,7 @@ var require_client_h1 = __commonJS({
       if (socket.setTypeOfService) {
         socket.setTypeOfService(request.typeOfService);
       }
-      let header = `${method} ${path6} HTTP/1.1\r
+      let header = `${method} ${path8} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -7903,7 +7903,7 @@ var require_client_h2 = __commonJS({
   "node_modules/undici/lib/dispatcher/client-h2.js"(exports, module) {
     "use strict";
     var assert = __require("node:assert");
-    var { pipeline: pipeline2 } = __require("node:stream");
+    var { pipeline: pipeline3 } = __require("node:stream");
     var util = require_util();
     var {
       RequestContentLengthMismatchError,
@@ -8205,7 +8205,7 @@ var require_client_h2 = __commonJS({
     function writeH2(client, request) {
       const requestTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path: path6, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path8, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       let { body } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util.errorRequest(client, request, new InvalidArgumentError(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
@@ -8273,7 +8273,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path6;
+          headers[HTTP2_HEADER_PATH] = path8;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -8314,7 +8314,7 @@ var require_client_h2 = __commonJS({
         stream.setTimeout(requestTimeout);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path6;
+      headers[HTTP2_HEADER_PATH] = path8;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -8536,7 +8536,7 @@ var require_client_h2 = __commonJS({
     }
     function writeStream(abort, socket, expectsPayload, h2stream, body, client, request, contentLength) {
       assert(contentLength !== 0 || client[kRunning] === 0, "stream body cannot be pipelined");
-      const pipe = pipeline2(
+      const pipe = pipeline3(
         body,
         h2stream,
         (err) => {
@@ -10611,10 +10611,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path6 = "/",
+          path: path8 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path6;
+        opts.path = origin + path8;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -11321,7 +11321,7 @@ var require_readable = __commonJS({
   "node_modules/undici/lib/api/readable.js"(exports, module) {
     "use strict";
     var assert = __require("node:assert");
-    var { Readable } = __require("node:stream");
+    var { Readable: Readable2 } = __require("node:stream");
     var { RequestAbortedError, NotSupportedError, InvalidArgumentError, AbortError: AbortError2 } = require_errors();
     var util = require_util();
     var { ReadableStreamFrom } = require_util();
@@ -11335,7 +11335,7 @@ var require_readable = __commonJS({
     var kBytesRead = /* @__PURE__ */ Symbol("kBytesRead");
     var noop3 = () => {
     };
-    var BodyReadable = class extends Readable {
+    var BodyReadable = class extends Readable2 {
       /**
        * @param {object} opts
        * @param {(this: Readable, size: number) => void} opts.resume
@@ -11724,7 +11724,7 @@ var require_api_request = __commonJS({
     "use strict";
     var assert = __require("node:assert");
     var { AsyncResource } = __require("node:async_hooks");
-    var { Readable } = require_readable();
+    var { Readable: Readable2 } = require_readable();
     var { InvalidArgumentError, RequestAbortedError } = require_errors();
     var util = require_util();
     function noop3() {
@@ -11805,7 +11805,7 @@ var require_api_request = __commonJS({
         const parsedHeaders = responseHeaders === "raw" ? util.parseHeaders(rawHeaders) : headers;
         const contentType = parsedHeaders["content-type"];
         const contentLength = parsedHeaders["content-length"];
-        const res = new Readable({
+        const res = new Readable2({
           resume,
           abort,
           contentType,
@@ -12114,7 +12114,7 @@ var require_api_pipeline = __commonJS({
   "node_modules/undici/lib/api/api-pipeline.js"(exports, module) {
     "use strict";
     var {
-      Readable,
+      Readable: Readable2,
       Duplex,
       PassThrough: PassThrough3
     } = __require("node:stream");
@@ -12130,7 +12130,7 @@ var require_api_pipeline = __commonJS({
     function noop3() {
     }
     var kResume = /* @__PURE__ */ Symbol("resume");
-    var PipelineRequest = class extends Readable {
+    var PipelineRequest = class extends Readable2 {
       constructor() {
         super({ autoDestroy: true });
         this[kResume] = null;
@@ -12147,7 +12147,7 @@ var require_api_pipeline = __commonJS({
         callback(err);
       }
     };
-    var PipelineResponse = class extends Readable {
+    var PipelineResponse = class extends Readable2 {
       constructor(resume) {
         super({ autoDestroy: true });
         this[kResume] = resume;
@@ -12297,7 +12297,7 @@ var require_api_pipeline = __commonJS({
         util.destroy(ret, err);
       }
     };
-    function pipeline2(opts, handler) {
+    function pipeline3(opts, handler) {
       try {
         const pipelineHandler = new PipelineHandler(opts, handler);
         this.dispatch({ ...opts, body: pipelineHandler.req }, pipelineHandler);
@@ -12306,7 +12306,7 @@ var require_api_pipeline = __commonJS({
         return new PassThrough3().destroy(err);
       }
     }
-    module.exports = pipeline2;
+    module.exports = pipeline3;
   }
 });
 
@@ -12675,20 +12675,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path6) {
-      if (typeof path6 !== "string") {
-        return path6;
+    function safeUrl(path8) {
+      if (typeof path8 !== "string") {
+        return path8;
       }
-      const pathSegments = path6.split("?", 3);
+      const pathSegments = path8.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path6;
+        return path8;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path6, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path6);
+    function matchKey(mockDispatch2, { path: path8, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path8);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -12713,8 +12713,8 @@ var require_mock_utils = __commonJS({
       const basePath = key.query ? serializePathWithQuery(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path6, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path6)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path6), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path8, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path8)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path8), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -12752,19 +12752,19 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path6) {
-      while (path6.endsWith("/")) {
-        path6 = path6.slice(0, -1);
+    function removeTrailingSlash(path8) {
+      while (path8.endsWith("/")) {
+        path8 = path8.slice(0, -1);
       }
-      if (path6.length === 0) {
-        path6 = "/";
+      if (path8.length === 0) {
+        path8 = "/";
       }
-      return path6;
+      return path8;
     }
     function buildKey(opts) {
-      const { path: path6, method, body, headers, query } = opts;
+      const { path: path8, method, body, headers, query } = opts;
       return {
-        path: path6,
+        path: path8,
         method,
         body,
         headers,
@@ -13451,10 +13451,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path6, data: { statusCode }, persist, times: times2, timesInvoked, origin }) => ({
+          ({ method, path: path8, data: { statusCode }, persist, times: times2, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path6,
+            Path: path8,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -13536,9 +13536,9 @@ var require_mock_agent = __commonJS({
         const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
         const dispatchOpts = { ...opts };
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path6, searchParams] = dispatchOpts.path.split("?");
+          const [path8, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path6}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path8}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -13743,7 +13743,7 @@ var require_snapshot_recorder = __commonJS({
   "node_modules/undici/lib/mock/snapshot-recorder.js"(exports, module) {
     "use strict";
     var { writeFile: writeFile2, readFile, mkdir: mkdir2 } = __require("node:fs/promises");
-    var { dirname, resolve } = __require("node:path");
+    var { dirname: dirname2, resolve } = __require("node:path");
     var { setTimeout: setTimeout2, clearTimeout: clearTimeout2 } = __require("node:timers");
     var { InvalidArgumentError, UndiciError } = require_errors();
     var { hashId, isUrlExcludedFactory, normalizeHeaders, createHeaderFilters } = require_snapshot_utils();
@@ -13939,12 +13939,12 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path6 = filePath || this.#snapshotPath;
-        if (!path6) {
+        const path8 = filePath || this.#snapshotPath;
+        if (!path8) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve(path6), "utf8");
+          const data = await readFile(resolve(path8), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
@@ -13958,7 +13958,7 @@ var require_snapshot_recorder = __commonJS({
           if (error2.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path6}`, { cause: error2 });
+            throw new UndiciError(`Failed to load snapshots from ${path8}`, { cause: error2 });
           }
         }
       }
@@ -13969,12 +13969,12 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path6 = filePath || this.#snapshotPath;
-        if (!path6) {
+        const path8 = filePath || this.#snapshotPath;
+        if (!path8) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
-        const resolvedPath = resolve(path6);
-        await mkdir2(dirname(resolvedPath), { recursive: true });
+        const resolvedPath = resolve(path8);
+        await mkdir2(dirname2(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot]) => ({
           hash,
           snapshot
@@ -14598,15 +14598,15 @@ var require_redirect_handler = __commonJS({
           return;
         }
         const { origin, pathname, search } = util.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path6 = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path6}`;
+        const path8 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path8}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path6;
+        this.opts.path = path8;
         this.opts.origin = origin;
         this.opts.query = null;
       }
@@ -16724,7 +16724,7 @@ var require_cache2 = __commonJS({
   "node_modules/undici/lib/interceptor/cache.js"(exports, module) {
     "use strict";
     var assert = __require("node:assert");
-    var { Readable } = __require("node:stream");
+    var { Readable: Readable2 } = __require("node:stream");
     var util = require_util();
     var CacheHandler = require_cache_handler();
     var MemoryCacheStore = require_memory_cache_store();
@@ -16813,7 +16813,7 @@ var require_cache2 = __commonJS({
       return dispatch(opts, new CacheHandler(globalOpts, cacheKey, handler));
     }
     function sendCachedValue(handler, opts, result, age, context, isStale2) {
-      const stream = util.isStream(result.body) ? result.body : Readable.from(result.body ?? []);
+      const stream = util.isStream(result.body) ? result.body : Readable2.from(result.body ?? []);
       assert(!stream.destroyed, "stream should not be destroyed");
       assert(!stream.readableDidRead, "stream should not be readableDidRead");
       const controller = {
@@ -17060,7 +17060,7 @@ var require_decompress = __commonJS({
   "node_modules/undici/lib/interceptor/decompress.js"(exports, module) {
     "use strict";
     var { createInflate, createGunzip, createBrotliDecompress, createZstdDecompress } = __require("node:zlib");
-    var { pipeline: pipeline2 } = __require("node:stream");
+    var { pipeline: pipeline3 } = __require("node:stream");
     var DecoratorHandler = require_decorator_handler();
     var { runtimeFeatures } = require_runtime_features();
     var supportedEncodings = {
@@ -17169,7 +17169,7 @@ var require_decompress = __commonJS({
       #setupMultipleDecompressors(controller) {
         const lastDecompressor = this.#decompressors[this.#decompressors.length - 1];
         this.#setupDecompressorEvents(lastDecompressor, controller);
-        pipeline2(this.#decompressors, (err) => {
+        pipeline3(this.#decompressors, (err) => {
           if (err) {
             super.onResponseError(controller, err);
             return;
@@ -19909,7 +19909,7 @@ var require_fetch = __commonJS({
       subresourceSet
     } = require_constants3();
     var EE = __require("node:events");
-    var { Readable, pipeline: pipeline2, finished, isErrored, isReadable } = __require("node:stream");
+    var { Readable: Readable2, pipeline: pipeline3, finished, isErrored, isReadable } = __require("node:stream");
     var { addAbortListener, bufferToLowerCasedHeaderName } = require_util();
     var { dataURLProcessor, serializeAMimeType, minimizeSupportedMimeType } = require_data_url();
     var { getGlobalDispatcher } = require_global2();
@@ -19956,7 +19956,7 @@ var require_fetch = __commonJS({
     function handleFetchDone(response) {
       finalizeAndReportTiming(response, "fetch");
     }
-    function fetch2(input, init = void 0) {
+    function fetch3(input, init = void 0) {
       webidl.argumentLengthCheck(arguments, 1, "globalThis.fetch");
       let p = createDeferredPromise();
       let requestObject;
@@ -20842,7 +20842,7 @@ var require_fetch = __commonJS({
                 headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i2]), rawHeaders[i2 + 1].toString("latin1"), true);
               }
               const location = headersList.get("location", true);
-              this.body = new Readable({ read: resume });
+              this.body = new Readable2({ read: resume });
               const willFollow = location && request.redirect === "follow" && redirectStatusSet.has(status);
               const decoders = [];
               if (request.method !== "HEAD" && request.method !== "CONNECT" && !nullBodyStatus.includes(status) && !willFollow) {
@@ -20890,7 +20890,7 @@ var require_fetch = __commonJS({
                 status,
                 statusText,
                 headersList,
-                body: decoders.length ? pipeline2(this.body, ...decoders, (err) => {
+                body: decoders.length ? pipeline3(this.body, ...decoders, (err) => {
                   if (err) {
                     this.onError(err);
                   }
@@ -20968,7 +20968,7 @@ var require_fetch = __commonJS({
       }
     }
     module.exports = {
-      fetch: fetch2,
+      fetch: fetch3,
       Fetch,
       fetching,
       finalizeAndReportTiming
@@ -21739,9 +21739,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path6) {
-      for (let i2 = 0; i2 < path6.length; ++i2) {
-        const code = path6.charCodeAt(i2);
+    function validateCookiePath(path8) {
+      for (let i2 = 0; i2 < path8.length; ++i2) {
+        const code = path8.charCodeAt(i2);
         if (code < 32 || // exclude CTLs (0-31)
         code === 127 || // DEL
         code === 59) {
@@ -24507,7 +24507,7 @@ ${value}`;
 var require_eventsource = __commonJS({
   "node_modules/undici/lib/web/eventsource/eventsource.js"(exports, module) {
     "use strict";
-    var { pipeline: pipeline2 } = __require("node:stream");
+    var { pipeline: pipeline3 } = __require("node:stream");
     var { fetching } = require_fetch();
     var { makeRequest } = require_request2();
     var { webidl } = require_webidl();
@@ -24665,7 +24665,7 @@ var require_eventsource = __commonJS({
               ));
             }
           });
-          pipeline2(
+          pipeline3(
             response.body.stream,
             eventSourceStream,
             (error2) => {
@@ -24902,11 +24902,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path6 = opts.path;
+          let path8 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path6 = `/${path6}`;
+            path8 = `/${path8}`;
           }
-          url = new URL(util.parseOrigin(url).origin + path6);
+          url = new URL(util.parseOrigin(url).origin + path8);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -24947,7 +24947,7 @@ var require_undici = __commonJS({
       err.stack = stack ? `${stack}
 ${captureLines}` : capture.stack;
     }
-    module.exports.fetch = function fetch2(init, options = void 0) {
+    module.exports.fetch = function fetch3(init, options = void 0) {
       return fetchImpl(init, options).catch((err) => {
         if (currentFilename) {
           appendFetchStackTrace(err, currentFilename);
@@ -25111,7 +25111,7 @@ var require_package = __commonJS({
   "node_modules/gaxios/package.json"(exports, module) {
     module.exports = {
       name: "gaxios",
-      version: "7.1.3",
+      version: "7.1.4",
       description: "A simple common HTTP client specifically for Google APIs and services.",
       main: "build/cjs/src/index.js",
       types: "build/cjs/src/index.d.ts",
@@ -25170,18 +25170,18 @@ var require_package = __commonJS({
         "@types/mocha": "^10.0.10",
         "@types/multiparty": "4.2.1",
         "@types/mv": "^2.1.0",
-        "@types/ncp": "^2.0.1",
-        "@types/node": "^22.0.0",
-        "@types/sinon": "^17.0.0",
-        "@types/tmp": "0.2.6",
+        "@types/ncp": "^2.0.8",
+        "@types/node": "^22.13.1",
+        "@types/sinon": "^17.0.3",
+        "@types/tmp": "^0.2.6",
         assert: "^2.0.0",
         browserify: "^17.0.0",
-        c8: "^10.0.0",
+        c8: "^10.1.3",
         cors: "^2.8.5",
         express: "^5.0.0",
-        gts: "^6.0.0",
+        gts: "^6.0.2",
         "is-docker": "^3.0.0",
-        jsdoc: "^4.0.0",
+        jsdoc: "^4.0.4",
         "jsdoc-fresh": "^5.0.0",
         "jsdoc-region-tag": "^4.0.0",
         karma: "^6.0.0",
@@ -25197,23 +25197,22 @@ var require_package = __commonJS({
         multiparty: "^4.2.1",
         mv: "^2.1.1",
         ncp: "^2.0.0",
-        nock: "^14.0.0-beta.13",
-        "null-loader": "^4.0.0",
+        nock: "^14.0.5",
+        "null-loader": "^4.0.1",
         "pack-n-play": "^4.0.0",
         puppeteer: "^24.0.0",
         sinon: "^21.0.0",
         "stream-browserify": "^3.0.0",
         tmp: "0.2.5",
         "ts-loader": "^9.5.2",
-        typescript: "^5.8.3",
-        webpack: "^5.35.0",
+        typescript: "5.8.3",
+        webpack: "^5.97.1",
         "webpack-cli": "^6.0.1"
       },
       dependencies: {
         extend: "^3.0.2",
         "https-proxy-agent": "^7.0.1",
-        "node-fetch": "^3.3.2",
-        rimraf: "^5.0.1"
+        "node-fetch": "^3.3.2"
       },
       homepage: "https://github.com/googleapis/google-cloud-node-core/tree/main/packages/gaxios"
     };
@@ -31627,22 +31626,22 @@ var init_from = __esm({
     init_file();
     init_fetch_blob();
     ({ stat: stat2 } = fs3);
-    blobFromSync = (path6, type) => fromBlob(statSync(path6), path6, type);
-    blobFrom = (path6, type) => stat2(path6).then((stat3) => fromBlob(stat3, path6, type));
-    fileFrom = (path6, type) => stat2(path6).then((stat3) => fromFile(stat3, path6, type));
-    fileFromSync = (path6, type) => fromFile(statSync(path6), path6, type);
-    fromBlob = (stat3, path6, type = "") => new fetch_blob_default([new BlobDataItem({
-      path: path6,
+    blobFromSync = (path8, type) => fromBlob(statSync(path8), path8, type);
+    blobFrom = (path8, type) => stat2(path8).then((stat3) => fromBlob(stat3, path8, type));
+    fileFrom = (path8, type) => stat2(path8).then((stat3) => fromFile(stat3, path8, type));
+    fileFromSync = (path8, type) => fromFile(statSync(path8), path8, type);
+    fromBlob = (stat3, path8, type = "") => new fetch_blob_default([new BlobDataItem({
+      path: path8,
       size: stat3.size,
       lastModified: stat3.mtimeMs,
       start: 0
     })], { type });
-    fromFile = (stat3, path6, type = "") => new file_default([new BlobDataItem({
-      path: path6,
+    fromFile = (stat3, path8, type = "") => new file_default([new BlobDataItem({
+      path: path8,
       size: stat3.size,
       lastModified: stat3.mtimeMs,
       start: 0
-    })], basename(path6), { type, lastModified: stat3.mtimeMs });
+    })], basename(path8), { type, lastModified: stat3.mtimeMs });
     BlobDataItem = class _BlobDataItem {
       #path;
       #start;
@@ -33020,7 +33019,7 @@ __export(src_exports, {
   Response: () => Response2,
   blobFrom: () => blobFrom,
   blobFromSync: () => blobFromSync,
-  default: () => fetch,
+  default: () => fetch2,
   fileFrom: () => fileFrom,
   fileFromSync: () => fileFromSync,
   isRedirect: () => isRedirect
@@ -33030,7 +33029,7 @@ import https from "node:https";
 import zlib from "node:zlib";
 import Stream2, { PassThrough as PassThrough2, pipeline as pump } from "node:stream";
 import { Buffer as Buffer3 } from "node:buffer";
-async function fetch(url, options_) {
+async function fetch2(url, options_) {
   return new Promise((resolve, reject) => {
     const request = new Request2(url, options_);
     const { parsedURL, options } = getNodeRequestOptions(request);
@@ -33162,7 +33161,7 @@ async function fetch(url, options_) {
             if (responseReferrerPolicy) {
               requestOptions.referrerPolicy = responseReferrerPolicy;
             }
-            resolve(fetch(new Request2(locationURL, requestOptions)));
+            resolve(fetch2(new Request2(locationURL, requestOptions)));
             finalize();
             return;
           }
@@ -36821,9 +36820,9 @@ var require_util8 = __commonJS({
     exports.removeUndefinedValuesInObject = removeUndefinedValuesInObject;
     exports.isValidFile = isValidFile;
     exports.getWellKnownCertificateConfigFileLocation = getWellKnownCertificateConfigFileLocation;
-    var fs9 = __require("fs");
+    var fs10 = __require("fs");
     var os5 = __require("os");
-    var path6 = __require("path");
+    var path8 = __require("path");
     var WELL_KNOWN_CERTIFICATE_CONFIG_FILE = "certificate_config.json";
     var CLOUDSDK_CONFIG_DIRECTORY = "gcloud";
     function snakeToCamel(str) {
@@ -36909,15 +36908,15 @@ var require_util8 = __commonJS({
     }
     async function isValidFile(filePath) {
       try {
-        const stats = await fs9.promises.lstat(filePath);
+        const stats = await fs10.promises.lstat(filePath);
         return stats.isFile();
       } catch (e2) {
         return false;
       }
     }
     function getWellKnownCertificateConfigFileLocation() {
-      const configDir = process.env.CLOUDSDK_CONFIG || (_isWindows() ? path6.join(process.env.APPDATA || "", CLOUDSDK_CONFIG_DIRECTORY) : path6.join(process.env.HOME || "", ".config", CLOUDSDK_CONFIG_DIRECTORY));
-      return path6.join(configDir, WELL_KNOWN_CERTIFICATE_CONFIG_FILE);
+      const configDir = process.env.CLOUDSDK_CONFIG || (_isWindows() ? path8.join(process.env.APPDATA || "", CLOUDSDK_CONFIG_DIRECTORY) : path8.join(process.env.HOME || "", ".config", CLOUDSDK_CONFIG_DIRECTORY));
+      return path8.join(configDir, WELL_KNOWN_CERTIFICATE_CONFIG_FILE);
     }
     function _isWindows() {
       return os5.platform().startsWith("win");
@@ -36930,7 +36929,7 @@ var require_package2 = __commonJS({
   "node_modules/google-auth-library/package.json"(exports, module) {
     module.exports = {
       name: "google-auth-library",
-      version: "10.6.1",
+      version: "10.6.2",
       author: "Google Inc.",
       description: "Google APIs Authentication Client Library for Node.js",
       engines: {
@@ -36953,7 +36952,7 @@ var require_package2 = __commonJS({
       dependencies: {
         "base64-js": "^1.3.0",
         "ecdsa-sig-formatter": "^1.0.11",
-        gaxios: "7.1.3",
+        gaxios: "^7.1.4",
         "gcp-metadata": "8.1.2",
         "google-logging-utils": "1.1.3",
         jws: "^4.0.0"
@@ -38865,11 +38864,11 @@ var require_getCredentials = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getCredentials = getCredentials;
-    var path6 = __require("path");
-    var fs9 = __require("fs");
+    var path8 = __require("path");
+    var fs10 = __require("fs");
     var util_1 = __require("util");
     var errorWithCode_1 = require_errorWithCode();
-    var readFile = fs9.readFile ? (0, util_1.promisify)(fs9.readFile) : async () => {
+    var readFile = fs10.readFile ? (0, util_1.promisify)(fs10.readFile) : async () => {
       throw new errorWithCode_1.ErrorWithCode("use key rather than keyFile.", "MISSING_CREDENTIALS");
     };
     var ExtensionFiles;
@@ -38937,7 +38936,7 @@ var require_getCredentials = __commonJS({
        * @returns An instance of a class that implements ICredentialsProvider.
        */
       static create(keyFilePath) {
-        const keyFileExtension = path6.extname(keyFilePath);
+        const keyFileExtension = path8.extname(keyFilePath);
         switch (keyFileExtension) {
           case ExtensionFiles.JSON:
             return new JsonCredentialsProvider(keyFilePath);
@@ -40546,12 +40545,12 @@ var require_filesubjecttokensupplier = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.FileSubjectTokenSupplier = void 0;
     var util_1 = __require("util");
-    var fs9 = __require("fs");
-    var readFile = (0, util_1.promisify)(fs9.readFile ?? (() => {
+    var fs10 = __require("fs");
+    var readFile = (0, util_1.promisify)(fs10.readFile ?? (() => {
     }));
-    var realpath = (0, util_1.promisify)(fs9.realpath ?? (() => {
+    var realpath = (0, util_1.promisify)(fs10.realpath ?? (() => {
     }));
-    var lstat2 = (0, util_1.promisify)(fs9.lstat ?? (() => {
+    var lstat2 = (0, util_1.promisify)(fs10.lstat ?? (() => {
     }));
     var FileSubjectTokenSupplier = class {
       filePath;
@@ -40669,7 +40668,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.CertificateSubjectTokenSupplier = exports.InvalidConfigurationError = exports.CertificateSourceUnavailableError = exports.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = void 0;
     var util_1 = require_util8();
-    var fs9 = __require("fs");
+    var fs10 = __require("fs");
     var crypto_1 = __require("crypto");
     var https3 = __require("https");
     exports.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = "GOOGLE_API_CERTIFICATE_CONFIG";
@@ -40763,7 +40762,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
         const configPath = this.certificateConfigPath;
         let fileContents;
         try {
-          fileContents = await fs9.promises.readFile(configPath, "utf8");
+          fileContents = await fs10.promises.readFile(configPath, "utf8");
         } catch (err) {
           throw new CertificateSourceUnavailableError(`Failed to read certificate config file at: ${configPath}`);
         }
@@ -40788,14 +40787,14 @@ var require_certificatesubjecttokensupplier = __commonJS({
       async #getKeyAndCert(certPath, keyPath) {
         let cert, key;
         try {
-          cert = await fs9.promises.readFile(certPath);
+          cert = await fs10.promises.readFile(certPath);
           new crypto_1.X509Certificate(cert);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           throw new CertificateSourceUnavailableError(`Failed to read certificate file at ${certPath}: ${message}`);
         }
         try {
-          key = await fs9.promises.readFile(keyPath);
+          key = await fs10.promises.readFile(keyPath);
           (0, crypto_1.createPrivateKey)(key);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -40814,7 +40813,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
           return JSON.stringify([leafCert.raw.toString("base64")]);
         }
         try {
-          const chainPems = await fs9.promises.readFile(this.trustChainPath, "utf8");
+          const chainPems = await fs10.promises.readFile(this.trustChainPath, "utf8");
           const pemBlocks = chainPems.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) ?? [];
           const chainCerts = pemBlocks.map((pem, index) => {
             try {
@@ -41516,7 +41515,7 @@ var require_pluggable_auth_handler = __commonJS({
     exports.PluggableAuthHandler = exports.ExecutableError = void 0;
     var executable_response_1 = require_executable_response();
     var childProcess = __require("child_process");
-    var fs9 = __require("fs");
+    var fs10 = __require("fs");
     var ExecutableError = class extends Error {
       /**
        * The exit code returned by the executable.
@@ -41601,14 +41600,14 @@ var require_pluggable_auth_handler = __commonJS({
         }
         let filePath;
         try {
-          filePath = await fs9.promises.realpath(this.outputFile);
+          filePath = await fs10.promises.realpath(this.outputFile);
         } catch {
           return void 0;
         }
-        if (!(await fs9.promises.lstat(filePath)).isFile()) {
+        if (!(await fs10.promises.lstat(filePath)).isFile()) {
           return void 0;
         }
-        const responseString = await fs9.promises.readFile(filePath, {
+        const responseString = await fs10.promises.readFile(filePath, {
           encoding: "utf8"
         });
         if (responseString === "") {
@@ -42019,11 +42018,11 @@ var require_googleauth = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.GoogleAuth = exports.GoogleAuthExceptionMessages = void 0;
     var child_process_1 = __require("child_process");
-    var fs9 = __require("fs");
+    var fs10 = __require("fs");
     var gaxios_1 = require_src2();
     var gcpMetadata = require_src4();
     var os5 = __require("os");
-    var path6 = __require("path");
+    var path8 = __require("path");
     var crypto_1 = require_crypto3();
     var computeclient_1 = require_computeclient();
     var idtokenclient_1 = require_idtokenclient();
@@ -42043,7 +42042,7 @@ var require_googleauth = __commonJS({
       NO_ADC_FOUND: "Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.",
       NO_UNIVERSE_DOMAIN_FOUND: "Unable to detect a Universe Domain in the current environment.\nTo learn more about Universe Domain retrieval, visit: \nhttps://cloud.google.com/compute/docs/metadata/predefined-metadata-keys"
     };
-    var GoogleAuth = class {
+    var GoogleAuth3 = class {
       /**
        * Caches a value indicating whether the auth layer is running on Google
        * Compute Engine.
@@ -42309,12 +42308,12 @@ var require_googleauth = __commonJS({
         } else {
           const home = process.env["HOME"];
           if (home) {
-            location = path6.join(home, ".config");
+            location = path8.join(home, ".config");
           }
         }
         if (location) {
-          location = path6.join(location, "gcloud", "application_default_credentials.json");
-          if (!fs9.existsSync(location)) {
+          location = path8.join(location, "gcloud", "application_default_credentials.json");
+          if (!fs10.existsSync(location)) {
             location = null;
           }
         }
@@ -42335,8 +42334,8 @@ var require_googleauth = __commonJS({
           throw new Error("The file path is invalid.");
         }
         try {
-          filePath = fs9.realpathSync(filePath);
-          if (!fs9.lstatSync(filePath).isFile()) {
+          filePath = fs10.realpathSync(filePath);
+          if (!fs10.lstatSync(filePath).isFile()) {
             throw new Error();
           }
         } catch (err) {
@@ -42345,7 +42344,7 @@ var require_googleauth = __commonJS({
           }
           throw err;
         }
-        const readStream = fs9.createReadStream(filePath);
+        const readStream = fs10.createReadStream(filePath);
         return this.fromStream(readStream, options);
       }
       /**
@@ -42657,8 +42656,8 @@ var require_googleauth = __commonJS({
         if (this.jsonContent) {
           return this._cacheClientFromJSON(this.jsonContent, this.clientOptions);
         } else if (this.keyFilename) {
-          const filePath = path6.resolve(this.keyFilename);
-          const stream = fs9.createReadStream(filePath);
+          const filePath = path8.resolve(this.keyFilename);
+          const stream = fs10.createReadStream(filePath);
           return await this.fromStreamAsync(stream, this.clientOptions);
         } else if (this.apiKey) {
           const client = await this.fromAPIKey(this.apiKey, this.clientOptions);
@@ -42798,7 +42797,7 @@ var require_googleauth = __commonJS({
         return res.data.signedBlob;
       }
     };
-    exports.GoogleAuth = GoogleAuth;
+    exports.GoogleAuth = GoogleAuth3;
   }
 });
 
@@ -43690,7 +43689,7 @@ function info(message) {
 }
 
 // src/action-entrypoint.ts
-import path5 from "node:path";
+import path7 from "node:path";
 
 // src/getSpreadSheetData.ts
 import fs8 from "node:fs";
@@ -44688,19 +44687,19 @@ function toPath(deepKey) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/get.mjs
-function get(object, path6, defaultValue) {
+function get(object, path8, defaultValue) {
   if (object == null) {
     return defaultValue;
   }
-  switch (typeof path6) {
+  switch (typeof path8) {
     case "string": {
-      if (isUnsafeProperty(path6)) {
+      if (isUnsafeProperty(path8)) {
         return defaultValue;
       }
-      const result = object[path6];
+      const result = object[path8];
       if (result === void 0) {
-        if (isDeepKey(path6)) {
-          return get(object, toPath(path6), defaultValue);
+        if (isDeepKey(path8)) {
+          return get(object, toPath(path8), defaultValue);
         } else {
           return defaultValue;
         }
@@ -44709,28 +44708,28 @@ function get(object, path6, defaultValue) {
     }
     case "number":
     case "symbol": {
-      if (typeof path6 === "number") {
-        path6 = toKey(path6);
+      if (typeof path8 === "number") {
+        path8 = toKey(path8);
       }
-      const result = object[path6];
+      const result = object[path8];
       if (result === void 0) {
         return defaultValue;
       }
       return result;
     }
     default: {
-      if (Array.isArray(path6)) {
-        return getWithPath(object, path6, defaultValue);
+      if (Array.isArray(path8)) {
+        return getWithPath(object, path8, defaultValue);
       }
-      if (Object.is(path6?.valueOf(), -0)) {
-        path6 = "-0";
+      if (Object.is(path8?.valueOf(), -0)) {
+        path8 = "-0";
       } else {
-        path6 = String(path6);
+        path8 = String(path8);
       }
-      if (isUnsafeProperty(path6)) {
+      if (isUnsafeProperty(path8)) {
         return defaultValue;
       }
-      const result = object[path6];
+      const result = object[path8];
       if (result === void 0) {
         return defaultValue;
       }
@@ -44738,19 +44737,19 @@ function get(object, path6, defaultValue) {
     }
   }
 }
-function getWithPath(object, path6, defaultValue) {
-  if (path6.length === 0) {
+function getWithPath(object, path8, defaultValue) {
+  if (path8.length === 0) {
     return defaultValue;
   }
   let current = object;
-  for (let index = 0; index < path6.length; index++) {
+  for (let index = 0; index < path8.length; index++) {
     if (current == null) {
       return defaultValue;
     }
-    if (isUnsafeProperty(path6[index])) {
+    if (isUnsafeProperty(path8[index])) {
       return defaultValue;
     }
-    current = current[path6[index]];
+    current = current[path8[index]];
   }
   if (current === void 0) {
     return defaultValue;
@@ -44759,9 +44758,9 @@ function getWithPath(object, path6, defaultValue) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/property.mjs
-function property(path6) {
+function property(path8) {
   return function(object) {
-    return get(object, path6);
+    return get(object, path8);
   };
 }
 
@@ -45219,14 +45218,14 @@ function isArguments(value) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/has.mjs
-function has(object, path6) {
+function has(object, path8) {
   let resolvedPath;
-  if (Array.isArray(path6)) {
-    resolvedPath = path6;
-  } else if (typeof path6 === "string" && isDeepKey(path6) && object?.[path6] == null) {
-    resolvedPath = toPath(path6);
+  if (Array.isArray(path8)) {
+    resolvedPath = path8;
+  } else if (typeof path8 === "string" && isDeepKey(path8) && object?.[path8] == null) {
+    resolvedPath = toPath(path8);
   } else {
-    resolvedPath = [path6];
+    resolvedPath = [path8];
   }
   if (resolvedPath.length === 0) {
     return false;
@@ -45612,10 +45611,10 @@ function orderBy(collection, criteria, orders, guard) {
     orders = orders == null ? [] : [orders];
   }
   orders = orders.map((order) => String(order));
-  const getValueByNestedPath = (object, path6) => {
+  const getValueByNestedPath = (object, path8) => {
     let target = object;
-    for (let i2 = 0; i2 < path6.length && target != null; ++i2) {
-      target = target[path6[i2]];
+    for (let i2 = 0; i2 < path8.length && target != null; ++i2) {
+      target = target[path8[i2]];
     }
     return target;
   };
@@ -45665,48 +45664,48 @@ function orderBy(collection, criteria, orders, guard) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/unset.mjs
-function unset(obj, path6) {
+function unset(obj, path8) {
   if (obj == null) {
     return true;
   }
-  switch (typeof path6) {
+  switch (typeof path8) {
     case "symbol":
     case "number":
     case "object": {
-      if (Array.isArray(path6)) {
-        return unsetWithPath(obj, path6);
+      if (Array.isArray(path8)) {
+        return unsetWithPath(obj, path8);
       }
-      if (typeof path6 === "number") {
-        path6 = toKey(path6);
-      } else if (typeof path6 === "object") {
-        if (Object.is(path6?.valueOf(), -0)) {
-          path6 = "-0";
+      if (typeof path8 === "number") {
+        path8 = toKey(path8);
+      } else if (typeof path8 === "object") {
+        if (Object.is(path8?.valueOf(), -0)) {
+          path8 = "-0";
         } else {
-          path6 = String(path6);
+          path8 = String(path8);
         }
       }
-      if (isUnsafeProperty(path6)) {
+      if (isUnsafeProperty(path8)) {
         return false;
       }
-      if (obj?.[path6] === void 0) {
+      if (obj?.[path8] === void 0) {
         return true;
       }
       try {
-        delete obj[path6];
+        delete obj[path8];
         return true;
       } catch {
         return false;
       }
     }
     case "string": {
-      if (obj?.[path6] === void 0 && isDeepKey(path6)) {
-        return unsetWithPath(obj, toPath(path6));
+      if (obj?.[path8] === void 0 && isDeepKey(path8)) {
+        return unsetWithPath(obj, toPath(path8));
       }
-      if (isUnsafeProperty(path6)) {
+      if (isUnsafeProperty(path8)) {
         return false;
       }
       try {
-        delete obj[path6];
+        delete obj[path8];
         return true;
       } catch {
         return false;
@@ -45714,9 +45713,9 @@ function unset(obj, path6) {
     }
   }
 }
-function unsetWithPath(obj, path6) {
-  const parent = path6.length === 1 ? obj : get(obj, path6.slice(0, -1));
-  const lastKey = path6[path6.length - 1];
+function unsetWithPath(obj, path8) {
+  const parent = path8.length === 1 ? obj : get(obj, path8.slice(0, -1));
+  const lastKey = path8[path8.length - 1];
   if (parent?.[lastKey] === void 0) {
     return true;
   }
@@ -45845,17 +45844,17 @@ var assignValue = (object, key, value) => {
 };
 
 // node_modules/es-toolkit/dist/compat/object/updateWith.mjs
-function updateWith(obj, path6, updater, customizer) {
+function updateWith(obj, path8, updater, customizer) {
   if (obj == null && !isObject2(obj)) {
     return obj;
   }
   let resolvedPath;
-  if (isKey(path6, obj)) {
-    resolvedPath = [path6];
-  } else if (Array.isArray(path6)) {
-    resolvedPath = path6;
+  if (isKey(path8, obj)) {
+    resolvedPath = [path8];
+  } else if (Array.isArray(path8)) {
+    resolvedPath = path8;
   } else {
-    resolvedPath = toPath(path6);
+    resolvedPath = toPath(path8);
   }
   const updateValue = updater(get(obj, resolvedPath));
   let current = obj;
@@ -45879,8 +45878,8 @@ function updateWith(obj, path6, updater, customizer) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/set.mjs
-function set(obj, path6, value) {
-  return updateWith(obj, path6, () => value, () => void 0);
+function set(obj, path8, value) {
+  return updateWith(obj, path8, () => value, () => void 0);
 }
 
 // node_modules/es-toolkit/dist/predicate/isPlainObject.mjs
@@ -48716,12 +48715,23 @@ function columnIndexToLetter(index) {
   } while (i2 >= 0);
   return result;
 }
-function langCodeFormula(cellRef) {
-  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+function getFormulaSeparator(doc) {
+  try {
+    const locale = doc._rawProperties?.locale || "";
+    if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ",";
+  } catch {
+  }
+  return ";";
+}
+function langCodeFormula(cellRef, sep) {
+  const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
+  const full = `LOWER(${cellRef})`;
+  return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
 async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate = false, localeMapping = {}, override = false) {
   console.log("Updating spreadsheet with local changes...");
   const baseDelayMs = waitSeconds * 1e3;
+  const sep = getFormulaSeparator(doc);
   for (const sheetTitle of new Set(
     Object.values(changes).flatMap((locale) => Object.keys(locale))
   )) {
@@ -48865,7 +48875,7 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                     const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
                     row.set(
                       exactTargetHeader,
-                      `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`
+                      `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColumnLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColumnLetter}$1`, sep)})`
                     );
                   }
                 }
@@ -48914,7 +48924,7 @@ async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, auto
                 }
                 const sourceColumnLetter = columnIndexToLetter(sourceHeaderIndex);
                 const targetColumnLetter = columnIndexToLetter(targetHeaderIndex);
-                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW());${langCodeFormula(`$${sourceColumnLetter}$1`)};${langCodeFormula(`${targetColumnLetter}$1`)})`;
+                rowData[exactHeaderName] = `=GOOGLETRANSLATE(INDIRECT("${sourceColumnLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColumnLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColumnLetter}$1`, sep)})`;
               }
             }
           }
@@ -49169,8 +49179,18 @@ function colLetter(index) {
   } while (i2 >= 0);
   return result;
 }
-function langCodeFormula2(cellRef) {
-  return `LOWER(IFERROR(LEFT(${cellRef},FIND("-",${cellRef})-1),${cellRef}))`;
+function getFormulaSeparator2(doc) {
+  try {
+    const locale = doc._rawProperties?.locale || "";
+    if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ",";
+  } catch {
+  }
+  return ";";
+}
+function langCodeFormula2(cellRef, sep) {
+  const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
+  const full = `LOWER(${cellRef})`;
+  return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
 var DEFAULT_TARGET_LOCALES = ["de", "fr", "es", "it", "pt", "ja", "zh"];
 var STARTER_KEYS = {
@@ -49252,11 +49272,12 @@ async function createSpreadsheet(authClient, options = {}) {
       "setHeaderRow"
     );
     const sourceColLetter = colLetter(1);
+    const sep = getFormulaSeparator2(doc);
     const rows = Object.entries(seedKeys).map(([key, sourceValue]) => {
       const row = { key, [sourceLocale]: sourceValue };
       targetLocales.forEach((locale, idx) => {
         const targetColLetter = colLetter(2 + idx);
-        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW());${langCodeFormula2(`$${sourceColLetter}$1`)};${langCodeFormula2(`${targetColLetter}$1`)})`;
+        row[locale] = `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW())${sep}${langCodeFormula2(`$${sourceColLetter}$1`, sep)}${sep}${langCodeFormula2(`${targetColLetter}$1`, sep)})`;
       });
       return row;
     });
@@ -49431,6 +49452,502 @@ async function getSpreadSheetData(_docTitle, options = {}, _refreshDepth = 0) {
   return finalTranslations;
 }
 
+// src/utils/getDriveTranslations.ts
+import path6 from "node:path";
+
+// src/utils/multiSpreadsheetMerger.ts
+function mergeMultipleTranslationData(results, mergeStrategy = "later-wins") {
+  const merged = {};
+  for (const result of results) {
+    for (const [locale, sheets] of Object.entries(result)) {
+      if (!merged[locale]) {
+        merged[locale] = {};
+      }
+      for (const [sheet, keys2] of Object.entries(sheets)) {
+        if (!merged[locale][sheet]) {
+          merged[locale][sheet] = {};
+        }
+        for (const [key, value] of Object.entries(keys2)) {
+          if (mergeStrategy === "first-wins" && key in merged[locale][sheet]) {
+            continue;
+          }
+          merged[locale][sheet][key] = value;
+        }
+      }
+    }
+  }
+  return merged;
+}
+
+// src/getMultipleSpreadSheetsData.ts
+async function getMultipleSpreadSheetsData(docTitles, options = {}) {
+  const { spreadsheetIds, mergeStrategy = "later-wins", ...baseOptions } = options;
+  if (!spreadsheetIds || spreadsheetIds.length === 0) {
+    return getSpreadSheetData(docTitles, baseOptions);
+  }
+  console.log(`[getMultipleSpreadSheetsData] Fetching ${spreadsheetIds.length} spreadsheets...`);
+  const results = [];
+  for (let i2 = 0; i2 < spreadsheetIds.length; i2++) {
+    const id = spreadsheetIds[i2];
+    console.log(`[getMultipleSpreadSheetsData] (${i2 + 1}/${spreadsheetIds.length}) "${id}"...`);
+    const result = await getSpreadSheetData(docTitles, { ...baseOptions, spreadsheetId: id });
+    results.push(result);
+  }
+  return mergeMultipleTranslationData(results, mergeStrategy);
+}
+
+// src/utils/driveFolderScanner.ts
+var import_google_auth_library2 = __toESM(require_src5());
+var SPREADSHEET_MIME = "application/vnd.google-apps.spreadsheet";
+var FOLDER_MIME = "application/vnd.google-apps.folder";
+var DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
+async function getAccessToken(credentials) {
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+    );
+  }
+  const normalizedKey = privateKey.replace(/\\n/g, "\n");
+  const auth = new import_google_auth_library2.GoogleAuth({
+    credentials: { client_email: clientEmail, private_key: normalizedKey },
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  return tokenResponse.token;
+}
+async function listFilesInFolder(folderId, mimeType, token) {
+  const results = [];
+  let pageToken;
+  do {
+    const query = `'${folderId}' in parents and mimeType = '${mimeType}' and trashed = false`;
+    const params = new URLSearchParams({
+      q: query,
+      fields: "nextPageToken,files(id,name,mimeType,modifiedTime,parents)",
+      pageSize: "1000"
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const response = await fetch(`${DRIVE_FILES_URL}?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(
+        `Drive API error ${response.status}: ${text}`
+      );
+    }
+    const data = await response.json();
+    results.push(...data.files);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return results;
+}
+async function scanFolder(folderId, folderPath, token, recursive, nameFilter, seen = /* @__PURE__ */ new Set()) {
+  console.log(`[driveFolderScanner] Scanning folder: ${folderId} (path: "${folderPath}")`);
+  const spreadsheets = await listFilesInFolder(folderId, SPREADSHEET_MIME, token);
+  const results = [];
+  for (const file of spreadsheets) {
+    if (seen.has(file.id)) continue;
+    seen.add(file.id);
+    if (nameFilter && !nameFilter.test(file.name)) continue;
+    results.push({
+      id: file.id,
+      name: file.name,
+      folderPath,
+      mimeType: file.mimeType,
+      modifiedTime: file.modifiedTime
+    });
+  }
+  if (recursive) {
+    const subfolders = await listFilesInFolder(folderId, FOLDER_MIME, token);
+    for (const folder of subfolders) {
+      const subPath = folderPath ? `${folderPath}/${folder.name}` : folder.name;
+      const subResults = await scanFolder(
+        folder.id,
+        subPath,
+        token,
+        recursive,
+        nameFilter,
+        seen
+      );
+      results.push(...subResults);
+    }
+  }
+  return results;
+}
+async function scanDriveFolderForSpreadsheets(options) {
+  const { folderId, recursive = true, nameFilter, credentials } = options;
+  const token = await getAccessToken(credentials);
+  return scanFolder(folderId, "", token, recursive, nameFilter);
+}
+
+// src/utils/driveImageSync.ts
+var import_google_auth_library3 = __toESM(require_src5());
+import { createWriteStream, mkdirSync, existsSync as existsSync2, readdirSync, unlinkSync, statSync as statSync2 } from "node:fs";
+import { join, dirname } from "node:path";
+import { pipeline as pipeline2 } from "node:stream/promises";
+import { Readable } from "node:stream";
+var DEFAULT_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+  "image/svg+xml",
+  "image/tiff",
+  "image/bmp",
+  "image/ico",
+  "image/x-icon"
+];
+var FOLDER_MIME2 = "application/vnd.google-apps.folder";
+var DRIVE_FILES_URL2 = "https://www.googleapis.com/drive/v3/files";
+function normalizeExtension(name) {
+  const dot = name.lastIndexOf(".");
+  if (dot === -1) return name;
+  const base = name.slice(0, dot);
+  let ext = name.slice(dot + 1).toLowerCase();
+  if (ext === "jpeg") ext = "jpg";
+  return `${base}.${ext}`;
+}
+async function getAccessToken2(credentials) {
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+    );
+  }
+  const normalizedKey = privateKey.replace(/\\n/g, "\n");
+  const auth = new import_google_auth_library3.GoogleAuth({
+    credentials: { client_email: clientEmail, private_key: normalizedKey },
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  return tokenResponse.token;
+}
+async function listFilesInFolder2(folderId, token, mimeTypeFilter) {
+  const results = [];
+  let pageToken;
+  do {
+    const mimeClause = mimeTypeFilter ? ` and mimeType = '${mimeTypeFilter}'` : "";
+    const query = `'${folderId}' in parents${mimeClause} and trashed = false`;
+    const params = new URLSearchParams({
+      q: query,
+      fields: "nextPageToken,files(id,name,mimeType,modifiedTime,parents)",
+      pageSize: "1000"
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const response = await fetch(`${DRIVE_FILES_URL2}?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Drive API error ${response.status}: ${text}`);
+    }
+    const data = await response.json();
+    results.push(...data.files);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return results;
+}
+async function collectFiles(folderId, folderRelPath, outputPath, token, allowedMimeTypes, recursive, folderPattern, normalizeExts = true) {
+  console.log(`[driveImageSync] Scanning folder: ${folderId} (path: "${folderRelPath}")`);
+  const allItems = await listFilesInFolder2(folderId, token);
+  const entries = [];
+  for (const item of allItems) {
+    if (item.mimeType === FOLDER_MIME2) {
+      if (!recursive) continue;
+      const subRelPath = folderRelPath ? `${folderRelPath}/${item.name}` : item.name;
+      if (folderPattern && !folderPattern.test(subRelPath)) continue;
+      const subEntries = await collectFiles(
+        item.id,
+        subRelPath,
+        outputPath,
+        token,
+        allowedMimeTypes,
+        recursive,
+        folderPattern,
+        normalizeExts
+      );
+      entries.push(...subEntries);
+    } else if (allowedMimeTypes.includes(item.mimeType)) {
+      const localName = normalizeExts ? normalizeExtension(item.name) : item.name;
+      const localPath = folderRelPath ? join(outputPath, folderRelPath, localName) : join(outputPath, localName);
+      entries.push({
+        id: item.id,
+        name: item.name,
+        localPath,
+        mimeType: item.mimeType,
+        driveModifiedTime: item.modifiedTime
+      });
+    }
+  }
+  return entries;
+}
+async function downloadFile(fileId, localPath, token) {
+  const url = `${DRIVE_FILES_URL2}/${fileId}?alt=media`;
+  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!response.ok) {
+    throw new Error(`Failed to download ${fileId}: ${response.status}`);
+  }
+  mkdirSync(dirname(localPath), { recursive: true });
+  const dest = createWriteStream(localPath);
+  await pipeline2(Readable.fromWeb(response.body), dest);
+}
+function collectLocalFiles(dir, base) {
+  const results = [];
+  if (!existsSync2(dir)) return results;
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    const stat3 = statSync2(fullPath);
+    if (stat3.isDirectory()) {
+      results.push(...collectLocalFiles(fullPath, base));
+    } else {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+async function runConcurrent(tasks, concurrency) {
+  const results = [];
+  for (let i2 = 0; i2 < tasks.length; i2 += concurrency) {
+    const batch = tasks.slice(i2, i2 + concurrency).map((t2) => t2());
+    results.push(...await Promise.all(batch));
+  }
+  return results;
+}
+async function syncDriveImages(options) {
+  const {
+    folderId,
+    outputPath,
+    mimeTypes = DEFAULT_IMAGE_MIME_TYPES,
+    recursive = true,
+    folderPattern,
+    credentials,
+    cleanSync = false,
+    concurrency = 3,
+    incrementalSync = true,
+    normalizeExtensions = true
+  } = options;
+  const token = await getAccessToken2(credentials);
+  mkdirSync(outputPath, { recursive: true });
+  const entries = await collectFiles(
+    folderId,
+    "",
+    outputPath,
+    token,
+    mimeTypes,
+    recursive,
+    folderPattern,
+    normalizeExtensions
+  );
+  const downloaded = [];
+  const skipped = [];
+  const errors = [];
+  const tasks = entries.map((entry) => async () => {
+    const localExists = existsSync2(entry.localPath);
+    if (localExists) {
+      if (incrementalSync && entry.driveModifiedTime) {
+        try {
+          const localMtimeMs = statSync2(entry.localPath).mtimeMs;
+          const driveMtimeMs = new Date(entry.driveModifiedTime).getTime();
+          if (driveMtimeMs <= localMtimeMs) {
+            console.log(`[driveImageSync] Skipping (up to date): ${entry.localPath}`);
+            skipped.push(entry.localPath);
+            return;
+          }
+          console.log(`[driveImageSync] Re-downloading (changed in Drive): ${entry.localPath}`);
+        } catch {
+          console.log(`[driveImageSync] Downloading (could not stat local): ${entry.localPath}`);
+        }
+      } else {
+        console.log(`[driveImageSync] Skipping (exists): ${entry.localPath}`);
+        skipped.push(entry.localPath);
+        return;
+      }
+    }
+    console.log(`[driveImageSync] Downloading: ${entry.localPath}`);
+    try {
+      await downloadFile(entry.id, entry.localPath, token);
+      downloaded.push(entry.localPath);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[driveImageSync] Error downloading ${entry.localPath}: ${msg}`);
+      errors.push(entry.localPath);
+    }
+  });
+  await runConcurrent(tasks, concurrency);
+  const deleted = [];
+  if (cleanSync) {
+    const driveLocalPaths = new Set(entries.map((e2) => e2.localPath));
+    const localFiles = collectLocalFiles(outputPath, outputPath);
+    for (const localFile of localFiles) {
+      if (!driveLocalPaths.has(localFile)) {
+        console.log(`[driveImageSync] Deleting (not in Drive): ${localFile}`);
+        unlinkSync(localFile);
+        deleted.push(localFile);
+      }
+    }
+  }
+  console.log(
+    `[driveImageSync] Synced ${downloaded.length} files, skipped ${skipped.length}, deleted ${deleted.length}, errors ${errors.length}`
+  );
+  return { downloaded, skipped, deleted, errors };
+}
+
+// src/utils/driveProjectIndex.ts
+import fs9 from "node:fs";
+import path5 from "node:path";
+function buildManifest(options) {
+  const locales = Object.keys(options.translations).sort();
+  return {
+    version: "1",
+    generatedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    projectName: options.projectName,
+    domain: options.domain,
+    locales,
+    defaultLocale: options.defaultLocale,
+    spreadsheets: options.spreadsheets,
+    outputDirectory: options.outputDirectory,
+    flatten: options.flatten,
+    projectMetadata: options.projectMetadata
+  };
+}
+function writeManifest(manifest, manifestPath) {
+  const dir = path5.dirname(manifestPath);
+  if (!fs9.existsSync(dir)) {
+    fs9.mkdirSync(dir, { recursive: true });
+  }
+  fs9.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
+  console.log(`[driveProjectIndex] Wrote project manifest \u2192 ${manifestPath}`);
+}
+
+// src/utils/getDriveTranslations.ts
+function sanitizeFolderName(name) {
+  return name.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "sheet";
+}
+async function manageDriveTranslations(options) {
+  const {
+    driveFolderId,
+    scanForSpreadsheets = true,
+    spreadsheetIds: explicitIds = [],
+    spreadsheetNameFilter,
+    syncImages = false,
+    imageOutputPath,
+    imageSyncOptions,
+    translationOptions = {},
+    docTitles,
+    flatten: flatten3 = true,
+    createManifest,
+    manifestPath,
+    projectName,
+    domain,
+    defaultLocale,
+    projectMetadata
+  } = options;
+  if (syncImages && !imageOutputPath) {
+    throw new Error(
+      "[manageDriveTranslations] imageOutputPath is required when syncImages is true"
+    );
+  }
+  const shouldCreateManifest = createManifest ?? driveFolderId !== void 0;
+  const discoveredIds = [];
+  const discoveredNames = /* @__PURE__ */ new Map();
+  const discoveredFolderPaths = /* @__PURE__ */ new Map();
+  const discoveredModifiedTimes = /* @__PURE__ */ new Map();
+  if (driveFolderId && scanForSpreadsheets) {
+    const scanOptions = { folderId: driveFolderId };
+    const discovered = await scanDriveFolderForSpreadsheets(scanOptions);
+    console.log(
+      `[manageDriveTranslations] Found ${discovered.length} spreadsheet(s) in Drive folder`
+    );
+    for (const file of discovered) {
+      discoveredIds.push(file.id);
+      discoveredNames.set(file.id, file.name);
+      discoveredFolderPaths.set(file.id, file.folderPath);
+      if (file.modifiedTime) discoveredModifiedTimes.set(file.id, file.modifiedTime);
+    }
+  }
+  const allIds = [.../* @__PURE__ */ new Set([...discoveredIds, ...explicitIds])];
+  const filteredIds = spreadsheetNameFilter ? allIds.filter((id) => {
+    const name = discoveredNames.get(id);
+    if (!name) return true;
+    return spreadsheetNameFilter.test(name);
+  }) : allIds;
+  let translations;
+  const spreadsheetEntries = [];
+  const baseOutputDir = translationOptions.translationsOutputDir ?? "translations";
+  if (!flatten3) {
+    const { mergeStrategy = "later-wins", ...baseOptions } = translationOptions;
+    const perResults = [];
+    for (const id of filteredIds) {
+      const name = discoveredNames.get(id) ?? id;
+      const subDir = sanitizeFolderName(name);
+      const subOutputDir = path6.join(baseOutputDir, subDir);
+      console.log(
+        `[manageDriveTranslations] (flatten: false) Fetching "${name}" \u2192 ${subOutputDir}`
+      );
+      const result = await getSpreadSheetData(docTitles, {
+        ...baseOptions,
+        spreadsheetId: id,
+        translationsOutputDir: subOutputDir
+      });
+      perResults.push(result);
+      spreadsheetEntries.push({
+        id,
+        name,
+        folderPath: discoveredFolderPaths.get(id) ?? "",
+        sheets: docTitles ?? [],
+        modifiedTime: discoveredModifiedTimes.get(id),
+        outputSubDirectory: subDir
+      });
+    }
+    translations = mergeMultipleTranslationData(perResults, mergeStrategy);
+  } else {
+    translations = await getMultipleSpreadSheetsData(docTitles, {
+      ...translationOptions,
+      spreadsheetIds: filteredIds.length > 0 ? filteredIds : void 0
+    });
+    for (const id of filteredIds) {
+      spreadsheetEntries.push({
+        id,
+        name: discoveredNames.get(id) ?? id,
+        folderPath: discoveredFolderPaths.get(id) ?? "",
+        sheets: docTitles ?? [],
+        modifiedTime: discoveredModifiedTimes.get(id)
+      });
+    }
+  }
+  let imageSync;
+  if (syncImages && driveFolderId && imageOutputPath) {
+    imageSync = await syncDriveImages({
+      ...imageSyncOptions,
+      folderId: driveFolderId,
+      outputPath: imageOutputPath
+    });
+  }
+  let manifest;
+  if (shouldCreateManifest) {
+    const resolvedManifestPath = manifestPath ?? path6.join(baseOutputDir, "i18n-manifest.json");
+    manifest = buildManifest({
+      translations,
+      spreadsheets: spreadsheetEntries,
+      outputDirectory: baseOutputDir,
+      flatten: flatten3,
+      projectName,
+      domain,
+      defaultLocale,
+      projectMetadata
+    });
+    writeManifest(manifest, resolvedManifestPath);
+  }
+  return { translations, spreadsheetIds: filteredIds, imageSync, manifest };
+}
+
 // src/action-entrypoint.ts
 async function run() {
   try {
@@ -49458,9 +49975,9 @@ async function run() {
     const options = {
       rowLimit: rowLimitRaw,
       waitSeconds: waitSecondsRaw,
-      translationsOutputDir: path5.resolve(workspaceDir, translationsOutputDir),
-      localesOutputPath: path5.resolve(workspaceDir, localesOutputPath),
-      dataJsonPath: path5.resolve(workspaceDir, dataJsonPath),
+      translationsOutputDir: path7.resolve(workspaceDir, translationsOutputDir),
+      localesOutputPath: path7.resolve(workspaceDir, localesOutputPath),
+      dataJsonPath: path7.resolve(workspaceDir, dataJsonPath),
       syncLocalChanges: getInput("sync-local-changes") !== "false",
       autoTranslate: getInput("auto-translate") === "true",
       override: getInput("override") === "true",
@@ -49471,11 +49988,32 @@ async function run() {
       sourceLocale: getInput("source-locale") || "en",
       targetLocales: getInput("target-locales").split(",").map((s2) => s2.trim()).filter(Boolean)
     };
-    const translations = await getSpreadSheetData(sheetTitles, options);
-    setOutput("translations-dir", path5.resolve(workspaceDir, translationsOutputDir));
-    setOutput("locales-file", path5.resolve(workspaceDir, localesOutputPath));
-    setOutput("data-json-file", path5.resolve(workspaceDir, dataJsonPath));
-    info(`\u2705 Fetched translations for ${Object.keys(translations).length} locales`);
+    const driveFolderId = getInput("drive-folder-id") || void 0;
+    const scanForSpreadsheets = getInput("scan-for-spreadsheets") !== "false";
+    const spreadsheetIdsRaw = getInput("spreadsheet-ids");
+    const spreadsheetIds = spreadsheetIdsRaw ? spreadsheetIdsRaw.split(",").map((s2) => s2.trim()).filter(Boolean) : void 0;
+    const syncImages = getInput("sync-images") === "true";
+    const imageOutputPath = getInput("image-output-path") || "./public/remote-images";
+    let localeCount;
+    if (driveFolderId || spreadsheetIds && spreadsheetIds.length > 0) {
+      const driveResult = await manageDriveTranslations({
+        driveFolderId,
+        scanForSpreadsheets,
+        spreadsheetIds,
+        syncImages,
+        imageOutputPath: syncImages ? imageOutputPath : void 0,
+        docTitles: sheetTitles,
+        translationOptions: options
+      });
+      localeCount = Object.keys(driveResult.translations).length;
+    } else {
+      const translations = await getSpreadSheetData(sheetTitles, options);
+      localeCount = Object.keys(translations).length;
+    }
+    setOutput("translations-dir", path7.resolve(workspaceDir, translationsOutputDir));
+    setOutput("locales-file", path7.resolve(workspaceDir, localesOutputPath));
+    setOutput("data-json-file", path7.resolve(workspaceDir, dataJsonPath));
+    info(`\u2705 Fetched translations for ${localeCount} locales`);
   } catch (error2) {
     setFailed(error2 instanceof Error ? error2.message : String(error2));
   }

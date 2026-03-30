@@ -1,5 +1,11 @@
 # Google Sheet Translations
 
+[![CI](https://github.com/el-j/google-sheet-translations/actions/workflows/ci.yml/badge.svg)](https://github.com/el-j/google-sheet-translations/actions/workflows/ci.yml)
+[![Release](https://github.com/el-j/google-sheet-translations/actions/workflows/release.yml/badge.svg)](https://github.com/el-j/google-sheet-translations/actions/workflows/release.yml)
+[![Docs](https://github.com/el-j/google-sheet-translations/actions/workflows/docs.yml/badge.svg)](https://github.com/el-j/google-sheet-translations/actions/workflows/docs.yml)
+[![npm version](https://img.shields.io/npm/v/@el-j/google-sheet-translations.svg)](https://www.npmjs.com/package/@el-j/google-sheet-translations)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A Node.js package for managing translations stored in Google Sheets.
 
 ## Features
@@ -245,18 +251,19 @@ When enabled, the auto-translation feature automatically adds Google Translate f
 
 The formula follows this format:
 ```
-=GOOGLETRANSLATE(INDIRECT(sourceColumn&ROW());$sourceColumn$1;targetColumn$1)
+=GOOGLETRANSLATE(INDIRECT(srcCol&ROW()); langCodeFormula($srcCol$1); langCodeFormula(tgtCol$1))
 ```
 
-For example, if you add a new key with an English translation in column B but no German translation in column C, the system will automatically add:
+The `langCodeFormula` dynamically extracts the GOOGLETRANSLATE-compatible language code from the header cell — stripping region qualifiers (e.g. `"tr-TR"` → `"tr"`) while preserving Chinese variants (`zh-TW` / `zh-CN`).  All formula separators are automatically matched to the spreadsheet's locale.
+
+For example, if you add a new key with an English translation in column B but no Turkish translation (header `tr-TR`) in column C, the system will automatically add:
 ```
-=GOOGLETRANSLATE(INDIRECT("B"&ROW());$B$1;C$1)
+=GOOGLETRANSLATE(INDIRECT("B"&ROW());IF(LOWER(LEFT($B$1;3))="zh-";LOWER($B$1);LOWER(IFERROR(LEFT($B$1;FIND("-";$B$1)-1);$B$1)));IF(LOWER(LEFT(C$1;3))="zh-";LOWER(C$1);LOWER(IFERROR(LEFT(C$1;FIND("-";C$1)-1);C$1))))
 ```
 
 Where:
 - `INDIRECT("B"&ROW())` dynamically references the source text cell in the same row
-- `$B$1` references the header cell containing the source language code
-- `C$1` references the header cell containing the target language code
+- Each `IF(…)` wrapper extracts the language code from the header cell (`$B$1` / `C$1`), producing `"en"` and `"tr"` respectively at evaluation time
 
 [View the complete Auto-Translation Guide](docs/auto-translation-guide.md) for more details and best practices.
 

@@ -1,6 +1,6 @@
 {
   "name": "@el-j/google-sheet-translations",
-  "version": "2.1.4",
+  "version": "2.2.0-beta.2",
   "description": "A package to manage translations stored in Google Spreadsheets",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -39,7 +39,8 @@
     "docs:build": "vitepress build website",
     "docs:preview": "vitepress preview website",
     "test:integration": "INTEGRATION=true jest --testPathPatterns=integration --testTimeout=60000 --coverage=false",
-    "sync:translations": "node scripts/sync-demo-translations.mjs"
+    "sync:translations": "node scripts/sync-demo-translations.mjs",
+    "changelog:preview": "node scripts/changelog-preview.mjs"
   },
   "keywords": [
     "google-sheets",

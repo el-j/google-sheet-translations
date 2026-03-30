@@ -20,6 +20,7 @@ on:
       - 'scripts/**'
       - '.github/workflows/docs.yml'
       - 'README.md'
+      - 'CHANGELOG.md'
 
   workflow_dispatch:
 
@@ -96,7 +97,7 @@ jobs:
         run: npm run docs:build
 
       - name: Setup GitHub Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v4
@@ -113,4 +114,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
