@@ -90,7 +90,7 @@ export async function createSpreadsheet(
 	} = options;
 
 	// ── Step 1: Create the spreadsheet via the Sheets REST API ─────────────
-	// GoogleAuth.request() handles token acquisition automatically, so no
+	// authClient.request() handles token acquisition automatically, so no
 	// explicit authorize() call is needed here.
 
 	const createRes = await withRetry(
