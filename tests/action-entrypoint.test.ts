@@ -1,27 +1,27 @@
 import * as core from '@actions/core';
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
 
-jest.mock('@actions/core', () => ({
-	getInput: jest.fn(),
-	setOutput: jest.fn(),
-	setFailed: jest.fn(),
-	info: jest.fn(),
-	warning: jest.fn(),
-	error: jest.fn(),
-	debug: jest.fn(),
+vi.mock('@actions/core', () => ({
+	getInput: vi.fn(),
+	setOutput: vi.fn(),
+	setFailed: vi.fn(),
+	info: vi.fn(),
+	warning: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
 }));
-jest.mock('../src/getSpreadSheetData', () => ({
-	getSpreadSheetData: jest.fn().mockResolvedValue({}),
+vi.mock('../src/getSpreadSheetData', () => ({
+	getSpreadSheetData: vi.fn().mockResolvedValue({}),
 }));
 
 // Import run after mocks are set up so the bottom-level call uses mocked deps
 import { run } from '../src/action-entrypoint';
 
-const mockGetInput = jest.mocked(core.getInput);
-const mockSetOutput = jest.mocked(core.setOutput);
-const mockSetFailed = jest.mocked(core.setFailed);
-const mockInfo = jest.mocked(core.info);
-const mockGetSpreadSheetData = jest.mocked(getSpreadSheetData);
+const mockGetInput = vi.mocked(core.getInput);
+const mockSetOutput = vi.mocked(core.setOutput);
+const mockSetFailed = vi.mocked(core.setFailed);
+const mockInfo = vi.mocked(core.info);
+const mockGetSpreadSheetData = vi.mocked(getSpreadSheetData);
 
 /** Default set of valid action inputs */
 function makeInputs(overrides: Record<string, string> = {}): Record<string, string> {
@@ -45,7 +45,7 @@ function makeInputs(overrides: Record<string, string> = {}): Record<string, stri
 }
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	process.env.GITHUB_WORKSPACE = '/workspace';
 	mockGetSpreadSheetData.mockResolvedValue({});
 });
