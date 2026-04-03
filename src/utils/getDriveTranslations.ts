@@ -15,6 +15,8 @@ import { scanDriveFolderForDocs } from './driveDocScanner';
 import type { DocIngesterOptions, DocUpdateMode } from './docIngester';
 import { ingestDoc } from './docIngester';
 import type { DocKeyStrategy } from './docParser';
+import { buildGoogleAuth, createAuthClient, normalizePrivateKey } from './auth';
+import { createSpreadsheet } from './spreadsheetCreator';
 
 export interface GoogleDriveManagerOptions {
   /**
@@ -178,6 +180,53 @@ function sanitizeFolderName(name: string): string {
 }
 
 /**
+ * Moves a Google Spreadsheet (identified by `spreadsheetId`) into the given
+ * Drive folder by calling the Drive Files API with the `drive.file` scope.
+ *
+ * The service-account must have been granted edit access to the target folder.
+ * Uses the same credential detection order as `createAuthClient` (WIF first,
+ * then `GOOGLE_CLIENT_EMAIL` + `GOOGLE_PRIVATE_KEY`).
+ */
+async function moveSpreadsheetToFolder(
+  spreadsheetId: string,
+  folderId: string,
+): Promise<void> {
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const rawPrivateKey = process.env.GOOGLE_PRIVATE_KEY;
+
+  let credentials: { client_email: string; private_key: string } | undefined;
+  if (clientEmail && rawPrivateKey) {
+    credentials = { client_email: clientEmail, private_key: normalizePrivateKey(rawPrivateKey) };
+  }
+  // When no key credentials are present, buildGoogleAuth falls back to WIF / ADC
+  // (GOOGLE_APPLICATION_CREDENTIALS), which google-auth-library picks up automatically.
+
+  const driveAuth = buildGoogleAuth(
+    ['https://www.googleapis.com/auth/drive.file'],
+    credentials,
+  );
+
+  // Step 1: fetch current parents so we can remove them after the move
+  const fileRes = await driveAuth.request<{ parents?: string[] }>({
+    url: `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
+    params: { fields: 'parents' },
+  });
+  const currentParents = (fileRes.data.parents ?? []).join(',');
+
+  // Step 2: move the file by adding the target folder and removing previous parents
+  await driveAuth.request({
+    url: `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
+    method: 'PATCH',
+    params: {
+      addParents: folderId,
+      ...(currentParents ? { removeParents: currentParents } : {}),
+      fields: 'id,parents',
+    },
+    data: {},
+  });
+}
+
+/**
  * Top-level "headless CMS bridge" function.
  *
  * Scans a Google Drive folder for spreadsheets, fetches all translations,
@@ -267,6 +316,44 @@ export async function manageDriveTranslations(
         return spreadsheetNameFilter.test(name);
       })
     : allIds;
+
+  // ── Drive folder bootstrap ──────────────────────────────────────────────────
+  // When the Drive folder is empty (no spreadsheets discovered or provided) and
+  // autoCreate is enabled, create a new spreadsheet and move it into the folder
+  // automatically — no manual "move to folder" step required.
+  if (driveFolderId && filteredIds.length === 0 && translationOptions.autoCreate !== false) {
+    console.log(
+      `[manageDriveTranslations] Drive folder "${driveFolderId}" contains no spreadsheets. ` +
+      `Bootstrapping a new spreadsheet…`,
+    );
+    const authClient = createAuthClient();
+    const bootstrapTitle = translationOptions.spreadsheetTitle ?? 'google-sheet-translations';
+    const created = await createSpreadsheet(authClient, {
+      title: bootstrapTitle,
+      sourceLocale: translationOptions.sourceLocale,
+      targetLocales: translationOptions.targetLocales,
+    });
+    console.log(`[manageDriveTranslations] ✅ Spreadsheet created: ${created.url}`);
+
+    try {
+      await moveSpreadsheetToFolder(created.spreadsheetId, driveFolderId);
+      console.log(
+        `[manageDriveTranslations] ✅ Spreadsheet moved into Drive folder "${driveFolderId}"`,
+      );
+    } catch (moveErr) {
+      console.warn(
+        `[manageDriveTranslations] ⚠️  Could not move spreadsheet into Drive folder:`,
+        (moveErr as Error).message,
+      );
+      console.warn(
+        `   Please move spreadsheet "${created.spreadsheetId}" into folder "${driveFolderId}" manually.`,
+      );
+    }
+
+    filteredIds.push(created.spreadsheetId);
+    discoveredNames.set(created.spreadsheetId, bootstrapTitle);
+    discoveredFolderPaths.set(created.spreadsheetId, '');
+  }
 
   // Fetch translations
   let translations: TranslationData;

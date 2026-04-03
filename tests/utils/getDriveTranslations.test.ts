@@ -6,12 +6,16 @@ vi.mock('../../src/utils/driveFolderScanner');
 vi.mock('../../src/utils/driveImageSync');
 vi.mock('../../src/utils/driveProjectIndex');
 vi.mock('../../src/getSpreadSheetData');
+vi.mock('../../src/utils/spreadsheetCreator');
+vi.mock('../../src/utils/auth');
 
 import { getMultipleSpreadSheetsData } from '../../src/getMultipleSpreadSheetsData';
 import { scanDriveFolderForSpreadsheets } from '../../src/utils/driveFolderScanner';
 import { syncDriveImages } from '../../src/utils/driveImageSync';
 import { buildManifest, writeManifest } from '../../src/utils/driveProjectIndex';
 import { getSpreadSheetData } from '../../src/getSpreadSheetData';
+import { createSpreadsheet } from '../../src/utils/spreadsheetCreator';
+import { createAuthClient, buildGoogleAuth } from '../../src/utils/auth';
 
 const mockGetMultiple = getMultipleSpreadSheetsData as MockedFunction<typeof getMultipleSpreadSheetsData>;
 const mockScanDrive = scanDriveFolderForSpreadsheets as MockedFunction<typeof scanDriveFolderForSpreadsheets>;
@@ -19,13 +23,26 @@ const mockSyncImages = syncDriveImages as MockedFunction<typeof syncDriveImages>
 const mockBuildManifest = buildManifest as MockedFunction<typeof buildManifest>;
 const mockWriteManifest = writeManifest as MockedFunction<typeof writeManifest>;
 const mockGetSpreadSheetData = getSpreadSheetData as MockedFunction<typeof getSpreadSheetData>;
+const mockCreateSpreadsheet = createSpreadsheet as MockedFunction<typeof createSpreadsheet>;
+const mockCreateAuthClient = createAuthClient as MockedFunction<typeof createAuthClient>;
+const mockBuildGoogleAuth = buildGoogleAuth as MockedFunction<typeof buildGoogleAuth>;
 
 const MOCK_TRANSLATIONS = { en: { home: { title: 'Hello' } } };
 const MOCK_IMAGE_RESULT = { downloaded: ['img1.png'], skipped: [], deleted: [], errors: [] };
 const SPREADSHEET_MIME = 'application/vnd.google-apps.spreadsheet';
+const BOOTSTRAP_ID = 'bootstrap-sheet-id';
 
 function makeSpreadsheet(id: string, name: string) {
   return { id, name, folderPath: '', mimeType: SPREADSHEET_MIME };
+}
+
+/** Returns a fresh mock Drive auth client whose request() resolves correctly for bootstrap. */
+function makeDriveAuthMock() {
+  return {
+    request: vi.fn()
+      .mockResolvedValueOnce({ data: { parents: ['root'] } }) // GET file parents
+      .mockResolvedValueOnce({ data: { id: BOOTSTRAP_ID, parents: ['folder-123'] } }), // PATCH move
+  };
 }
 
 beforeEach(() => {
@@ -37,6 +54,14 @@ beforeEach(() => {
   mockBuildManifest.mockReturnValue(MOCK_MANIFEST);
   mockWriteManifest.mockImplementation(() => {});
   mockGetSpreadSheetData.mockResolvedValue(MOCK_TRANSLATIONS);
+
+  // Bootstrap mocks: createSpreadsheet + Drive auth for moveSpreadsheetToFolder
+  mockCreateSpreadsheet.mockResolvedValue({
+    spreadsheetId: BOOTSTRAP_ID,
+    url: `https://docs.google.com/spreadsheets/d/${BOOTSTRAP_ID}/edit`,
+  });
+  mockCreateAuthClient.mockReturnValue({ request: vi.fn() } as any);
+  mockBuildGoogleAuth.mockReturnValue(makeDriveAuthMock() as any);
 });
 
 describe('manageDriveTranslations', () => {
@@ -159,17 +184,75 @@ describe('manageDriveTranslations', () => {
     });
   });
 
-  it('falls back gracefully when folder has no spreadsheets', async () => {
+  it('bootstraps a new spreadsheet and moves it when Drive folder is empty', async () => {
     mockScanDrive.mockResolvedValue([]);
-    mockGetMultiple.mockResolvedValue({});
+    mockGetMultiple.mockResolvedValue(MOCK_TRANSLATIONS);
 
     const result = await manageDriveTranslations({
       driveFolderId: 'folder-123',
     });
 
+    expect(mockCreateSpreadsheet).toHaveBeenCalledTimes(1);
+    expect(mockCreateSpreadsheet).toHaveBeenCalledWith(
+      expect.anything(), // authClient
+      expect.objectContaining({ title: 'google-sheet-translations' }),
+    );
+    // The bootstrapped ID is included in the result
+    expect(result.spreadsheetIds).toContain(BOOTSTRAP_ID);
+    expect(result.translations).toEqual(MOCK_TRANSLATIONS);
+    // getMultipleSpreadSheetsData was called with the new ID
+    expect(mockGetMultiple).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ spreadsheetIds: [BOOTSTRAP_ID] }),
+    );
+  });
+
+  it('does NOT bootstrap when autoCreate is explicitly false', async () => {
+    mockScanDrive.mockResolvedValue([]);
+
+    const result = await manageDriveTranslations({
+      driveFolderId: 'folder-123',
+      translationOptions: { autoCreate: false },
+    });
+
+    expect(mockCreateSpreadsheet).not.toHaveBeenCalled();
     expect(result.spreadsheetIds).toEqual([]);
-    expect(result.translations).toEqual({});
-    expect(result.imageSync).toBeUndefined();
+  });
+
+  it('continues with new spreadsheet ID even when Drive move fails', async () => {
+    mockScanDrive.mockResolvedValue([]);
+    // Simulate Drive API failure on the PATCH move step
+    const failingRequest = vi.fn()
+      .mockResolvedValueOnce({ data: { parents: ['root'] } }) // GET parents succeeds
+      .mockRejectedValueOnce(new Error('Drive API error 403: Forbidden')); // PATCH fails
+    mockBuildGoogleAuth.mockReturnValue({ request: failingRequest } as any);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await manageDriveTranslations({
+      driveFolderId: 'folder-123',
+    });
+    warnSpy.mockRestore();
+
+    // Bootstrap still adds the ID even if move fails
+    expect(result.spreadsheetIds).toContain(BOOTSTRAP_ID);
+    expect(mockGetMultiple).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({ spreadsheetIds: [BOOTSTRAP_ID] }),
+    );
+  });
+
+  it('uses spreadsheetTitle from translationOptions for bootstrap', async () => {
+    mockScanDrive.mockResolvedValue([]);
+
+    await manageDriveTranslations({
+      driveFolderId: 'folder-123',
+      translationOptions: { spreadsheetTitle: 'My App Translations' },
+    });
+
+    expect(mockCreateSpreadsheet).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ title: 'My App Translations' }),
+    );
   });
 
   it('passes docTitles and translationOptions to getMultipleSpreadSheetsData', async () => {

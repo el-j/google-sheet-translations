@@ -50263,6 +50263,33 @@ async function ingestDoc(docFile, options = {}) {
 function sanitizeFolderName(name) {
   return name.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "sheet";
 }
+async function moveSpreadsheetToFolder(spreadsheetId, folderId) {
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const rawPrivateKey = process.env.GOOGLE_PRIVATE_KEY;
+  let credentials;
+  if (clientEmail && rawPrivateKey) {
+    credentials = { client_email: clientEmail, private_key: normalizePrivateKey(rawPrivateKey) };
+  }
+  const driveAuth = buildGoogleAuth(
+    ["https://www.googleapis.com/auth/drive.file"],
+    credentials
+  );
+  const fileRes = await driveAuth.request({
+    url: `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
+    params: { fields: "parents" }
+  });
+  const currentParents = (fileRes.data.parents ?? []).join(",");
+  await driveAuth.request({
+    url: `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
+    method: "PATCH",
+    params: {
+      addParents: folderId,
+      ...currentParents ? { removeParents: currentParents } : {},
+      fields: "id,parents"
+    },
+    data: {}
+  });
+}
 async function manageDriveTranslations(options) {
   const {
     driveFolderId,
@@ -50318,6 +50345,36 @@ async function manageDriveTranslations(options) {
     if (!name) return true;
     return spreadsheetNameFilter.test(name);
   }) : allIds;
+  if (driveFolderId && filteredIds.length === 0 && translationOptions.autoCreate !== false) {
+    console.log(
+      `[manageDriveTranslations] Drive folder "${driveFolderId}" contains no spreadsheets. Bootstrapping a new spreadsheet\u2026`
+    );
+    const authClient = createAuthClient();
+    const bootstrapTitle = translationOptions.spreadsheetTitle ?? "google-sheet-translations";
+    const created = await createSpreadsheet(authClient, {
+      title: bootstrapTitle,
+      sourceLocale: translationOptions.sourceLocale,
+      targetLocales: translationOptions.targetLocales
+    });
+    console.log(`[manageDriveTranslations] \u2705 Spreadsheet created: ${created.url}`);
+    try {
+      await moveSpreadsheetToFolder(created.spreadsheetId, driveFolderId);
+      console.log(
+        `[manageDriveTranslations] \u2705 Spreadsheet moved into Drive folder "${driveFolderId}"`
+      );
+    } catch (moveErr) {
+      console.warn(
+        `[manageDriveTranslations] \u26A0\uFE0F  Could not move spreadsheet into Drive folder:`,
+        moveErr.message
+      );
+      console.warn(
+        `   Please move spreadsheet "${created.spreadsheetId}" into folder "${driveFolderId}" manually.`
+      );
+    }
+    filteredIds.push(created.spreadsheetId);
+    discoveredNames.set(created.spreadsheetId, bootstrapTitle);
+    discoveredFolderPaths.set(created.spreadsheetId, "");
+  }
   let translations;
   const spreadsheetEntries = [];
   const baseOutputDir = translationOptions.translationsOutputDir ?? "translations";
