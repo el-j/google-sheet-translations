@@ -197,7 +197,7 @@ describe('normalizePrivateKey', () => {
     expect(normalizePrivateKey(`"${PEM_ESCAPED_NEWLINES}"`)).toBe(PEM_REAL_NEWLINES);
   });
 
-  test('normalises Windows-style CRLF line endings', () => {
+  test('normalizes Windows-style CRLF line endings', () => {
     const crlfKey = '-----BEGIN PRIVATE KEY-----\r\nMIIEfake\r\n-----END PRIVATE KEY-----\r\n';
     expect(normalizePrivateKey(crlfKey)).toBe(PEM_REAL_NEWLINES);
   });
