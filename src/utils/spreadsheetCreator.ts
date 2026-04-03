@@ -1,4 +1,4 @@
-import type { JWT } from "google-auth-library";
+import type { GoogleAuth } from "google-auth-library";
 import { GoogleSpreadsheet } from "google-spreadsheet";
 import { withRetry } from "./rateLimiter";
 
@@ -79,7 +79,7 @@ const STARTER_KEYS: Record<string, string> = {
  * Returns the spreadsheet ID and URL.
  */
 export async function createSpreadsheet(
-	authClient: JWT,
+	authClient: GoogleAuth,
 	options: CreateSpreadsheetOptions = {},
 ): Promise<CreatedSpreadsheetInfo> {
 	const {
@@ -90,9 +90,8 @@ export async function createSpreadsheet(
 	} = options;
 
 	// ── Step 1: Create the spreadsheet via the Sheets REST API ─────────────
-	// google-spreadsheet v4 does not expose a static create method, so we use
-	// the underlying JWT client to make a direct API call.
-	await authClient.authorize();
+	// GoogleAuth.request() handles token acquisition automatically, so no
+	// explicit authorize() call is needed here.
 
 	const createRes = await withRetry(
 		() =>

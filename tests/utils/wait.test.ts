@@ -1,20 +1,20 @@
-jest.mock('node:timers/promises', () => ({
-  setTimeout: jest.fn(),
+vi.mock('node:timers/promises', () => ({
+  setTimeout: vi.fn(),
 }));
 
 import { wait } from '../../src/utils/wait';
 import { setTimeout as mockDelay } from 'node:timers/promises';
 
-const mockDelayFn = mockDelay as jest.MockedFunction<typeof mockDelay>;
+const mockDelayFn = mockDelay as MockedFunction<typeof mockDelay>;
 
 describe('wait', () => {
   beforeEach(() => {
-    jest.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
     mockDelayFn.mockReset();
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should wait for the specified number of seconds', async () => {

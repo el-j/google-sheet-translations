@@ -1,11 +1,11 @@
 import { manageDriveTranslations } from '../../src/utils/getDriveTranslations';
 import type { GoogleDriveManagerOptions } from '../../src/utils/getDriveTranslations';
 
-jest.mock('../../src/getMultipleSpreadSheetsData');
-jest.mock('../../src/utils/driveFolderScanner');
-jest.mock('../../src/utils/driveImageSync');
-jest.mock('../../src/utils/driveProjectIndex');
-jest.mock('../../src/getSpreadSheetData');
+vi.mock('../../src/getMultipleSpreadSheetsData');
+vi.mock('../../src/utils/driveFolderScanner');
+vi.mock('../../src/utils/driveImageSync');
+vi.mock('../../src/utils/driveProjectIndex');
+vi.mock('../../src/getSpreadSheetData');
 
 import { getMultipleSpreadSheetsData } from '../../src/getMultipleSpreadSheetsData';
 import { scanDriveFolderForSpreadsheets } from '../../src/utils/driveFolderScanner';
@@ -13,12 +13,12 @@ import { syncDriveImages } from '../../src/utils/driveImageSync';
 import { buildManifest, writeManifest } from '../../src/utils/driveProjectIndex';
 import { getSpreadSheetData } from '../../src/getSpreadSheetData';
 
-const mockGetMultiple = getMultipleSpreadSheetsData as jest.MockedFunction<typeof getMultipleSpreadSheetsData>;
-const mockScanDrive = scanDriveFolderForSpreadsheets as jest.MockedFunction<typeof scanDriveFolderForSpreadsheets>;
-const mockSyncImages = syncDriveImages as jest.MockedFunction<typeof syncDriveImages>;
-const mockBuildManifest = buildManifest as jest.MockedFunction<typeof buildManifest>;
-const mockWriteManifest = writeManifest as jest.MockedFunction<typeof writeManifest>;
-const mockGetSpreadSheetData = getSpreadSheetData as jest.MockedFunction<typeof getSpreadSheetData>;
+const mockGetMultiple = getMultipleSpreadSheetsData as MockedFunction<typeof getMultipleSpreadSheetsData>;
+const mockScanDrive = scanDriveFolderForSpreadsheets as MockedFunction<typeof scanDriveFolderForSpreadsheets>;
+const mockSyncImages = syncDriveImages as MockedFunction<typeof syncDriveImages>;
+const mockBuildManifest = buildManifest as MockedFunction<typeof buildManifest>;
+const mockWriteManifest = writeManifest as MockedFunction<typeof writeManifest>;
+const mockGetSpreadSheetData = getSpreadSheetData as MockedFunction<typeof getSpreadSheetData>;
 
 const MOCK_TRANSLATIONS = { en: { home: { title: 'Hello' } } };
 const MOCK_IMAGE_RESULT = { downloaded: ['img1.png'], skipped: [], deleted: [], errors: [] };
@@ -29,7 +29,7 @@ function makeSpreadsheet(id: string, name: string) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockGetMultiple.mockResolvedValue(MOCK_TRANSLATIONS);
   mockScanDrive.mockResolvedValue([]);
   mockSyncImages.mockResolvedValue(MOCK_IMAGE_RESULT);

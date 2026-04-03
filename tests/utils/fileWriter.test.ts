@@ -4,12 +4,12 @@ import { writeTranslationFiles, writeLocalesFile, writeLanguageDataFile } from '
 import type { TranslationData } from '../../src/types';
 
 // Mock fs module
-jest.mock('node:fs');
-const mockFs = fs as jest.Mocked<typeof fs>;
+vi.mock('node:fs');
+const mockFs = fs as Mocked<typeof fs>;
 
 describe('fileWriter', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockFs.existsSync.mockReturnValue(false);
 	});
 
@@ -47,7 +47,7 @@ describe('fileWriter', () => {
 			const outputDir = 'translations';
 
 			// Mock console.warn
-			const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
 			writeTranslationFiles(translations, locales, outputDir);
 
@@ -114,7 +114,7 @@ describe('fileWriter', () => {
 			const translations: TranslationData = {
 				[dangerousLocale]: { 'sheet1': { 'hello': 'Hello' } }
 			};
-			const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
 			writeTranslationFiles(translations, [dangerousLocale], 'translations');
 
@@ -133,7 +133,7 @@ describe('fileWriter', () => {
 			const translations: TranslationData = {
 				'en-gb': { 'sheet1': { 'hello': 'Hello' } }
 			};
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation();
 
 			writeTranslationFiles(translations, ['en-gb'], 'translations');
 
@@ -148,7 +148,7 @@ describe('fileWriter', () => {
 			const translations: TranslationData = {
 				'ZH-CN': { 'sheet1': { 'hello': '你好' } }
 			};
-			jest.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation();
 
 			writeTranslationFiles(translations, ['ZH-CN'], 'translations');
 

@@ -30,7 +30,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20, 22, 24]
+        node-version: [22, 24]
       fail-fast: true   # fail fast so we don't waste minutes on a broken build
 
     steps:
