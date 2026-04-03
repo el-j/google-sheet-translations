@@ -4,8 +4,8 @@ import { buildManifest, writeManifest, readManifest } from '../../src/utils/driv
 import type { BuildManifestOptions, DriveProjectManifest } from '../../src/utils/driveProjectIndex';
 import type { TranslationData } from '../../src/types';
 
-jest.mock('node:fs');
-const mockFs = fs as jest.Mocked<typeof fs>;
+vi.mock('node:fs');
+const mockFs = fs as Mocked<typeof fs>;
 
 const TRANSLATIONS: TranslationData = {
   fr: { home: { title: 'Accueil' } },
@@ -86,7 +86,7 @@ describe('buildManifest', () => {
 
 describe('writeManifest', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockFs.existsSync.mockReturnValue(false);
   });
 
@@ -125,7 +125,7 @@ describe('writeManifest', () => {
   });
 
   it('logs the output path after writing', () => {
-    const logSpy = jest.spyOn(console, 'log').mockImplementation();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation();
     writeManifest(MANIFEST, './out/manifest.json');
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('./out/manifest.json'));
     logSpy.mockRestore();

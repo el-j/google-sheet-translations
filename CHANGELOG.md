@@ -1,3 +1,9 @@
+## [2.2.0-beta.3](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.2...v2.2.0-beta.3) (2026-04-03)
+
+### 🐛 Bug Fixes
+
+* regenerate package-lock.json with lockfileVersion 2 to fix npm ci on Node 22 ([#65](https://github.com/el-j/google-sheet-translations/issues/65)) ([e902f04](https://github.com/el-j/google-sheet-translations/commit/e902f04bd8a049e6267aa0041afc852a6740da2e))
+
 ## [2.2.0-beta.2](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.1...v2.2.0-beta.2) (2026-03-29)
 
 ### 🚀 Features

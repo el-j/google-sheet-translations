@@ -76,3 +76,8 @@ Quick summary:
 4. Extract `client_email` and `private_key` from the JSON key
 5. Share your spreadsheet with the service account email (Viewer for pull-only, Editor for sync/push)
 6. For Drive folder usage: also enable the **Google Drive API** and share the Drive folder
+
+**Credential options — choose one:**
+
+- **Download a JSON key** (classic): generate a key for the service account, extract `client_email` and `private_key`, and store them as `GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY` env vars.
+- **Workload Identity Federation** (recommended for GitHub Actions): no key download needed — configure a WIF pool/provider and use `google-github-actions/auth` in your workflow. See the [GitHub Actions guide](/guide/github-actions).

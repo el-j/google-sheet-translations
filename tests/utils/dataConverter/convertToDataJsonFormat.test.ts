@@ -3,11 +3,11 @@ import type { TranslationData } from '../../../src/types';
 
 // Mock console.log to avoid cluttering test output
 beforeEach(() => {
-  jest.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'log').mockImplementation(() => {});
 });
 
 afterEach(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe('convertToDataJsonFormat', () => {

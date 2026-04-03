@@ -1,40 +1,41 @@
 import { syncDriveImages, normalizeExtension } from '../../src/utils/driveImageSync';
+import * as fs from 'node:fs';
 
 // Mock node:fs
-jest.mock('node:fs', () => ({
-  existsSync: jest.fn().mockReturnValue(false),
-  mkdirSync: jest.fn(),
-  createWriteStream: jest.fn().mockReturnValue({
-    write: jest.fn(),
-    end: jest.fn(),
-    on: jest.fn((event: string, cb: Function) => {
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn().mockReturnValue(false),
+  mkdirSync: vi.fn(),
+  createWriteStream: vi.fn().mockReturnValue({
+    write: vi.fn(),
+    end: vi.fn(),
+    on: vi.fn((event: string, cb: Function) => {
       if (event === 'finish') setTimeout(cb, 0);
     }),
   }),
-  readdirSync: jest.fn().mockReturnValue([]),
-  unlinkSync: jest.fn(),
-  statSync: jest.fn().mockReturnValue({ isDirectory: () => false, mtimeMs: 0 }),
+  readdirSync: vi.fn().mockReturnValue([]),
+  unlinkSync: vi.fn(),
+  statSync: vi.fn().mockReturnValue({ isDirectory: () => false, mtimeMs: 0 }),
 }));
 
-jest.mock('node:stream/promises', () => ({
-  pipeline: jest.fn().mockResolvedValue(undefined),
+vi.mock('node:stream/promises', () => ({
+  pipeline: vi.fn().mockResolvedValue(undefined),
 }));
 
-jest.mock('node:stream', () => ({
+vi.mock('node:stream', () => ({
   Readable: {
-    fromWeb: jest.fn().mockReturnValue({ pipe: jest.fn() }),
+    fromWeb: vi.fn().mockReturnValue({ pipe: vi.fn() }),
   },
 }));
 
-jest.mock('google-auth-library', () => ({
-  GoogleAuth: jest.fn().mockImplementation(() => ({
-    getClient: jest.fn().mockResolvedValue({
-      getAccessToken: jest.fn().mockResolvedValue({ token: 'mock-token' }),
-    }),
-  })),
+vi.mock('google-auth-library', () => ({
+  GoogleAuth: vi.fn().mockImplementation(class {
+    getClient = vi.fn().mockResolvedValue({
+      getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
+    });
+  }),
 }));
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const credentials = {
@@ -46,8 +47,8 @@ const credentials = {
 function makeListResponse(files: object[], nextPageToken?: string) {
   return {
     ok: true,
-    json: jest.fn().mockResolvedValue({ files, nextPageToken }),
-    text: jest.fn().mockResolvedValue(''),
+    json: vi.fn().mockResolvedValue({ files, nextPageToken }),
+    text: vi.fn().mockResolvedValue(''),
   };
 }
 
@@ -60,8 +61,7 @@ function makeDownloadResponse() {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
-  const fs = require('node:fs');
+  vi.clearAllMocks();
   fs.existsSync.mockReturnValue(false);
   fs.readdirSync.mockReturnValue([]);
 });
@@ -90,7 +90,6 @@ describe('syncDriveImages', () => {
   });
 
   it('skips files that already exist locally', async () => {
-    const fs = require('node:fs');
     fs.existsSync.mockReturnValue(true);
 
     mockFetch.mockResolvedValueOnce(
@@ -181,7 +180,6 @@ describe('syncDriveImages', () => {
   });
 
   it('cleanSync deletes local files not present in Drive', async () => {
-    const fs = require('node:fs');
     fs.readdirSync.mockReturnValue(['extra.png']);
     fs.statSync.mockReturnValue({ isDirectory: () => false });
     fs.existsSync.mockImplementation((p: string) => p === '/output');
@@ -208,7 +206,7 @@ describe('syncDriveImages', () => {
           { id: 'file1', name: 'bad.png', mimeType: 'image/png' },
         ])
       )
-      .mockResolvedValueOnce({ ok: false, status: 500, text: jest.fn().mockResolvedValue('Server Error') });
+      .mockResolvedValueOnce({ ok: false, status: 500, text: vi.fn().mockResolvedValue('Server Error') });
 
     const result = await syncDriveImages({
       folderId: 'root-folder',
@@ -221,7 +219,6 @@ describe('syncDriveImages', () => {
   });
 
   it('creates output directory if it does not exist', async () => {
-    const fs = require('node:fs');
     mockFetch.mockResolvedValueOnce(makeListResponse([]));
 
     await syncDriveImages({
@@ -324,15 +321,13 @@ describe('incrementalSync', () => {
   const localMtimeMid = 5000;                              // 5 seconds since epoch
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    const fs = require('node:fs');
+    vi.clearAllMocks();
     fs.existsSync.mockReturnValue(false);
     fs.readdirSync.mockReturnValue([]);
     fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: localMtimeMid });
   });
 
   it('re-downloads a file when Drive modifiedTime is newer than local mtime', async () => {
-    const fs = require('node:fs');
     fs.existsSync.mockReturnValue(true); // file exists locally
 
     mockFetch
@@ -354,7 +349,6 @@ describe('incrementalSync', () => {
   });
 
   it('skips a file when Drive modifiedTime is older than local mtime', async () => {
-    const fs = require('node:fs');
     fs.existsSync.mockReturnValue(true);
     // statSync returns mtimeMs: 5000 (above), drive has 1000 → local is newer
 
@@ -375,7 +369,6 @@ describe('incrementalSync', () => {
   });
 
   it('skips a file when Drive modifiedTime equals local mtime', async () => {
-    const fs = require('node:fs');
     fs.existsSync.mockReturnValue(true);
     fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: 5000 });
     const driveModifiedEqual = new Date(5000).toISOString();
@@ -397,7 +390,6 @@ describe('incrementalSync', () => {
   });
 
   it('falls back to skip-existing when modifiedTime is absent (no re-download)', async () => {
-    const fs = require('node:fs');
     fs.existsSync.mockReturnValue(true);
 
     // No modifiedTime in response → incremental check is bypassed → skip existing
@@ -418,7 +410,6 @@ describe('incrementalSync', () => {
   });
 
   it('incrementalSync: false always skips existing files (Drive modifiedTime ignored)', async () => {
-    const fs = require('node:fs');
     fs.existsSync.mockReturnValue(true);
 
     mockFetch.mockResolvedValueOnce(
@@ -462,8 +453,7 @@ describe('incrementalSync', () => {
 
 describe('normalizeExtensions option', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    const fs = require('node:fs');
+    vi.clearAllMocks();
     fs.existsSync.mockReturnValue(false);
     fs.readdirSync.mockReturnValue([]);
     fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: 0 });
