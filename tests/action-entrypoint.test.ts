@@ -96,6 +96,19 @@ describe('action-entrypoint', () => {
 				'-----BEGIN RSA PRIVATE KEY-----\nABC\n-----END RSA PRIVATE KEY-----',
 			);
 		});
+
+		it('succeeds without google-client-email/google-private-key when GOOGLE_APPLICATION_CREDENTIALS is set (WIF)', async () => {
+			process.env.GOOGLE_APPLICATION_CREDENTIALS = '/tmp/wif-creds.json';
+			const inputs = makeInputs({ 'google-client-email': '', 'google-private-key': '' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockGetSpreadSheetData.mockResolvedValue({ en: {} });
+
+			await run();
+
+			expect(mockSetFailed).not.toHaveBeenCalled();
+			expect(mockInfo).toHaveBeenCalledWith('✅ Fetched translations for 1 locales');
+			delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+		});
 	});
 
 	describe('error handling', () => {
@@ -118,6 +131,18 @@ describe('action-entrypoint', () => {
 			await run();
 
 			expect(mockSetFailed).toHaveBeenCalledWith('network timeout');
+		});
+
+		it('calls core.setFailed when neither WIF nor service-account key credentials are provided', async () => {
+			delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+			const inputs = makeInputs({ 'google-client-email': '', 'google-private-key': '' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				expect.stringContaining('Authentication required'),
+			);
 		});
 	});
 

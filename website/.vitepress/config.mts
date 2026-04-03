@@ -6,7 +6,7 @@ const pkg = require('../../package.json') as { version: string }
 
 export default defineConfig({
   title: '@el-j/google-sheet-translations',
-  description: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Supports bidirectional sync, auto-translation, and Next.js integration.',
+  description: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
 
   // GitHub Pages base path
   base: '/google-sheet-translations/',
@@ -20,7 +20,7 @@ export default defineConfig({
     ['meta', { name: 'og:type', content: 'website' }],
     ['meta', { name: 'og:locale', content: 'en' }],
     ['meta', { name: 'og:title', content: '@el-j/google-sheet-translations' }],
-    ['meta', { name: 'og:description', content: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript' }],
+    ['meta', { name: 'og:description', content: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Drive folder management, image sync, bidirectional sync, auto-translation, and Next.js integration.' }],
     ['meta', { name: 'og:site_name', content: '@el-j/google-sheet-translations' }],
     ['link', { rel: 'icon', href: '/google-sheet-translations/favicon.ico' }],
   ],
@@ -31,6 +31,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
+      { text: 'GitHub Action', link: '/guide/github-actions' },
       {
         text: `v${pkg.version}`,
         items: [
@@ -56,8 +57,17 @@ export default defineConfig({
           ],
         },
         {
+          text: 'Setup',
+          items: [
+            { text: 'Service Account Setup', link: '/guide/service-account-setup' },
+            { text: 'Spreadsheet Setup', link: '/guide/spreadsheet-setup' },
+            { text: 'Environment Variables', link: '/guide/environment-variables' },
+          ],
+        },
+        {
           text: 'Guides',
           items: [
+            { text: 'GitHub Actions', link: '/guide/github-actions' },
             { text: 'Bidirectional Sync', link: '/guide/bidirectional-sync' },
             { text: 'Auto-Translation', link: '/guide/auto-translation' },
             { text: 'Public Sheets (No Auth)', link: '/guide/public-sheets' },
@@ -70,14 +80,6 @@ export default defineConfig({
           text: 'Google Drive',
           items: [
             { text: 'Drive Folder Management', link: '/guide/drive-folder' },
-          ],
-        },
-        {
-          text: 'Advanced',
-          items: [
-            { text: 'Spreadsheet Setup', link: '/guide/spreadsheet-setup' },
-            { text: 'Environment Variables', link: '/guide/environment-variables' },
-            { text: 'GitHub Actions', link: '/guide/github-actions' },
           ],
         },
         {

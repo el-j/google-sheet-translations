@@ -8,11 +8,21 @@ branding:
 
 inputs:
   google-client-email:
-    description: 'Google service-account client e-mail (GOOGLE_CLIENT_EMAIL)'
-    required: true
+    description: >
+      Google service-account client e-mail (GOOGLE_CLIENT_EMAIL).
+      Required when using classic service-account key authentication.
+      Omit when using Workload Identity Federation (WIF) — use
+      google-github-actions/auth before this action instead.
+    required: false
+    default: ''
   google-private-key:
-    description: 'Google service-account private key (GOOGLE_PRIVATE_KEY)'
-    required: true
+    description: >
+      Google service-account private key (GOOGLE_PRIVATE_KEY).
+      Required when using classic service-account key authentication.
+      Omit when using Workload Identity Federation (WIF) — use
+      google-github-actions/auth before this action instead.
+    required: false
+    default: ''
   google-spreadsheet-id:
     description: 'ID of the Google Spreadsheet (GOOGLE_SPREADSHEET_ID). If omitted and auto-create is true, a new spreadsheet is created automatically.'
     required: false
