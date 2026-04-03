@@ -55,7 +55,7 @@ auto-translation, use a Google Cloud service account.
 - A **Google Cloud service account** with the Sheets API enabled
 - The spreadsheet shared with the service account email
 
-### Set environment variables
+### B1 — Classic service account key
 
 Add the three required variables to `.env` (or your CI secrets):
 
@@ -68,6 +68,31 @@ GOOGLE_SPREADSHEET_ID=1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0
 > [!TIP]
 > **Local `.env`**: wrap the key in quotes and use `\n` to represent newlines.  
 > **GitHub Secrets / CI**: paste the key as-is from the service-account JSON — the package automatically converts literal `\n` sequences to real newlines.
+
+### B2 — Workload Identity Federation (keyless, GitHub Actions)
+
+No service-account key download required. The `google-github-actions/auth` action
+issues a short-lived token via OIDC. Add the `id-token: write` permission and the
+auth step to your workflow — then only `GOOGLE_SPREADSHEET_ID` needs to be set:
+
+```yaml
+permissions:
+  id-token: write   # required for OIDC token issuance
+  contents: read
+
+steps:
+  - uses: google-github-actions/auth@v2
+    with:
+      workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL/providers/PROVIDER'
+      service_account: 'my-sa@my-project.iam.gserviceaccount.com'
+  # GOOGLE_APPLICATION_CREDENTIALS is now set automatically — no key secrets needed
+
+  - run: node sync-translations.js
+    env:
+      GOOGLE_SPREADSHEET_ID: ${{ vars.GOOGLE_SPREADSHEET_ID }}
+```
+
+See the full [GitHub Actions guide](/guide/github-actions) for how to configure the Workload Identity Pool and Provider in Google Cloud.
 
 ### Basic usage
 

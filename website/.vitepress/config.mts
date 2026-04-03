@@ -77,6 +77,7 @@ export default defineConfig({
           items: [
             { text: 'Spreadsheet Setup', link: '/guide/spreadsheet-setup' },
             { text: 'Environment Variables', link: '/guide/environment-variables' },
+            { text: 'GitHub Actions', link: '/guide/github-actions' },
           ],
         },
         {
