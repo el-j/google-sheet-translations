@@ -120,6 +120,7 @@ async function pollOperation(
 		? operationName
 		: `https://iam.googleapis.com/v1/${operationName}`;
 	const deadline = Date.now() + maxWaitMs;
+	const maxWaitSecs = Math.round(maxWaitMs / 1000);
 
 	while (Date.now() < deadline) {
 		const op = (await gcpFetch(opUrl, token)) as GcpOperation;
@@ -131,11 +132,13 @@ async function pollOperation(
 		}
 		await new Promise<void>((resolve) => setTimeout(resolve, 2000));
 	}
-	throw new Error(
-		"Operation timed out after 60 s. " +
-			"The resources may still be provisioning in the background – " +
-			"re-running the command is safe (existing resources are reused).",
-	);
+	if (Date.now() >= deadline) {
+		throw new Error(
+			`Operation timed out after ${maxWaitSecs} s. ` +
+				"The resources may still be provisioning in the background – " +
+				"re-running the command is safe (existing resources are reused).",
+		);
+	}
 }
 
 async function getProjectNumber(projectId: string, token: string): Promise<string> {

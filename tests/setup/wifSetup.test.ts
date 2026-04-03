@@ -133,7 +133,7 @@ describe("setupWIF", () => {
 			expect(onProgress).toHaveBeenCalledWith(expect.stringContaining("Binding"));
 		});
 
-		test("sets WIF_PROVIDER to cloud-platform scope", async () => {
+		test("authenticates with cloud-platform scope", async () => {
 			mockSuccessfulSetup();
 
 			await setupWIF(BASE_OPTIONS);

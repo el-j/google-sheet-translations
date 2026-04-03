@@ -18265,6 +18265,7 @@ async function gcpFetch(url, token, method = "GET", body) {
 async function pollOperation(operationName, token, maxWaitMs = 6e4) {
   const opUrl = operationName.startsWith("http") ? operationName : `https://iam.googleapis.com/v1/${operationName}`;
   const deadline = Date.now() + maxWaitMs;
+  const maxWaitSecs = Math.round(maxWaitMs / 1e3);
   while (Date.now() < deadline) {
     const op = await gcpFetch(opUrl, token);
     if (op.done) {
@@ -18275,9 +18276,11 @@ async function pollOperation(operationName, token, maxWaitMs = 6e4) {
     }
     await new Promise((resolve) => setTimeout(resolve, 2e3));
   }
-  throw new Error(
-    "Operation timed out after 60 s. The resources may still be provisioning in the background \u2013 re-running the command is safe (existing resources are reused)."
-  );
+  if (Date.now() >= deadline) {
+    throw new Error(
+      `Operation timed out after ${maxWaitSecs} s. The resources may still be provisioning in the background \u2013 re-running the command is safe (existing resources are reused).`
+    );
+  }
 }
 async function getProjectNumber(projectId, token) {
   const data = await gcpFetch(
