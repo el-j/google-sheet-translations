@@ -1,3 +1,9 @@
+## [2.2.0-beta.4](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.3...v2.2.0-beta.4) (2026-04-03)
+
+### 🚀 Features
+
+* one-way Google Docs → Spreadsheet ingestion pipeline ([#58](https://github.com/el-j/google-sheet-translations/issues/58)) ([1d70af3](https://github.com/el-j/google-sheet-translations/commit/1d70af32504cf1dcfbfd4e370c28ac322289ca93))
+
 ## [2.2.0-beta.3](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.2...v2.2.0-beta.3) (2026-04-03)
 
 ### 🐛 Bug Fixes
