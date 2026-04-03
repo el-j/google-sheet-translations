@@ -81,7 +81,7 @@ permissions:
   contents: read
 
 steps:
-  - uses: google-github-actions/auth@v2
+  - uses: google-github-actions/auth@v3
     with:
       workload_identity_provider: 'projects/PROJECT_NUMBER/locations/global/workloadIdentityPools/POOL/providers/PROVIDER'
       service_account: 'my-sa@my-project.iam.gserviceaccount.com'
