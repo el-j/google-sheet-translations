@@ -8,7 +8,6 @@ jest.mock('../../src/utils/rateLimiter', () => ({
 
 describe('createSpreadsheet', () => {
   const mockAuthClient = {
-    authorize: jest.fn().mockResolvedValue(undefined),
     request: jest.fn().mockResolvedValue({
       data: { spreadsheetId: 'new-sheet-id-123' },
     }),

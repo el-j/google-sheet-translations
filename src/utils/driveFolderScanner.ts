@@ -44,9 +44,20 @@ async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
   const privateKey =
     credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
 
+  // WIF / ADC path: when no explicit credentials are provided and
+  // GOOGLE_APPLICATION_CREDENTIALS is set, use Application Default Credentials.
   if (!clientEmail || !privateKey) {
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      const auth = new GoogleAuth({
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      });
+      const client = await auth.getClient();
+      const tokenResponse = await client.getAccessToken();
+      return tokenResponse.token as string;
+    }
     throw new Error(
-      'Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY'
+      'Google Drive credentials required: set GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY, ' +
+      'or set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation.'
     );
   }
 
