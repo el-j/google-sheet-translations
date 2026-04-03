@@ -1,4 +1,4 @@
-import { createAuthClient, buildGoogleAuth } from '../../src/utils/auth';
+import { createAuthClient, buildGoogleAuth, normalizePrivateKey } from '../../src/utils/auth';
 import { GoogleAuth } from 'google-auth-library';
 import { validateCredentials } from '../../src/utils/validateEnv';
 
@@ -168,5 +168,45 @@ describe('buildGoogleAuth', () => {
     expect(MockGoogleAuth).toHaveBeenCalledWith(
       expect.not.objectContaining({ credentials: expect.anything() })
     );
+  });
+});
+
+describe('normalizePrivateKey', () => {
+  const PEM_REAL_NEWLINES =
+    '-----BEGIN PRIVATE KEY-----\nMIIEfake\n-----END PRIVATE KEY-----\n';
+  const PEM_ESCAPED_NEWLINES =
+    '-----BEGIN PRIVATE KEY-----\\nMIIEfake\\n-----END PRIVATE KEY-----\\n';
+
+  test('leaves a key with real newlines unchanged', () => {
+    expect(normalizePrivateKey(PEM_REAL_NEWLINES)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('converts literal \\n sequences to real newlines', () => {
+    expect(normalizePrivateKey(PEM_ESCAPED_NEWLINES)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('strips surrounding double quotes', () => {
+    expect(normalizePrivateKey(`"${PEM_REAL_NEWLINES}"`)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('strips surrounding single quotes', () => {
+    expect(normalizePrivateKey(`'${PEM_REAL_NEWLINES}'`)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('strips quotes AND converts escaped newlines (both issues at once)', () => {
+    expect(normalizePrivateKey(`"${PEM_ESCAPED_NEWLINES}"`)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('normalises Windows-style CRLF line endings', () => {
+    const crlfKey = '-----BEGIN PRIVATE KEY-----\r\nMIIEfake\r\n-----END PRIVATE KEY-----\r\n';
+    expect(normalizePrivateKey(crlfKey)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('trims leading and trailing whitespace outside surrounding quotes', () => {
+    expect(normalizePrivateKey(`  "${PEM_REAL_NEWLINES}"  `)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('handles a key that is already perfectly formatted', () => {
+    expect(normalizePrivateKey(PEM_REAL_NEWLINES)).toBe(PEM_REAL_NEWLINES);
   });
 });

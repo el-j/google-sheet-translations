@@ -3,7 +3,7 @@ import { join, dirname } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import type { GoogleEnvVars } from '../types';
-import { buildGoogleAuth } from './auth';
+import { buildGoogleAuth, normalizePrivateKey } from './auth';
 
 export interface DriveImageSyncOptions {
   /** Google Drive root folder ID to sync images from */
@@ -117,7 +117,7 @@ async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
   let driveCredentials: { client_email: string; private_key: string } | undefined;
 
   if (clientEmail && privateKey) {
-    driveCredentials = { client_email: clientEmail, private_key: privateKey.replace(/\\n/g, '\n') };
+    driveCredentials = { client_email: clientEmail, private_key: normalizePrivateKey(privateKey) };
   } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     throw new Error(
       'Google Drive credentials required: set GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY, ' +
