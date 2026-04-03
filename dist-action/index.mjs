@@ -1489,19 +1489,29 @@ var require_util = __commonJS({
       for (let i2 = 0; i2 < headers.length; i2 += 2) {
         const key = headerNameToString(headers[i2]);
         let val = obj[key];
-        if (val) {
-          if (typeof val === "string") {
-            val = [val];
-            obj[key] = val;
-          }
-          val.push(headers[i2 + 1].toString("latin1"));
-        } else {
-          const headersValue = headers[i2 + 1];
-          if (typeof headersValue === "string") {
-            obj[key] = headersValue;
+        if (val !== void 0) {
+          if (!Object.hasOwn(obj, key)) {
+            const headersValue = typeof headers[i2 + 1] === "string" ? headers[i2 + 1] : Array.isArray(headers[i2 + 1]) ? headers[i2 + 1].map((x2) => x2.toString("latin1")) : headers[i2 + 1].toString("latin1");
+            if (key === "__proto__") {
+              Object.defineProperty(obj, key, {
+                value: headersValue,
+                enumerable: true,
+                configurable: true,
+                writable: true
+              });
+            } else {
+              obj[key] = headersValue;
+            }
           } else {
-            obj[key] = Array.isArray(headersValue) ? headersValue.map((x2) => x2.toString("latin1")) : headersValue.toString("latin1");
+            if (typeof val === "string") {
+              val = [val];
+              obj[key] = val;
+            }
+            val.push(headers[i2 + 1].toString("latin1"));
           }
+        } else {
+          const headersValue = typeof headers[i2 + 1] === "string" ? headers[i2 + 1] : Array.isArray(headers[i2 + 1]) ? headers[i2 + 1].map((x2) => x2.toString("latin1")) : headers[i2 + 1].toString("latin1");
+          obj[key] = headersValue;
         }
       }
       return obj;
@@ -2272,10 +2282,12 @@ var require_diagnostics = __commonJS({
       diagnosticsChannel.subscribe(
         "undici:websocket:open",
         (evt) => {
-          const {
-            address: { address, port }
-          } = evt;
-          debugLog("connection opened %s%s", address, port ? `:${port}` : "");
+          if (evt.address != null) {
+            const { address, port } = evt.address;
+            debugLog("connection opened %s%s", address, port ? `:${port}` : "");
+          } else {
+            debugLog("connection opened");
+          }
         }
       );
       diagnosticsChannel.subscribe(
@@ -2660,12 +2672,18 @@ var require_request = __commonJS({
       } else if (headerName === "transfer-encoding" || headerName === "keep-alive" || headerName === "upgrade") {
         throw new InvalidArgumentError(`invalid ${headerName} header`);
       } else if (headerName === "connection") {
-        const value = typeof val === "string" ? val.toLowerCase() : null;
-        if (value !== "close" && value !== "keep-alive") {
+        const value = typeof val === "string" ? val : null;
+        if (value === null) {
           throw new InvalidArgumentError("invalid connection header");
         }
-        if (value === "close") {
-          request.reset = true;
+        for (const token of value.toLowerCase().split(",")) {
+          const trimmed = token.trim();
+          if (!isValidHTTPToken(trimmed)) {
+            throw new InvalidArgumentError("invalid connection header");
+          }
+          if (trimmed === "close") {
+            request.reset = true;
+          }
         }
       } else if (headerName === "expect") {
         throw new NotSupportedError("expect header not supported");
@@ -6116,9 +6134,9 @@ var require_formdata_parser = __commonJS({
     var { webidl } = require_webidl();
     var assert = __require("node:assert");
     var { isomorphicDecode } = require_infra();
-    var { utf8DecodeBytes } = require_encoding();
     var dd = Buffer.from("--");
     var decoder = new TextDecoder();
+    var decoderIgnoreBOM = new TextDecoder("utf-8", { ignoreBOM: true });
     function isAsciiString(chars) {
       for (let i2 = 0; i2 < chars.length; ++i2) {
         if ((chars.charCodeAt(i2) & ~127) !== 0) {
@@ -6195,7 +6213,7 @@ var require_formdata_parser = __commonJS({
           }
           value = new File([body], filename, { type: contentType });
         } else {
-          value = utf8DecodeBytes(Buffer.from(body));
+          value = decoderIgnoreBOM.decode(Buffer.from(body));
         }
         assert(webidl.is.USVString(name));
         assert(typeof value === "string" && webidl.is.USVString(value) || webidl.is.File(value));
@@ -8974,56 +8992,61 @@ var require_client = __commonJS({
           connector: client[kConnector]
         });
       }
-      client[kConnector]({
-        host,
-        hostname,
-        protocol,
-        port,
-        servername: client[kServerName],
-        localAddress: client[kLocalAddress]
-      }, (err, socket) => {
-        if (err) {
-          handleConnectError(client, err, { host, hostname, protocol, port });
+      try {
+        client[kConnector]({
+          host,
+          hostname,
+          protocol,
+          port,
+          servername: client[kServerName],
+          localAddress: client[kLocalAddress]
+        }, (err, socket) => {
+          if (err) {
+            handleConnectError(client, err, { host, hostname, protocol, port });
+            client[kResume]();
+            return;
+          }
+          if (client.destroyed) {
+            util.destroy(socket.on("error", noop3), new ClientDestroyedError());
+            client[kResume]();
+            return;
+          }
+          assert(socket);
+          try {
+            client[kHTTPContext] = socket.alpnProtocol === "h2" ? connectH2(client, socket) : connectH1(client, socket);
+          } catch (err2) {
+            socket.destroy().on("error", noop3);
+            handleConnectError(client, err2, { host, hostname, protocol, port });
+            client[kResume]();
+            return;
+          }
+          client[kConnecting] = false;
+          socket[kCounter] = 0;
+          socket[kMaxRequests] = client[kMaxRequests];
+          socket[kClient] = client;
+          socket[kError] = null;
+          if (channels.connected.hasSubscribers) {
+            channels.connected.publish({
+              connectParams: {
+                host,
+                hostname,
+                protocol,
+                port,
+                version: client[kHTTPContext]?.version,
+                servername: client[kServerName],
+                localAddress: client[kLocalAddress]
+              },
+              connector: client[kConnector],
+              socket
+            });
+          }
+          client.emit("connect", client[kUrl], [client]);
           client[kResume]();
-          return;
-        }
-        if (client.destroyed) {
-          util.destroy(socket.on("error", noop3), new ClientDestroyedError());
-          client[kResume]();
-          return;
-        }
-        assert(socket);
-        try {
-          client[kHTTPContext] = socket.alpnProtocol === "h2" ? connectH2(client, socket) : connectH1(client, socket);
-        } catch (err2) {
-          socket.destroy().on("error", noop3);
-          handleConnectError(client, err2, { host, hostname, protocol, port });
-          client[kResume]();
-          return;
-        }
-        client[kConnecting] = false;
-        socket[kCounter] = 0;
-        socket[kMaxRequests] = client[kMaxRequests];
-        socket[kClient] = client;
-        socket[kError] = null;
-        if (channels.connected.hasSubscribers) {
-          channels.connected.publish({
-            connectParams: {
-              host,
-              hostname,
-              protocol,
-              port,
-              version: client[kHTTPContext]?.version,
-              servername: client[kServerName],
-              localAddress: client[kLocalAddress]
-            },
-            connector: client[kConnector],
-            socket
-          });
-        }
-        client.emit("connect", client[kUrl], [client]);
+        });
+      } catch (err) {
+        handleConnectError(client, err, { host, hostname, protocol, port });
         client[kResume]();
-      });
+      }
     }
     function handleConnectError(client, err, { host, hostname, protocol, port }) {
       if (client.destroyed) {
@@ -12564,7 +12587,8 @@ var require_mock_symbols = __commonJS({
       kMockAgentAddCallHistoryLog: /* @__PURE__ */ Symbol("mock agent add call history log"),
       kMockAgentIsCallHistoryEnabled: /* @__PURE__ */ Symbol("mock agent is call history enabled"),
       kMockAgentAcceptsNonStandardSearchParameters: /* @__PURE__ */ Symbol("mock agent accepts non standard search parameters"),
-      kMockCallHistoryAddLog: /* @__PURE__ */ Symbol("mock call history add log")
+      kMockCallHistoryAddLog: /* @__PURE__ */ Symbol("mock call history add log"),
+      kTotalDispatchCount: /* @__PURE__ */ Symbol("total dispatch count")
     };
   }
 });
@@ -12579,7 +12603,8 @@ var require_mock_utils = __commonJS({
       kMockAgent,
       kOriginalDispatch,
       kOrigin,
-      kGetNetConnect
+      kGetNetConnect,
+      kTotalDispatchCount
     } = require_mock_symbols();
     var { serializePathWithQuery } = require_util();
     var { STATUS_CODES } = __require("node:http");
@@ -12739,6 +12764,7 @@ var require_mock_utils = __commonJS({
       const replyData = typeof data === "function" ? { callback: data } : { ...data };
       const newMockDispatch = { ...baseData, ...key, pending: true, data: { error: null, ...replyData } };
       mockDispatches.push(newMockDispatch);
+      mockDispatches[kTotalDispatchCount] = (mockDispatches[kTotalDispatchCount] || 0) + 1;
       return newMockDispatch;
     }
     function deleteMockDispatch(mockDispatches, key) {
@@ -12871,13 +12897,16 @@ var require_mock_utils = __commonJS({
           } catch (error2) {
             if (error2.code === "UND_MOCK_ERR_MOCK_NOT_MATCHED") {
               const netConnect = agent[kGetNetConnect]();
+              const totalInterceptsCount = this[kDispatches][kTotalDispatchCount] || this[kDispatches].length;
+              const pendingInterceptsCount = this[kDispatches].filter(({ consumed }) => !consumed).length;
+              const interceptsMessage = `, ${pendingInterceptsCount} interceptor(s) remaining out of ${totalInterceptsCount} defined`;
               if (netConnect === false) {
-                throw new MockNotMatchedError(`${error2.message}: subsequent request to origin ${origin} was not allowed (net.connect disabled)`);
+                throw new MockNotMatchedError(`${error2.message}: subsequent request to origin ${origin} was not allowed (net.connect disabled)${interceptsMessage}`);
               }
               if (checkNetConnect(netConnect, origin)) {
                 originalDispatch.call(this, opts, handler);
               } else {
-                throw new MockNotMatchedError(`${error2.message}: subsequent request to origin ${origin} was not allowed (net.connect is not enabled for this origin)`);
+                throw new MockNotMatchedError(`${error2.message}: subsequent request to origin ${origin} was not allowed (net.connect is not enabled for this origin)${interceptsMessage}`);
               }
             } else {
               throw error2;
@@ -16186,7 +16215,7 @@ var require_cache_handler = __commonJS({
           return downstreamOnHeaders();
         }
         const cacheControlDirectives = cacheControlHeader ? parseCacheControlHeader(cacheControlHeader) : {};
-        if (!canCacheResponse(this.#cacheType, statusCode, resHeaders, cacheControlDirectives)) {
+        if (!canCacheResponse(this.#cacheType, statusCode, resHeaders, cacheControlDirectives, this.#cacheKey.headers)) {
           return downstreamOnHeaders();
         }
         const now = Date.now();
@@ -16321,7 +16350,7 @@ var require_cache_handler = __commonJS({
         this.#handler.onResponseError?.(controller, err);
       }
     };
-    function canCacheResponse(cacheType, statusCode, resHeaders, cacheControlDirectives) {
+    function canCacheResponse(cacheType, statusCode, resHeaders, cacheControlDirectives, reqHeaders) {
       if (statusCode < 200 || NOT_UNDERSTOOD_STATUS_CODES.includes(statusCode)) {
         return false;
       }
@@ -16338,8 +16367,11 @@ var require_cache_handler = __commonJS({
       if (resHeaders.vary?.includes("*")) {
         return false;
       }
-      if (resHeaders.authorization) {
-        if (!cacheControlDirectives.public || typeof resHeaders.authorization !== "string") {
+      if (reqHeaders?.authorization) {
+        if (!cacheControlDirectives.public && !cacheControlDirectives["s-maxage"] && !cacheControlDirectives["must-revalidate"]) {
+          return false;
+        }
+        if (typeof reqHeaders.authorization !== "string") {
           return false;
         }
         if (Array.isArray(cacheControlDirectives["no-cache"]) && cacheControlDirectives["no-cache"].includes("authorization")) {
@@ -16408,8 +16440,12 @@ var require_cache_handler = __commonJS({
       if (cacheControlDirectives["stale-if-error"]) {
         staleIfError = staleAt + cacheControlDirectives["stale-if-error"] * 1e3;
       }
-      if (staleWhileRevalidate === -Infinity && staleIfError === -Infinity) {
+      if (cacheControlDirectives.immutable && staleWhileRevalidate === -Infinity && staleIfError === -Infinity) {
         immutable = now + 31536e6;
+      }
+      if (staleWhileRevalidate === -Infinity && staleIfError === -Infinity && immutable === -Infinity) {
+        const freshnessLifetime = staleAt - now;
+        return staleAt + freshnessLifetime;
       }
       return Math.max(staleAt, staleWhileRevalidate, staleIfError, immutable);
     }
@@ -20806,9 +20842,11 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
+        const path8 = url.pathname + url.search;
+        const hasTrailingQuestionMark = url.search.length === 0 && url.href[url.href.length - url.hash.length - 1] === "?";
         return new Promise((resolve, reject) => agent.dispatch(
           {
-            path: url.href.slice(url.href.indexOf(url.host) + url.host.length, url.hash.length ? -url.hash.length : void 0),
+            path: hasTrailingQuestionMark ? `${path8}?` : path8,
             origin: url.origin,
             method: request.method,
             body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body,
@@ -20839,7 +20877,15 @@ var require_fetch = __commonJS({
               }
               const headersList = new HeadersList();
               for (let i2 = 0; i2 < rawHeaders.length; i2 += 2) {
-                headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i2]), rawHeaders[i2 + 1].toString("latin1"), true);
+                const nameStr = bufferToLowerCasedHeaderName(rawHeaders[i2]);
+                const value = rawHeaders[i2 + 1];
+                if (Array.isArray(value) && !Buffer.isBuffer(rawHeaders[i2 + 1])) {
+                  for (const val of value) {
+                    headersList.append(nameStr, val.toString("latin1"), true);
+                  }
+                } else {
+                  headersList.append(nameStr, value.toString("latin1"), true);
+                }
               }
               const location = headersList.get("location", true);
               this.body = new Readable2({ read: resume });
@@ -20953,7 +20999,15 @@ var require_fetch = __commonJS({
               }
               const headersList = new HeadersList();
               for (let i2 = 0; i2 < rawHeaders.length; i2 += 2) {
-                headersList.append(bufferToLowerCasedHeaderName(rawHeaders[i2]), rawHeaders[i2 + 1].toString("latin1"), true);
+                const nameStr = bufferToLowerCasedHeaderName(rawHeaders[i2]);
+                const value = rawHeaders[i2 + 1];
+                if (Array.isArray(value) && !Buffer.isBuffer(rawHeaders[i2 + 1])) {
+                  for (const val of value) {
+                    headersList.append(nameStr, val.toString("latin1"), true);
+                  }
+                } else {
+                  headersList.append(nameStr, value.toString("latin1"), true);
+                }
               }
               resolve({
                 status,
@@ -23412,6 +23466,15 @@ var require_websocket = __commonJS({
     var { SendQueue } = require_sender();
     var { WebsocketFrameSend } = require_frame();
     var { channels } = require_diagnostics();
+    function getSocketAddress(socket) {
+      if (typeof socket?.address === "function") {
+        return socket.address();
+      }
+      if (typeof socket?.session?.socket?.address === "function") {
+        return socket.session.socket.address();
+      }
+      return null;
+    }
     var WebSocket = class _WebSocket extends EventTarget {
       #events = {
         open: null,
@@ -23683,7 +23746,7 @@ var require_websocket = __commonJS({
         if (channels.open.hasSubscribers) {
           const headers = response.headersList.entries;
           channels.open.publish({
-            address: response.socket.address(),
+            address: getSocketAddress(response.socket),
             protocol: this.#protocol,
             extensions: this.#extensions,
             websocket: this,
@@ -39355,7 +39418,7 @@ var require_jwtclient = __commonJS({
     var jwtaccess_1 = require_jwtaccess();
     var oauth2client_1 = require_oauth2client();
     var authclient_1 = require_authclient();
-    var JWT2 = class _JWT extends oauth2client_1.OAuth2Client {
+    var JWT = class _JWT extends oauth2client_1.OAuth2Client {
       email;
       keyFile;
       key;
@@ -39612,7 +39675,7 @@ var require_jwtclient = __commonJS({
         throw new Error("A key or a keyFile must be provided to getCredentials.");
       }
     };
-    exports.JWT = JWT2;
+    exports.JWT = JWT;
   }
 });
 
@@ -42042,7 +42105,7 @@ var require_googleauth = __commonJS({
       NO_ADC_FOUND: "Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.",
       NO_UNIVERSE_DOMAIN_FOUND: "Unable to detect a Universe Domain in the current environment.\nTo learn more about Universe Domain retrieval, visit: \nhttps://cloud.google.com/compute/docs/metadata/predefined-metadata-keys"
     };
-    var GoogleAuth3 = class {
+    var GoogleAuth2 = class {
       /**
        * Caches a value indicating whether the auth layer is running on Google
        * Compute Engine.
@@ -42797,7 +42860,7 @@ var require_googleauth = __commonJS({
         return res.data.signedBlob;
       }
     };
-    exports.GoogleAuth = GoogleAuth3;
+    exports.GoogleAuth = GoogleAuth2;
   }
 });
 
@@ -48215,13 +48278,20 @@ var import_google_auth_library = __toESM(require_src5());
 
 // src/utils/validateEnv.ts
 function validateCredentials() {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return {
+      GOOGLE_CLIENT_EMAIL: process.env.GOOGLE_CLIENT_EMAIL ?? "",
+      GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ?? ""
+    };
+  }
   const requiredVars = ["GOOGLE_CLIENT_EMAIL", "GOOGLE_PRIVATE_KEY"];
   const missing = requiredVars.filter((v) => !process.env[v]);
   if (missing.length > 0) {
     throw new Error(
       `Missing required environment variables: ${missing.join(", ")}
 
-Make sure these are set in your .env file or environment.`
+Make sure these are set in your .env file or environment.
+Alternatively, set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation.`
     );
   }
   return {
@@ -48231,13 +48301,31 @@ Make sure these are set in your .env file or environment.`
 }
 
 // src/utils/auth.ts
+function normalizePrivateKey(key) {
+  let normalized = key;
+  const outer = key.trim();
+  if (outer.startsWith('"') && outer.endsWith('"') || outer.startsWith("'") && outer.endsWith("'")) {
+    normalized = outer.slice(1, -1);
+  }
+  normalized = normalized.replace(/\\n/g, "\n");
+  normalized = normalized.replace(/\r\n/g, "\n");
+  return normalized;
+}
+function buildGoogleAuth(scopes, credentials) {
+  if (credentials) {
+    return new import_google_auth_library.GoogleAuth({ credentials, scopes });
+  }
+  return new import_google_auth_library.GoogleAuth({ scopes });
+}
 function createAuthClient() {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return buildGoogleAuth(["https://www.googleapis.com/auth/spreadsheets"]);
+  }
   const { GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY } = validateCredentials();
-  const normalizedKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, "\n");
-  return new import_google_auth_library.JWT({
-    email: GOOGLE_CLIENT_EMAIL,
-    key: normalizedKey,
-    scopes: ["https://www.googleapis.com/auth/spreadsheets"]
+  const normalizedKey = normalizePrivateKey(GOOGLE_PRIVATE_KEY);
+  return buildGoogleAuth(["https://www.googleapis.com/auth/spreadsheets"], {
+    client_email: GOOGLE_CLIENT_EMAIL,
+    private_key: normalizedKey
   });
 }
 
@@ -49212,7 +49300,6 @@ async function createSpreadsheet(authClient, options = {}) {
     targetLocales = DEFAULT_TARGET_LOCALES,
     seedKeys = STARTER_KEYS
   } = options;
-  await authClient.authorize();
   const createRes = await withRetry(
     () => authClient.request({
       url: "https://sheets.googleapis.com/v4/spreadsheets",
@@ -49497,23 +49584,22 @@ async function getMultipleSpreadSheetsData(docTitles, options = {}) {
 }
 
 // src/utils/driveFolderScanner.ts
-var import_google_auth_library2 = __toESM(require_src5());
 var SPREADSHEET_MIME = "application/vnd.google-apps.spreadsheet";
 var FOLDER_MIME = "application/vnd.google-apps.folder";
 var DRIVE_FILES_URL = "https://www.googleapis.com/drive/v3/files";
+var DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.readonly"];
 async function getAccessToken(credentials) {
   const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
   const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
-  if (!clientEmail || !privateKey) {
+  let driveCredentials;
+  if (clientEmail && privateKey) {
+    driveCredentials = { client_email: clientEmail, private_key: normalizePrivateKey(privateKey) };
+  } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     throw new Error(
-      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+      "Google Drive credentials required: set GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY, or set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation."
     );
   }
-  const normalizedKey = privateKey.replace(/\\n/g, "\n");
-  const auth = new import_google_auth_library2.GoogleAuth({
-    credentials: { client_email: clientEmail, private_key: normalizedKey },
-    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
-  });
+  const auth = buildGoogleAuth(DRIVE_SCOPES, driveCredentials);
   const client = await auth.getClient();
   const tokenResponse = await client.getAccessToken();
   return tokenResponse.token;
@@ -49584,7 +49670,6 @@ async function scanDriveFolderForSpreadsheets(options) {
 }
 
 // src/utils/driveImageSync.ts
-var import_google_auth_library3 = __toESM(require_src5());
 import { createWriteStream, mkdirSync, existsSync as existsSync2, readdirSync, unlinkSync, statSync as statSync2 } from "node:fs";
 import { join, dirname } from "node:path";
 import { pipeline as pipeline2 } from "node:stream/promises";
@@ -49612,19 +49697,19 @@ function normalizeExtension(name) {
   if (ext === "jpeg") ext = "jpg";
   return `${base}.${ext}`;
 }
+var DRIVE_SCOPES2 = ["https://www.googleapis.com/auth/drive.readonly"];
 async function getAccessToken2(credentials) {
   const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
   const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
-  if (!clientEmail || !privateKey) {
+  let driveCredentials;
+  if (clientEmail && privateKey) {
+    driveCredentials = { client_email: clientEmail, private_key: normalizePrivateKey(privateKey) };
+  } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     throw new Error(
-      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+      "Google Drive credentials required: set GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY, or set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation."
     );
   }
-  const normalizedKey = privateKey.replace(/\\n/g, "\n");
-  const auth = new import_google_auth_library3.GoogleAuth({
-    credentials: { client_email: clientEmail, private_key: normalizedKey },
-    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
-  });
+  const auth = buildGoogleAuth(DRIVE_SCOPES2, driveCredentials);
   const client = await auth.getClient();
   const tokenResponse = await client.getAccessToken();
   return tokenResponse.token;
