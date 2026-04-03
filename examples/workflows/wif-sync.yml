@@ -1,0 +1,68 @@
+# Keyless Translation Sync via Workload Identity Federation (WIF)
+#
+# Authenticates to Google Cloud without storing a long-lived service-account
+# key. GitHub issues a short-lived OIDC token each run; Google Cloud exchanges
+# it for a scoped access token.
+#
+# Required repository VARIABLES (not secrets — they are not sensitive):
+#   GCP_WORKLOAD_IDENTITY_PROVIDER – Workload Identity Provider resource name
+#   GCP_SERVICE_ACCOUNT            – Service account email
+#   GOOGLE_SPREADSHEET_ID          – Target spreadsheet ID
+#
+# One-time Google Cloud setup:
+#   See https://el-j.github.io/google-sheet-translations/guide/github-actions
+#   for the full gcloud CLI steps to create the pool, provider, and binding.
+#
+# See: https://el-j.github.io/google-sheet-translations/guide/github-actions
+
+name: Sync Translations (WIF)
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 06:00 UTC
+  workflow_dispatch:        # allow manual trigger from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # required to commit translation files
+      id-token: write   # required for OIDC token issuance (WIF)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+        # Sets GOOGLE_APPLICATION_CREDENTIALS automatically — no key needed!
+
+      - name: Fetch translations from Google Sheets
+        uses: el-j/google-sheet-translations@v2
+        with:
+          # No google-client-email or google-private-key needed with WIF
+          google-spreadsheet-id: ${{ vars.GOOGLE_SPREADSHEET_ID }}
+
+          # Comma-separated list of sheet tab names to fetch
+          sheet-titles: 'home,common,about'
+
+          # Push new local keys back to the spreadsheet before fetching
+          sync-local-changes: 'true'
+
+          # Output paths (these are the defaults — omit to use defaults)
+          translations-output-dir: 'translations'
+          locales-output-path: 'src/i18n/locales.ts'
+          data-json-path: 'src/lib/languageData.json'
+
+      - name: Commit updated translation files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: sync translations [skip ci]'
+          file_pattern: |
+            translations/
+            src/i18n/locales.ts
+            src/lib/languageData.json

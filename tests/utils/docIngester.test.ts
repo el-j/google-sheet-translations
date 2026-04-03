@@ -4,36 +4,36 @@ import type { DriveDocFile } from '../../src/utils/driveDocScanner';
 
 // ── Mock dependencies ─────────────────────────────────────────────────────────
 
-jest.mock('google-auth-library', () => ({
-  GoogleAuth: jest.fn().mockImplementation(() => ({
-    getClient: jest.fn().mockResolvedValue({
-      getAccessToken: jest.fn().mockResolvedValue({ token: 'mock-token' }),
-    }),
-  })),
+vi.mock('google-auth-library', () => ({
+  GoogleAuth: vi.fn().mockImplementation(class {
+    getClient = vi.fn().mockResolvedValue({
+      getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
+    });
+  }),
 }));
 
-const mockCreateSpreadsheet = jest.fn();
-jest.mock('../../src/utils/spreadsheetCreator', () => ({
+const mockCreateSpreadsheet = vi.fn();
+vi.mock('../../src/utils/spreadsheetCreator', () => ({
   createSpreadsheet: (...args: unknown[]) => mockCreateSpreadsheet(...args),
 }));
 
-const mockUpdateSpreadsheet = jest.fn();
-jest.mock('../../src/utils/spreadsheetUpdater', () => ({
+const mockUpdateSpreadsheet = vi.fn();
+vi.mock('../../src/utils/spreadsheetUpdater', () => ({
   updateSpreadsheetWithLocalChanges: (...args: unknown[]) => mockUpdateSpreadsheet(...args),
 }));
 
-const mockLoadInfo = jest.fn();
-jest.mock('google-spreadsheet', () => ({
-  GoogleSpreadsheet: jest.fn().mockImplementation(() => ({
-    loadInfo: mockLoadInfo,
-  })),
+const mockLoadInfo = vi.fn();
+vi.mock('google-spreadsheet', () => ({
+  GoogleSpreadsheet: vi.fn().mockImplementation(class {
+    loadInfo = mockLoadInfo;
+  }),
 }));
 
-jest.mock('../../src/utils/auth', () => ({
-  createAuthClient: jest.fn().mockReturnValue({ email: 'mock@test.com' }),
+vi.mock('../../src/utils/auth', () => ({
+  createAuthClient: vi.fn().mockReturnValue({ email: 'mock@test.com' }),
 }));
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ Start your journey
 `;
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
   mockLoadInfo.mockResolvedValue(undefined);
   mockCreateSpreadsheet.mockResolvedValue({
     spreadsheetId: 'new-sheet-id',

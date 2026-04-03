@@ -326,29 +326,29 @@ describe('manifest / createManifest', () => {
 
 // ── Doc ingestion integration ─────────────────────────────────────────────────
 
-jest.mock('../../src/utils/driveDocScanner');
-jest.mock('../../src/utils/docIngester');
+vi.mock('../../src/utils/driveDocScanner');
+vi.mock('../../src/utils/docIngester');
 
 import { scanDriveFolderForDocs } from '../../src/utils/driveDocScanner';
 import { ingestDoc } from '../../src/utils/docIngester';
 
-const mockScanDocs = scanDriveFolderForDocs as jest.MockedFunction<typeof scanDriveFolderForDocs>;
-const mockIngestDoc = ingestDoc as jest.MockedFunction<typeof ingestDoc>;
-const mockReadManifest = jest.fn().mockReturnValue(undefined);
+const mockScanDocs = scanDriveFolderForDocs as MockedFunction<typeof scanDriveFolderForDocs>;
+const mockIngestDoc = ingestDoc as MockedFunction<typeof ingestDoc>;
+const mockReadManifest = vi.fn().mockReturnValue(undefined);
 
-jest.mock('../../src/utils/driveProjectIndex', () => {
-  const actual = jest.requireActual('../../src/utils/driveProjectIndex');
+vi.mock('../../src/utils/driveProjectIndex', async () => {
+  const actual = await vi.importActual('../../src/utils/driveProjectIndex');
   return {
     ...actual,
-    buildManifest: jest.fn().mockReturnValue({ version: '1', generatedAt: '', locales: [], spreadsheets: [], outputDirectory: 'translations', flatten: true }),
-    writeManifest: jest.fn(),
+    buildManifest: vi.fn().mockReturnValue({ version: '1', generatedAt: '', locales: [], spreadsheets: [], outputDirectory: 'translations', flatten: true }),
+    writeManifest: vi.fn(),
     readManifest: (...args: unknown[]) => mockReadManifest(...args),
   };
 });
 
 describe('manageDriveTranslations – scanForDocs', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockGetMultiple.mockResolvedValue(MOCK_TRANSLATIONS);
     mockScanDrive.mockResolvedValue([]);
     mockScanDocs.mockResolvedValue([]);

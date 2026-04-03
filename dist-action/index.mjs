@@ -42105,7 +42105,7 @@ var require_googleauth = __commonJS({
       NO_ADC_FOUND: "Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.",
       NO_UNIVERSE_DOMAIN_FOUND: "Unable to detect a Universe Domain in the current environment.\nTo learn more about Universe Domain retrieval, visit: \nhttps://cloud.google.com/compute/docs/metadata/predefined-metadata-keys"
     };
-    var GoogleAuth2 = class {
+    var GoogleAuth4 = class {
       /**
        * Caches a value indicating whether the auth layer is running on Google
        * Compute Engine.
@@ -42860,7 +42860,7 @@ var require_googleauth = __commonJS({
         return res.data.signedBlob;
       }
     };
-    exports.GoogleAuth = GoogleAuth2;
+    exports.GoogleAuth = GoogleAuth4;
   }
 });
 
@@ -49410,13 +49410,13 @@ GOOGLE_SPREADSHEET_ID=${id}
 async function getSpreadSheetData(_docTitle, options = {}, _refreshDepth = 0) {
   const config = normalizeConfig(options);
   const baseDelayMs = config.waitSeconds * 1e3;
-  const docTitle = _docTitle ?? [];
-  if (docTitle.length === 0) {
+  const docTitle2 = _docTitle ?? [];
+  if (docTitle2.length === 0) {
     console.warn("No sheet titles provided, cannot process spreadsheet data");
     return {};
   }
-  if (!docTitle.includes("i18n")) {
-    docTitle.push("i18n");
+  if (!docTitle2.includes("i18n")) {
+    docTitle2.push("i18n");
   }
   const finalTranslations = {};
   const allLocales = /* @__PURE__ */ new Set();
@@ -49453,9 +49453,9 @@ async function getSpreadSheetData(_docTitle, options = {}, _refreshDepth = 0) {
         "No spreadsheet ID provided. Set GOOGLE_SPREADSHEET_ID or pass spreadsheetId in options."
       );
     }
-    console.log(`Processing ${docTitle.length} sheets: ${docTitle.join(", ")}`);
+    console.log(`Processing ${docTitle2.length} sheets: ${docTitle2.join(", ")}`);
     await Promise.all(
-      docTitle.map(async (title) => {
+      docTitle2.map(async (title) => {
         let rows;
         try {
           rows = await withRetry(
@@ -49488,7 +49488,7 @@ async function getSpreadSheetData(_docTitle, options = {}, _refreshDepth = 0) {
         );
       }
     }
-    console.log(`Processing ${docTitle.length} sheets: ${docTitle.join(", ")}`);
+    console.log(`Processing ${docTitle2.length} sheets: ${docTitle2.join(", ")}`);
     const doc = new GoogleSpreadsheet(spreadsheetId, serviceAuthClient);
     try {
       await withRetry(() => doc.loadInfo(true), "loadInfo", baseDelayMs);
@@ -49496,7 +49496,7 @@ async function getSpreadSheetData(_docTitle, options = {}, _refreshDepth = 0) {
       throw new Error(`Failed to load spreadsheet "${spreadsheetId}"`, { cause: err });
     }
     await Promise.all(
-      docTitle.map(async (title) => {
+      docTitle2.map(async (title) => {
         const sheet = doc.sheetsByTitle[title];
         if (!sheet) {
           console.warn(`Sheet "${title}" not found in the document`);
@@ -49897,6 +49897,7 @@ function buildManifest(options) {
     locales,
     defaultLocale: options.defaultLocale,
     spreadsheets: options.spreadsheets,
+    docs: options.docs,
     outputDirectory: options.outputDirectory,
     flatten: options.flatten,
     projectMetadata: options.projectMetadata
@@ -49909,6 +49910,353 @@ function writeManifest(manifest, manifestPath) {
   }
   fs9.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), "utf8");
   console.log(`[driveProjectIndex] Wrote project manifest \u2192 ${manifestPath}`);
+}
+function readManifest(manifestPath) {
+  try {
+    const content = fs9.readFileSync(manifestPath, "utf8");
+    return JSON.parse(content);
+  } catch {
+    return void 0;
+  }
+}
+
+// src/utils/driveDocScanner.ts
+var import_google_auth_library2 = __toESM(require_src5());
+var DOC_MIME = "application/vnd.google-apps.document";
+var FOLDER_MIME3 = "application/vnd.google-apps.folder";
+var DRIVE_FILES_URL3 = "https://www.googleapis.com/drive/v3/files";
+async function getAccessToken3(credentials) {
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+    );
+  }
+  const normalizedKey = privateKey.replace(/\\n/g, "\n");
+  const auth = new import_google_auth_library2.GoogleAuth({
+    credentials: { client_email: clientEmail, private_key: normalizedKey },
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  return tokenResponse.token;
+}
+async function listFilesInFolder3(folderId, mimeType, token) {
+  const results = [];
+  let pageToken;
+  do {
+    const query = `'${folderId}' in parents and mimeType = '${mimeType}' and trashed = false`;
+    const params = new URLSearchParams({
+      q: query,
+      fields: "nextPageToken,files(id,name,mimeType,modifiedTime)",
+      pageSize: "1000"
+    });
+    if (pageToken) params.set("pageToken", pageToken);
+    const response = await fetch(`${DRIVE_FILES_URL3}?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`Drive API error ${response.status}: ${text}`);
+    }
+    const data = await response.json();
+    results.push(...data.files);
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+  return results;
+}
+function inferLocaleFromDocName(name) {
+  const baseName = name.replace(/\.[^.]+$/, "");
+  const match = baseName.match(/_([a-zA-Z]{2,3}(?:[-_][a-zA-Z]{2,4})?)$/);
+  if (!match) return void 0;
+  const candidate = match[1].replace("_", "-");
+  const parts = candidate.split("-");
+  if (parts.length === 2) {
+    return `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+  }
+  return parts[0].toLowerCase();
+}
+async function scanFolder2(folderId, folderPath, token, recursive, nameFilter, seen = /* @__PURE__ */ new Set()) {
+  console.log(
+    `[driveDocScanner] Scanning folder: ${folderId} (path: "${folderPath}")`
+  );
+  const docs = await listFilesInFolder3(folderId, DOC_MIME, token);
+  const results = [];
+  for (const file of docs) {
+    if (seen.has(file.id)) continue;
+    seen.add(file.id);
+    if (nameFilter && !nameFilter.test(file.name)) continue;
+    results.push({
+      id: file.id,
+      name: file.name,
+      folderPath,
+      mimeType: file.mimeType,
+      modifiedTime: file.modifiedTime,
+      sourceLocale: inferLocaleFromDocName(file.name)
+    });
+  }
+  if (recursive) {
+    const subfolders = await listFilesInFolder3(folderId, FOLDER_MIME3, token);
+    for (const folder of subfolders) {
+      const subPath = folderPath ? `${folderPath}/${folder.name}` : folder.name;
+      const subResults = await scanFolder2(
+        folder.id,
+        subPath,
+        token,
+        recursive,
+        nameFilter,
+        seen
+      );
+      results.push(...subResults);
+    }
+  }
+  return results;
+}
+async function scanDriveFolderForDocs(options) {
+  const { folderId, recursive = true, nameFilter, credentials } = options;
+  const token = await getAccessToken3(credentials);
+  return scanFolder2(folderId, "", token, recursive, nameFilter);
+}
+
+// src/utils/docIngester.ts
+var import_google_auth_library3 = __toESM(require_src5());
+
+// src/utils/docParser.ts
+function slugifyKey(text) {
+  return text.toLowerCase().replace(/[^\w]/g, "_").replace(/_+/g, "_").replace(/^_|_$/g, "");
+}
+function parseDocContent(content, options = {}) {
+  const { strategy = "heading", defaultSheetName = "content" } = options;
+  if (strategy === "marker") return parseWithMarkers(content, defaultSheetName);
+  if (strategy === "numbered") return parseNumbered(content, defaultSheetName);
+  return parseWithHeadings(content, defaultSheetName);
+}
+function parseWithHeadings(content, defaultSheetName) {
+  const lines = content.split("\n");
+  const entries = [];
+  let currentSheet = defaultSheetName;
+  let currentKey = null;
+  const valueLines = [];
+  function flushEntry() {
+    if (currentKey !== null) {
+      const value = valueLines.join("\n").trim();
+      if (value) {
+        entries.push({ sheetName: currentSheet, key: currentKey, value });
+      }
+      currentKey = null;
+      valueLines.length = 0;
+    }
+  }
+  for (const rawLine of lines) {
+    const line = rawLine.trimEnd();
+    if (line.startsWith("# ")) {
+      flushEntry();
+      currentSheet = slugifyKey(line.slice(2).trim()) || defaultSheetName;
+      currentKey = null;
+      valueLines.length = 0;
+    } else if (line.startsWith("## ")) {
+      flushEntry();
+      currentKey = slugifyKey(line.slice(3).trim());
+      valueLines.length = 0;
+    } else if (currentKey !== null) {
+      valueLines.push(line);
+    }
+  }
+  flushEntry();
+  return entries;
+}
+function parseWithMarkers(content, defaultSheetName) {
+  const MARKER_RE = /\[\[key:([^\]]{1,200})\]\]/g;
+  const entries = [];
+  const segments = content.split(MARKER_RE);
+  for (let i2 = 1; i2 < segments.length; i2 += 2) {
+    const keyPath = segments[i2].trim();
+    const value = (segments[i2 + 1] ?? "").trim();
+    if (!keyPath || !value) continue;
+    const dotIdx = keyPath.indexOf(".");
+    let sheetName;
+    let key;
+    if (dotIdx !== -1) {
+      sheetName = slugifyKey(keyPath.slice(0, dotIdx));
+      key = slugifyKey(keyPath.slice(dotIdx + 1));
+    } else {
+      sheetName = defaultSheetName;
+      key = slugifyKey(keyPath);
+    }
+    if (sheetName && key) {
+      entries.push({ sheetName, key, value });
+    }
+  }
+  return entries;
+}
+function parseNumbered(content, defaultSheetName) {
+  const entries = [];
+  let counter = 0;
+  const paragraphs = content.split(/\n{2,}/);
+  for (const para of paragraphs) {
+    const value = para.replace(/^[#\s]+/, "").trim();
+    if (value) {
+      counter++;
+      entries.push({
+        sheetName: defaultSheetName,
+        key: `item_${counter}`,
+        value
+      });
+    }
+  }
+  return entries;
+}
+
+// src/utils/docIngester.ts
+async function getDriveExportToken(credentials) {
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  if (!clientEmail || !privateKey) {
+    throw new Error(
+      "Google Drive credentials required: GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY"
+    );
+  }
+  const normalizedKey = privateKey.replace(/\\n/g, "\n");
+  const auth = new import_google_auth_library3.GoogleAuth({
+    credentials: { client_email: clientEmail, private_key: normalizedKey },
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+  });
+  const client = await auth.getClient();
+  const tokenResponse = await client.getAccessToken();
+  return tokenResponse.token;
+}
+async function exportDoc(docId, credentials) {
+  const token = await getDriveExportToken(credentials);
+  const base = `https://www.googleapis.com/drive/v3/files/${docId}/export`;
+  const mdRes = await fetch(
+    `${base}?mimeType=text%2Fmarkdown`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (mdRes.ok) return mdRes.text();
+  const txtRes = await fetch(
+    `${base}?mimeType=text%2Fplain`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (txtRes.ok) return txtRes.text();
+  const errText = await txtRes.text();
+  throw new Error(
+    `Failed to export doc ${docId}: HTTP ${txtRes.status} \u2013 ${errText}`
+  );
+}
+function entriesToSeedKeys(entries) {
+  const keys2 = {};
+  const counts = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const base = `${entry.sheetName}.${entry.key}`;
+    const count = (counts.get(base) ?? 0) + 1;
+    counts.set(base, count);
+    const finalKey = count > 1 ? `${base}_${count}` : base;
+    keys2[finalKey] = entry.value;
+  }
+  return keys2;
+}
+function entriesToTranslationData(entries, locale) {
+  const data = {};
+  data[locale] = {};
+  const counts = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const sheetName = entry.sheetName;
+    const entryKey = entry.key;
+    if (sheetName === "__proto__" || sheetName === "constructor" || sheetName === "prototype" || entryKey === "__proto__" || entryKey === "constructor" || entryKey === "prototype") {
+      continue;
+    }
+    if (!data[locale][sheetName]) {
+      data[locale][sheetName] = {};
+    }
+    const base = `${sheetName}::${entryKey}`;
+    const count = (counts.get(base) ?? 0) + 1;
+    counts.set(base, count);
+    const finalKey = count > 1 ? `${entryKey}_${count}` : entryKey;
+    data[locale][sheetName][finalKey] = entry.value;
+  }
+  return data;
+}
+function docTitle(name) {
+  return name.replace(/_[a-zA-Z]{2,3}(?:[-_][a-zA-Z]{2,4})?$/, "").trim() || name;
+}
+async function ingestDoc(docFile, options = {}) {
+  const {
+    targetLocales,
+    keyStrategy = "heading",
+    updateMode = "create-only",
+    credentials,
+    existingEntry,
+    waitSeconds = 1
+  } = options;
+  const sourceLocale = docFile.sourceLocale ?? "en";
+  const entry = existingEntry ? { ...existingEntry, modifiedTime: docFile.modifiedTime } : {
+    id: docFile.id,
+    name: docFile.name,
+    folderPath: docFile.folderPath,
+    generatedFromDoc: true,
+    sourceLocale,
+    modifiedTime: docFile.modifiedTime
+  };
+  const hasLinkedSheet = !!entry.linkedSpreadsheetId;
+  const shouldRefresh = updateMode === "refresh-if-newer" && hasLinkedSheet && !!docFile.modifiedTime && !!existingEntry?.lastIngestedAt && new Date(docFile.modifiedTime) > new Date(existingEntry.lastIngestedAt);
+  if (hasLinkedSheet && !shouldRefresh) {
+    console.log(
+      `[docIngester] Skipping "${docFile.name}" \u2013 linked spreadsheet is already up-to-date.`
+    );
+    return { action: "skipped", entry };
+  }
+  console.log(
+    `[docIngester] Exporting doc "${docFile.name}" (id: ${docFile.id})\u2026`
+  );
+  const content = await exportDoc(docFile.id, credentials);
+  const sheetBaseName = slugifyKey(docTitle(docFile.name)) || "content";
+  const entries = parseDocContent(content, {
+    strategy: keyStrategy,
+    defaultSheetName: sheetBaseName
+  });
+  if (entries.length === 0) {
+    console.warn(
+      `[docIngester] Doc "${docFile.name}" produced no translation entries \u2013 skipping.`
+    );
+    return { action: "skipped", entry };
+  }
+  if (!hasLinkedSheet) {
+    const authClient2 = createAuthClient();
+    const seedKeys = entriesToSeedKeys(entries);
+    const title = docTitle(docFile.name);
+    const { spreadsheetId: spreadsheetId2 } = await createSpreadsheet(authClient2, {
+      title,
+      sourceLocale,
+      targetLocales,
+      seedKeys
+    });
+    entry.linkedSpreadsheetId = spreadsheetId2;
+    entry.lastIngestedAt = (/* @__PURE__ */ new Date()).toISOString();
+    console.log(
+      `[docIngester] Created spreadsheet ${spreadsheetId2} from doc "${docFile.name}".`
+    );
+    return { action: "created", entry };
+  }
+  const authClient = createAuthClient();
+  const spreadsheetId = entry.linkedSpreadsheetId;
+  const doc = new GoogleSpreadsheet(spreadsheetId, authClient);
+  await doc.loadInfo();
+  const changes = entriesToTranslationData(entries, sourceLocale);
+  await updateSpreadsheetWithLocalChanges(
+    doc,
+    changes,
+    waitSeconds,
+    false,
+    // autoTranslate – formulas already exist in non-base columns
+    {},
+    false
+  );
+  entry.lastIngestedAt = (/* @__PURE__ */ new Date()).toISOString();
+  console.log(
+    `[docIngester] Refreshed spreadsheet ${spreadsheetId} from doc "${docFile.name}".`
+  );
+  return { action: "refreshed", entry };
 }
 
 // src/utils/getDriveTranslations.ts
@@ -49932,7 +50280,14 @@ async function manageDriveTranslations(options) {
     projectName,
     domain,
     defaultLocale,
-    projectMetadata
+    projectMetadata,
+    // Doc ingestion options
+    scanForDocs = false,
+    docNameFilter,
+    docSourceLocale,
+    docKeyStrategy,
+    docUpdateMode,
+    docTargetLocales
   } = options;
   if (syncImages && !imageOutputPath) {
     throw new Error(
@@ -50016,8 +50371,48 @@ async function manageDriveTranslations(options) {
     });
   }
   let manifest;
+  let docIngestResults;
+  const docEntries = [];
+  const resolvedManifestPath = manifestPath ?? path6.join(baseOutputDir, "i18n-manifest.json");
+  if (driveFolderId && scanForDocs) {
+    const previousManifest = readManifest(resolvedManifestPath);
+    const docScanOptions = {
+      folderId: driveFolderId
+    };
+    const discoveredDocs = await scanDriveFolderForDocs(docScanOptions);
+    console.log(
+      `[manageDriveTranslations] Found ${discoveredDocs.length} doc(s) in Drive folder`
+    );
+    docIngestResults = [];
+    for (const docFile of discoveredDocs) {
+      if (docNameFilter && !docNameFilter.test(docFile.name)) continue;
+      if (!docFile.sourceLocale && docSourceLocale) {
+        docFile.sourceLocale = docSourceLocale;
+      }
+      const existingEntry = previousManifest?.docs?.find(
+        (d) => d.id === docFile.id
+      );
+      const ingesterOptions = {
+        targetLocales: docTargetLocales,
+        keyStrategy: docKeyStrategy,
+        updateMode: docUpdateMode,
+        existingEntry,
+        waitSeconds: translationOptions.waitSeconds
+      };
+      try {
+        const result = await ingestDoc(docFile, ingesterOptions);
+        docEntries.push(result.entry);
+        docIngestResults.push({ docName: docFile.name, action: result.action });
+      } catch (err) {
+        console.error(
+          `[manageDriveTranslations] Failed to ingest doc "${docFile.name}":`,
+          err
+        );
+        if (existingEntry) docEntries.push(existingEntry);
+      }
+    }
+  }
   if (shouldCreateManifest) {
-    const resolvedManifestPath = manifestPath ?? path6.join(baseOutputDir, "i18n-manifest.json");
     manifest = buildManifest({
       translations,
       spreadsheets: spreadsheetEntries,
@@ -50026,18 +50421,30 @@ async function manageDriveTranslations(options) {
       projectName,
       domain,
       defaultLocale,
-      projectMetadata
+      projectMetadata,
+      docs: docEntries.length > 0 ? docEntries : void 0
     });
     writeManifest(manifest, resolvedManifestPath);
   }
-  return { translations, spreadsheetIds: filteredIds, imageSync, manifest };
+  return { translations, spreadsheetIds: filteredIds, imageSync, manifest, docIngestResults };
 }
 
 // src/action-entrypoint.ts
 async function run() {
   try {
-    process.env.GOOGLE_CLIENT_EMAIL = getInput("google-client-email", { required: true });
-    process.env.GOOGLE_PRIVATE_KEY = getInput("google-private-key", { required: true });
+    const clientEmail = getInput("google-client-email");
+    const privateKey = getInput("google-private-key");
+    if (clientEmail) {
+      process.env.GOOGLE_CLIENT_EMAIL = clientEmail;
+    }
+    if (privateKey) {
+      process.env.GOOGLE_PRIVATE_KEY = privateKey;
+    }
+    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
+      throw new Error(
+        "Authentication required: provide either\n  (A) google-client-email + google-private-key inputs (classic service-account key), or\n  (B) a google-github-actions/auth step before this action (Workload Identity Federation)."
+      );
+    }
     const spreadsheetIdInput = getInput("google-spreadsheet-id");
     if (spreadsheetIdInput) {
       process.env.GOOGLE_SPREADSHEET_ID = spreadsheetIdInput;
