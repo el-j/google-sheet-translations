@@ -13,7 +13,7 @@ export type { SpreadsheetOptions } from './utils/configurationHandler';
 export { wait } from './utils/wait';
 export { withRetry } from './utils/rateLimiter';
 export { validateEnv } from './utils/validateEnv';
-export { createAuthClient, buildGoogleAuth } from './utils/auth';
+export { createAuthClient, buildGoogleAuth, normalizePrivateKey } from './utils/auth';
 export { convertToDataJsonFormat } from './utils/dataConverter/convertToDataJsonFormat';
 export { convertFromDataJsonFormat } from './utils/dataConverter/convertFromDataJsonFormat';
 export { findLocalChanges } from './utils/dataConverter/findLocalChanges';
