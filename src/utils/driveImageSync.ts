@@ -2,8 +2,8 @@ import { createWriteStream, mkdirSync, existsSync, readdirSync, unlinkSync, stat
 import { join, dirname } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
-import { GoogleAuth } from 'google-auth-library';
 import type { GoogleEnvVars } from '../types';
+import { buildGoogleAuth } from './auth';
 
 export interface DriveImageSyncOptions {
   /** Google Drive root folder ID to sync images from */
@@ -106,36 +106,27 @@ export function normalizeExtension(name: string): string {
   return `${base}.${ext}`;
 }
 
+const DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
+
 async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
   const clientEmail =
     credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
   const privateKey =
     credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
 
-  // WIF / ADC path: when no explicit credentials are provided and
-  // GOOGLE_APPLICATION_CREDENTIALS is set, use Application Default Credentials.
-  if (!clientEmail || !privateKey) {
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      const auth = new GoogleAuth({
-        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-      });
-      const client = await auth.getClient();
-      const tokenResponse = await client.getAccessToken();
-      return tokenResponse.token as string;
-    }
+  let driveCredentials: { client_email: string; private_key: string } | undefined;
+
+  if (clientEmail && privateKey) {
+    driveCredentials = { client_email: clientEmail, private_key: privateKey.replace(/\\n/g, '\n') };
+  } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     throw new Error(
       'Google Drive credentials required: set GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY, ' +
       'or set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation.'
     );
   }
 
-  const normalizedKey = privateKey.replace(/\\n/g, '\n');
-
-  const auth = new GoogleAuth({
-    credentials: { client_email: clientEmail, private_key: normalizedKey },
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-  });
-
+  // WIF / ADC path (driveCredentials is undefined) or service-account key path
+  const auth = buildGoogleAuth(DRIVE_SCOPES, driveCredentials);
   const client = await auth.getClient();
   const tokenResponse = await client.getAccessToken();
   return tokenResponse.token as string;

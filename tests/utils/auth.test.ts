@@ -1,4 +1,4 @@
-import { createAuthClient } from '../../src/utils/auth';
+import { createAuthClient, buildGoogleAuth } from '../../src/utils/auth';
 import { GoogleAuth } from 'google-auth-library';
 import { validateCredentials } from '../../src/utils/validateEnv';
 
@@ -135,5 +135,38 @@ describe('createAuthClient', () => {
 
       expect(mockValidateCredentials).toHaveBeenCalledTimes(1);
     });
+  });
+});
+
+describe('buildGoogleAuth', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test('returns GoogleAuth with credentials when provided', () => {
+    buildGoogleAuth(['https://www.googleapis.com/auth/spreadsheets'], {
+      client_email: 'sa@project.iam.gserviceaccount.com',
+      private_key: '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n',
+    });
+
+    expect(MockGoogleAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credentials: expect.objectContaining({ client_email: 'sa@project.iam.gserviceaccount.com' }),
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      })
+    );
+  });
+
+  test('returns GoogleAuth without credentials when none provided (ADC/WIF)', () => {
+    buildGoogleAuth(['https://www.googleapis.com/auth/drive.readonly']);
+
+    expect(MockGoogleAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      })
+    );
+    expect(MockGoogleAuth).toHaveBeenCalledWith(
+      expect.not.objectContaining({ credentials: expect.anything() })
+    );
   });
 });
