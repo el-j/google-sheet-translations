@@ -3,35 +3,35 @@ import { GoogleAuth } from 'google-auth-library';
 import { validateCredentials } from '../../src/utils/validateEnv';
 
 // Mock validateEnv to avoid actual environment checks
-jest.mock('../../src/utils/validateEnv', () => ({
-  validateEnv: jest.fn().mockReturnValue({
+vi.mock('../../src/utils/validateEnv', () => ({
+  validateEnv: vi.fn().mockReturnValue({
     GOOGLE_CLIENT_EMAIL: 'test@example.com',
     GOOGLE_PRIVATE_KEY: 'test-private-key',
     GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
   }),
-  validateCredentials: jest.fn().mockReturnValue({
+  validateCredentials: vi.fn().mockReturnValue({
     GOOGLE_CLIENT_EMAIL: 'test@example.com',
     GOOGLE_PRIVATE_KEY: 'test-private-key',
   })
 }));
 
 // Mock GoogleAuth constructor
-jest.mock('google-auth-library', () => {
+vi.mock('google-auth-library', () => {
   return {
-    GoogleAuth: jest.fn().mockImplementation((opts: unknown) => ({
-      _opts: opts,
-    })),
+    GoogleAuth: vi.fn().mockImplementation(class {
+      constructor(private _opts: unknown) {}
+    }),
   };
 });
 
-const mockValidateCredentials = validateCredentials as jest.Mock;
-const MockGoogleAuth = GoogleAuth as unknown as jest.Mock;
+const mockValidateCredentials = validateCredentials as Mock;
+const MockGoogleAuth = GoogleAuth as unknown as Mock;
 
 describe('createAuthClient', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env = { ...originalEnv };
     delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
   });
@@ -140,7 +140,7 @@ describe('createAuthClient', () => {
 
 describe('buildGoogleAuth', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('returns GoogleAuth with credentials when provided', () => {

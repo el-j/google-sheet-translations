@@ -1,31 +1,31 @@
 import { createSpreadsheet } from '../../src/utils/spreadsheetCreator';
 import { GoogleSpreadsheet } from 'google-spreadsheet';
 
-jest.mock('google-spreadsheet');
-jest.mock('../../src/utils/rateLimiter', () => ({
-  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
+vi.mock('google-spreadsheet', () => ({ GoogleSpreadsheet: vi.fn() }));
+vi.mock('../../src/utils/rateLimiter', () => ({
+  withRetry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 
 describe('createSpreadsheet', () => {
   const mockAuthClient = {
-    request: jest.fn().mockResolvedValue({
+    request: vi.fn().mockResolvedValue({
       data: { spreadsheetId: 'new-sheet-id-123' },
     }),
   };
 
   const mockWelcomeSheet = {
-    loadCells: jest.fn().mockResolvedValue(undefined),
-    getCell: jest.fn().mockReturnValue({ value: '' }),
-    saveUpdatedCells: jest.fn().mockResolvedValue(undefined),
+    loadCells: vi.fn().mockResolvedValue(undefined),
+    getCell: vi.fn().mockReturnValue({ value: '' }),
+    saveUpdatedCells: vi.fn().mockResolvedValue(undefined),
   };
 
   const mockI18nSheet = {
-    setHeaderRow: jest.fn().mockResolvedValue(undefined),
-    addRows: jest.fn().mockResolvedValue(undefined),
+    setHeaderRow: vi.fn().mockResolvedValue(undefined),
+    addRows: vi.fn().mockResolvedValue(undefined),
   };
 
   const mockDoc = {
-    loadInfo: jest.fn().mockResolvedValue(undefined),
+    loadInfo: vi.fn().mockResolvedValue(undefined),
     sheetsByTitle: {
       '__welcome__': mockWelcomeSheet,
       'i18n': mockI18nSheet,
@@ -33,14 +33,14 @@ describe('createSpreadsheet', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    (GoogleSpreadsheet as unknown as jest.Mock).mockImplementation(() => mockDoc);
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.clearAllMocks();
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class { constructor() { return mockDoc as any; } } as any);
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('creates a spreadsheet and returns id + url', async () => {
