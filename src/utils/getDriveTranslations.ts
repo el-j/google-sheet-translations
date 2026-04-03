@@ -211,7 +211,7 @@ async function moveSpreadsheetToFolder(
     url: `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
     params: { fields: 'parents' },
   });
-  const currentParents = (fileRes.data.parents ?? []).join(',');
+  const parentIds = fileRes.data.parents ?? [];
 
   // Step 2: move the file by adding the target folder and removing previous parents
   await driveAuth.request({
@@ -219,10 +219,9 @@ async function moveSpreadsheetToFolder(
     method: 'PATCH',
     params: {
       addParents: folderId,
-      ...(currentParents ? { removeParents: currentParents } : {}),
+      ...(parentIds.length > 0 ? { removeParents: parentIds.join(',') } : {}),
       fields: 'id,parents',
     },
-    data: {},
   });
 }
 

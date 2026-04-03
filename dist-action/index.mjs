@@ -50278,16 +50278,15 @@ async function moveSpreadsheetToFolder(spreadsheetId, folderId) {
     url: `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
     params: { fields: "parents" }
   });
-  const currentParents = (fileRes.data.parents ?? []).join(",");
+  const parentIds = fileRes.data.parents ?? [];
   await driveAuth.request({
     url: `https://www.googleapis.com/drive/v3/files/${spreadsheetId}`,
     method: "PATCH",
     params: {
       addParents: folderId,
-      ...currentParents ? { removeParents: currentParents } : {},
+      ...parentIds.length > 0 ? { removeParents: parentIds.join(",") } : {},
       fields: "id,parents"
-    },
-    data: {}
+    }
   });
 }
 async function manageDriveTranslations(options) {
