@@ -173,6 +173,14 @@ export function entriesToTranslationData(
   entries: ParsedDocEntry[],
   locale: string,
 ): TranslationData {
+  if (
+    locale === '__proto__' ||
+    locale === 'constructor' ||
+    locale === 'prototype'
+  ) {
+    return {};
+  }
+
   const data: TranslationData = {};
   data[locale] = {};
 
