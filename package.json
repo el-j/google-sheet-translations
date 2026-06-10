@@ -16,17 +16,22 @@
   "publishConfig": {
     "access": "public"
   },
+  "bin": {
+    "gst-setup-wif": "./dist-cli/setup-wif.mjs"
+  },
   "files": [
     "dist",
+    "dist-cli",
     "LICENSE",
     "README.md"
   ],
   "scripts": {
     "build:action": "rimraf dist-action && esbuild src/action-entrypoint.ts --bundle --platform=node --format=esm --outfile=dist-action/index.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --log-level=info",
+    "build:cli": "rimraf dist-cli && esbuild src/setup/cli.ts --bundle --platform=node --format=esm --outfile=dist-cli/setup-wif.mjs --banner:js=\"#!/usr/bin/env node\" --log-level=info",
     "build:types": "tsc --emitDeclarationOnly",
     "build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.js --platform=node --packages=external",
     "build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=dist/esm/index.js --platform=node --packages=external && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",
-    "build": "npm run build:types && npm run build:cjs && npm run build:esm",
+    "build": "npm run build:types && npm run build:cjs && npm run build:esm && npm run build:cli",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
     "prepare": "npm run build",

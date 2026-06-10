@@ -102,6 +102,10 @@ export type { ParsedDocEntry, DocKeyStrategy, ParseDocOptions } from './utils/do
 export { ingestDoc, exportDoc, entriesToSeedKeys, entriesToTranslationData } from './utils/docIngester';
 export type { DocIngesterOptions, DocIngestResult, DocUpdateMode } from './utils/docIngester';
 
+// WIF / Google Cloud setup helpers (programmatic API for the gst-setup-wif CLI)
+export { setupWIF, grantDrivePermissions, GcpApiError } from './setup/wifSetup';
+export type { WifSetupOptions, WifSetupResult, GrantDrivePermissionsOptions } from './setup/wifSetup';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;
