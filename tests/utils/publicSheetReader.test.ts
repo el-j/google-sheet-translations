@@ -108,6 +108,49 @@ describe('readPublicSheet', () => {
     expect(rows).toEqual([]);
   });
 
+  test('uses column ids when labels are missing', async () => {
+    const payload = {
+      status: 'ok',
+      table: {
+        cols: [
+          { id: 'A', label: '', type: 'string' },
+          { id: 'B', label: '', type: 'string' },
+        ],
+        rows: [{ c: [{ v: 'hello' }, { v: 'Bonjour' }] }],
+      },
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
+
+    expect(rows[0]).toEqual({ A: 'hello', B: 'Bonjour' });
+  });
+
+  test('skips rows that are missing the c array', async () => {
+    const payload = {
+      status: 'ok',
+      table: {
+        cols: [
+          { id: 'A', label: 'key', type: 'string' },
+          { id: 'B', label: 'en', type: 'string' },
+        ],
+        rows: [{}, { c: [{ v: 'hello' }, { v: 'Hello' }] }],
+      },
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({ key: 'hello', en: 'Hello' });
+  });
+
   test('handles null cells by mapping them to empty string', async () => {
     const payload = {
       status: 'ok',
@@ -142,6 +185,19 @@ describe('readPublicSheet', () => {
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow('Access denied');
   });
 
+  test('returns empty array when the parsed gviz payload has no table', async () => {
+    const payload = {
+      status: 'ok',
+      table: null,
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    await expect(readPublicSheet('SPREADSHEET_ID', 'home')).resolves.toEqual([]);
+  });
+
   test('throws when the response body is not a valid gviz wrapper', async () => {
     const { trigger } = buildFakeHttp(200, '<html>Login required</html>');
     (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
@@ -151,6 +207,34 @@ describe('readPublicSheet', () => {
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow(
       /Failed to parse response/,
     );
+  });
+
+  test('throws when the gviz wrapper contains invalid JSON', async () => {
+    const { trigger } = buildFakeHttp(
+      200,
+      '/*O_o*/\ngoogle.visualization.Query.setResponse({not-valid-json});',
+    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow(
+      /Failed to parse response/,
+    );
+  });
+
+  test('uses Unknown error when the gviz error payload has no messages', async () => {
+    const payload = {
+      status: 'error',
+      errors: [],
+      table: null,
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow('Unknown error');
   });
 
   test('throws when the HTTP request itself fails', async () => {

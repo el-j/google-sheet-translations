@@ -378,6 +378,23 @@ jobs:
 | `spreadsheet-title` | ❌ | `google-sheet-translations` | Title for the auto-created spreadsheet |
 | `source-locale` | ❌ | `en` | Source locale used as the base for auto-translate formulas |
 | `target-locales` | ❌ | `de,fr,es,it,pt,ja,zh` | Comma-separated target locales added to the auto-created spreadsheet |
+| `drive-folder-id` | ❌ | `''` | Drive folder ID used to auto-discover spreadsheets, docs, and images |
+| `scan-for-spreadsheets` | ❌ | `true` | When `drive-folder-id` is set, scan the folder recursively for spreadsheets |
+| `spreadsheet-ids` | ❌ | `''` | Optional extra spreadsheet IDs to merge with any IDs discovered in Drive |
+| `sync-images` | ❌ | `false` | Download Drive images alongside translation sync |
+| `image-output-path` | ❌ | `./public/remote-images` | Output directory for downloaded Drive images when `sync-images` is enabled |
+
+### Drive Folder Mode
+
+When `drive-folder-id` is set, the action switches from single-spreadsheet mode to `manageDriveTranslations()`. That enables recursive spreadsheet discovery, optional image sync, and optional explicit `spreadsheet-ids` on the same run.
+
+Operational notes:
+
+- If the Drive folder is empty and `auto-create` remains enabled, the package creates a spreadsheet and then tries to move it into the target folder.
+- `spreadsheetNameFilter` only applies to discovered sheets in the programmatic API. Explicit `spreadsheet-ids` are never filtered out.
+- `sync-images` supports incremental freshness checks and optional `cleanSync` deletion in the programmatic API. See the Drive Folder guide for those semantics before enabling destructive cleanup.
+
+See the full Drive Folder guide in `website/guide/drive-folder.md` for the complete API surface, image sync semantics, and Google Doc ingestion details.
 
 ### Outputs
 

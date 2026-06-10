@@ -112,6 +112,39 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(mockSheet.addRows).not.toHaveBeenCalled();
   });
 
+  test('should wait after saving an existing row when throttling is enabled', async () => {
+    vi.useFakeTimers();
+    mockRow.toObject.mockReturnValue({ 'key': 'welcome', 'en': 'Old Welcome' });
+
+    const promise = updateSpreadsheetWithLocalChanges(
+      mockDoc,
+      { en: { home: { welcome: 'New Welcome' } } },
+      1,
+    );
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+
+    expect(mockRow.save).toHaveBeenCalled();
+  });
+  test('should log an error when saving an existing row fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockRow.toObject.mockReturnValue({ 'key': 'welcome', 'en': 'Old Welcome' });
+    mockRow.save.mockRejectedValueOnce(new Error('save failed'));
+
+    await updateSpreadsheetWithLocalChanges(
+      mockDoc,
+      { en: { home: { welcome: 'New Welcome' } } },
+      0,
+    );
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to save row for key "welcome"'),
+      expect.any(Error),
+    );
+  });
+
   test('should add a new key when it does not exist', async () => {
     // Set up the mock to simulate that the key doesn't exist
     mockRow.toObject.mockReturnValue({ 'key': 'existing_key', 'en': 'Existing Value' });
@@ -472,6 +505,21 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     );
   });
 
+  test('should warn and skip when addSheet unexpectedly returns undefined', async () => {
+    (mockDoc as any).sheetsByTitle = {};
+    (mockDoc as any).addSheet = vi.fn().mockResolvedValue(undefined);
+
+    const changes: TranslationData = {
+      en: { missing: { key1: 'Value' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, { en: 'en' });
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('could not be found or created, skipping'),
+    );
+  });
+
   test('should add new keys to an empty (newly created) sheet using localeMapping for headers', async () => {
     // The sheet exists but has 0 data rows (just created with headerValues)
     mockSheet.getRows.mockResolvedValueOnce([]);
@@ -748,5 +796,76 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(formula).toContain('="zh-"');
     // The guard ensures zh-TW → "zh-tw" (full) rather than just "zh"
     expect(formula).toContain('LOWER(');
+  });
+
+  test('should skip formula fill when source header cannot be found in headerRow', async () => {
+    mockRow.toObject.mockReturnValue({
+      key: 'existing',
+      en: 'Existing',
+      de: '',
+    });
+
+    const changes: TranslationData = {
+      // This locale maps to a header that does not exist in the current sheet headers,
+      // which drives sourceHeaderIndex to -1 and should safely continue.
+      'en-us': { home: { new_key: 'Hello' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(
+      mockDoc,
+      changes,
+      0,
+      true,
+      { 'en-us': 'en-US', de: 'de' },
+    );
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0] as Array<Record<string, string>>;
+    const addedRow = addedRows[0];
+    expect(addedRow['en-US']).toBe('Hello');
+    expect(addedRow.de).toBeUndefined();
+  });
+
+  test('should warn and continue when new key map lookup unexpectedly returns undefined', async () => {
+    mockRow.toObject.mockReturnValue({ key: 'existing', en: 'Existing' });
+
+    const originalGet = Map.prototype.get;
+    const getSpy = vi.spyOn(Map.prototype, 'get').mockImplementation(function (this: Map<unknown, unknown>, key: unknown) {
+      if (key === 'new_key') {
+        return undefined;
+      }
+      return originalGet.call(this, key);
+    });
+
+    const changes: TranslationData = {
+      en: { home: { new_key: 'Value' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, { en: 'en' });
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('not found in newKeys map'),
+    );
+
+    getSpy.mockRestore();
+  });
+
+  test('should throttle between addRows chunks when waitSeconds is positive', async () => {
+    vi.useFakeTimers();
+    mockRow.toObject.mockReturnValue({ key: 'existing', en: 'Existing' });
+
+    const keys: Record<string, string> = {};
+    for (let i = 0; i < 6; i += 1) {
+      keys[`new_key_${i}`] = `Value ${i}`;
+    }
+    const changes: TranslationData = {
+      en: { home: keys },
+    };
+
+    const promise = updateSpreadsheetWithLocalChanges(mockDoc, changes, 1, false);
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+
+    expect(mockSheet.addRows).toHaveBeenCalledTimes(2);
   });
 });

@@ -87,4 +87,72 @@ describe('createSpreadsheet', () => {
     expect(mockWelcomeSheet.saveUpdatedCells).toHaveBeenCalled();
     expect(mockWelcomeSheet.getCell).toHaveBeenCalled();
   });
+
+  test('skips welcome and i18n population when those sheets are missing', async () => {
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class {
+      constructor() {
+        return {
+          loadInfo: vi.fn().mockResolvedValue(undefined),
+          sheetsByTitle: {},
+        } as any;
+      }
+    } as any);
+
+    await createSpreadsheet(mockAuthClient as any, {
+      seedKeys: { hello: 'Hello' },
+    });
+
+    expect(mockWelcomeSheet.loadCells).not.toHaveBeenCalled();
+    expect(mockI18nSheet.setHeaderRow).not.toHaveBeenCalled();
+    expect(mockI18nSheet.addRows).not.toHaveBeenCalled();
+  });
+
+  test('uses semicolon formulas when locale access throws', async () => {
+    const throwingDoc = {
+      loadInfo: vi.fn().mockResolvedValue(undefined),
+      sheetsByTitle: {
+        '__welcome__': mockWelcomeSheet,
+        i18n: mockI18nSheet,
+      },
+    };
+
+    Object.defineProperty(throwingDoc, '_rawProperties', {
+      get() {
+        throw new Error('locale unavailable');
+      },
+    });
+
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class { constructor() { return throwingDoc as any; } } as any);
+
+    await createSpreadsheet(mockAuthClient as any, {
+      sourceLocale: 'en',
+      targetLocales: ['de'],
+      seedKeys: { hello: 'Hello' },
+    });
+
+    const addedRows = mockI18nSheet.addRows.mock.calls[0][0] as Array<Record<string, string>>;
+    expect(addedRows[0].de).toContain(';');
+  });
+
+  test('uses comma formulas when spreadsheet locale is English-family', async () => {
+    const englishLocaleDoc = {
+      loadInfo: vi.fn().mockResolvedValue(undefined),
+      sheetsByTitle: {
+        '__welcome__': mockWelcomeSheet,
+        i18n: mockI18nSheet,
+      },
+      _rawProperties: { locale: 'en_US' },
+    };
+
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class { constructor() { return englishLocaleDoc as any; } } as any);
+
+    await createSpreadsheet(mockAuthClient as any, {
+      sourceLocale: 'en',
+      targetLocales: ['de'],
+      seedKeys: { hello: 'Hello' },
+    });
+
+    const addedRows = mockI18nSheet.addRows.mock.calls[0][0] as Array<Record<string, string>>;
+    expect(addedRows[0].de).toContain(',');
+  });
 });

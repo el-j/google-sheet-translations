@@ -128,4 +128,22 @@ describe('convertFromDataJsonFormat', () => {
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('mySheet'));
     consoleSpy.mockRestore();
   });
+
+  test('should skip locale entries when localeData is null', () => {
+    const dataJson = [
+      {
+        home: {
+          en: null,
+          fr: {
+            welcome: 'Bienvenue',
+          },
+        },
+      },
+    ] as unknown as Record<string, unknown>[];
+
+    const result = convertFromDataJsonFormat(dataJson);
+
+    expect(result.en).toEqual({ home: {} });
+    expect(result.fr?.home?.welcome).toBe('Bienvenue');
+  });
 });
