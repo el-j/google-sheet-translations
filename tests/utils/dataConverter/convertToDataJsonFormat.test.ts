@@ -333,4 +333,36 @@ describe('convertToDataJsonFormat', () => {
     expect(({} as Record<string, unknown>).injected).toBe(before);
     expect(Object.prototype).not.toHaveProperty('injected');
   });
+
+  test('should ignore undefined locale entries while scanning all sheets', () => {
+    const translationObj = {
+      en: {
+        home: {
+          hello: 'Hello',
+        },
+      },
+      fr: undefined,
+    } as unknown as TranslationData;
+
+    const result = convertToDataJsonFormat(translationObj, ['en', 'fr']);
+
+    expect(result).toHaveLength(1);
+    const home = result[0] as { home: Record<string, Record<string, string>> };
+    expect(home.home.en.hello).toBe('Hello');
+    expect(home.home.fr).toBeUndefined();
+  });
+
+  test('should omit sheets when discovered sheet has no requested locales with values', () => {
+    const translationObj: TranslationData = {
+      en: {
+        home: {
+          hello: 'Hello',
+        },
+      },
+    };
+
+    const result = convertToDataJsonFormat(translationObj, ['fr']);
+
+    expect(result).toEqual([]);
+  });
 });

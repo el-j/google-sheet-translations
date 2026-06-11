@@ -43,6 +43,18 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Build action bundle
+        if: matrix.node-version == '22'
+        run: npm run build:action
+
+      - name: Check action bundle is up-to-date
+        if: matrix.node-version == '22'
+        run: |
+          if ! git diff --exit-code dist-action/; then
+            echo "::error::dist-action/ is out of date. Run 'npm run build:action' locally and commit the result."
+            exit 1
+          fi
+
       - name: Test
         run: npm test
 

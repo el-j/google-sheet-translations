@@ -56,6 +56,31 @@ describe('fileWriter', () => {
 
 			consoleSpy.mockRestore();
 		});
+
+		it('should throw when the translations directory cannot be created', () => {
+			mockFs.existsSync.mockReturnValue(false);
+			mockFs.mkdirSync.mockImplementationOnce(() => {
+				throw new Error('permission denied');
+			});
+
+			expect(() =>
+				writeTranslationFiles({ en: { sheet1: { hello: 'Hello' } } }, ['en'], 'translations')
+			).toThrow('Failed to create translations directory');
+		});
+
+		it('should log an error when writing a translation file fails', () => {
+			const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			mockFs.writeFileSync.mockImplementationOnce(() => {
+				throw new Error('disk full');
+			});
+
+			writeTranslationFiles({ en: { sheet1: { hello: 'Hello' } } }, ['en'], 'translations');
+
+			expect(consoleSpy).toHaveBeenCalledWith(
+				expect.stringContaining('Failed to write translation file for locale "en"'),
+				expect.any(Error)
+			);
+		});
 	});
 
 	describe('writeLocalesFile', () => {
@@ -105,6 +130,27 @@ describe('fileWriter', () => {
 				expect.stringContaining('export const locales = [];'),
 				'utf8'
 			);
+		});
+
+		it('should throw when the locales directory cannot be created', () => {
+			mockFs.existsSync.mockReturnValue(false);
+			mockFs.mkdirSync.mockImplementationOnce(() => {
+				throw new Error('permission denied');
+			});
+
+			expect(() =>
+				writeLocalesFile(['en'], { en: 'en' }, 'src/i18n/locales.ts')
+			).toThrow('Failed to create directory');
+		});
+
+		it('should throw when writing locales.ts fails', () => {
+			mockFs.writeFileSync.mockImplementationOnce(() => {
+				throw new Error('disk full');
+			});
+
+			expect(() =>
+				writeLocalesFile(['en'], { en: 'en' }, 'src/i18n/locales.ts')
+			).toThrow('Failed to write locales file');
 		});
 	});
 
@@ -177,6 +223,27 @@ describe('fileWriter', () => {
 				expect.stringContaining('"en"'),
 				'utf8'
 			);
+		});
+
+		it('should throw when the language data directory cannot be created', () => {
+			mockFs.existsSync.mockReturnValue(false);
+			mockFs.mkdirSync.mockImplementationOnce(() => {
+				throw new Error('permission denied');
+			});
+
+			expect(() =>
+				writeLanguageDataFile({ en: { sheet1: { hello: 'Hello' } } }, ['en'], 'src/lib/languageData.json')
+			).toThrow('Failed to create directory');
+		});
+
+		it('should throw when writing languageData.json fails', () => {
+			mockFs.writeFileSync.mockImplementationOnce(() => {
+				throw new Error('disk full');
+			});
+
+			expect(() =>
+				writeLanguageDataFile({ en: { sheet1: { hello: 'Hello' } } }, ['en'], 'src/lib/languageData.json')
+			).toThrow('Failed to write language data file');
 		});
 	});
 });

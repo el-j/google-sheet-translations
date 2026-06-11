@@ -204,8 +204,36 @@ describe("setupWIF", () => {
 			// setIamPolicy is NOT called
 			expect(mockFetch).toHaveBeenCalledTimes(4);
 		});
-	});
 
+		test("adds the IAM member to an existing workloadIdentityUser binding when missing", async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+				.mockResolvedValueOnce(jsonResponse({ name: "p/op1", done: true }))
+				.mockResolvedValueOnce(jsonResponse({ name: "p/op2", done: true }))
+				.mockResolvedValueOnce(
+					jsonResponse({
+						bindings: [
+							{
+								role: "roles/iam.workloadIdentityUser",
+								members: ["principalSet://iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/github-actions/attribute.repository/other/repo"],
+							},
+						],
+						etag: "e",
+					}),
+				)
+				.mockResolvedValueOnce(jsonResponse({ bindings: [] }));
+
+			await setupWIF(BASE_OPTIONS);
+
+			const setCall = mockFetch.mock.calls[4];
+			const body = JSON.parse(setCall[1].body as string) as {
+				policy: { bindings: Array<{ role: string; members: string[] }> };
+			};
+			expect(body.policy.bindings[0].members).toContain(
+				"principalSet://iam.googleapis.com/projects/123/locations/global/workloadIdentityPools/github-actions/attribute.repository/myorg/myrepo",
+			);
+		});
+	});
 	describe("error handling", () => {
 		test("throws GcpApiError with status for non-409 API errors", async () => {
 			mockFetch
@@ -245,6 +273,37 @@ describe("setupWIF", () => {
 
 			await expect(setupWIF(BASE_OPTIONS)).rejects.toThrow("Operation failed: operation failed");
 		});
+
+		test("throws when a pending pool operation resolves with an error", async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+				.mockResolvedValueOnce(jsonResponse({ name: "projects/p/operations/op1", done: false }))
+				.mockResolvedValueOnce(jsonResponse({ name: "projects/p/operations/op1", done: true, error: { code: 7, message: "pool failed" } }));
+
+			vi.useFakeTimers();
+			const promise = setupWIF(BASE_OPTIONS);
+			const assertion = expect(promise).rejects.toThrow("Operation failed: pool failed");
+			await vi.runAllTimersAsync();
+			await assertion;
+			vi.useRealTimers();
+		});
+
+		test("throws when the provider operation payload is done with an error", async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+				.mockResolvedValueOnce(jsonResponse({ name: "p/op1", done: true }))
+				.mockResolvedValueOnce(jsonResponse({ name: "p/op2", done: true, error: { code: 7, message: "provider op failed" } }));
+
+			await expect(setupWIF(BASE_OPTIONS)).rejects.toThrow("Operation failed: provider op failed");
+		});
+		test("rethrows non-409 provider errors", async () => {
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+				.mockResolvedValueOnce(jsonResponse({ name: "p/op1", done: true }))
+				.mockResolvedValueOnce(jsonResponse({ error: { message: "provider forbidden" } }, 403));
+
+			await expect(setupWIF(BASE_OPTIONS)).rejects.toThrow(GcpApiError);
+		});
 	});
 
 	describe("long-running operation polling", () => {
@@ -272,6 +331,49 @@ describe("setupWIF", () => {
 
 			const result = await promise;
 			expect(result.wifProvider).toContain("github-actions");
+			vi.useRealTimers();
+		});
+
+		test("polls provider operation when provider creation returns pending", async () => {
+			const pendingProviderOp = {
+				name: "projects/p/locations/global/workloadIdentityPools/pool/providers/provider/operations/op2",
+				done: false,
+			};
+			const doneProviderOp = {
+				name: "projects/p/locations/global/workloadIdentityPools/pool/providers/provider/operations/op2",
+				done: true,
+			};
+
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+				// createPool immediate done
+				.mockResolvedValueOnce(jsonResponse({ name: "p/op1", done: true }))
+				// createProvider pending -> must poll
+				.mockResolvedValueOnce(jsonResponse(pendingProviderOp))
+				// provider poll done
+				.mockResolvedValueOnce(jsonResponse(doneProviderOp))
+				.mockResolvedValueOnce(jsonResponse({ bindings: [], etag: "e" }))
+				.mockResolvedValueOnce(jsonResponse({}));
+
+			vi.useFakeTimers();
+			const promise = setupWIF(BASE_OPTIONS);
+			await vi.runAllTimersAsync();
+			await expect(promise).resolves.toMatchObject({ projectNumber: "123" });
+			vi.useRealTimers();
+		});
+
+		test("times out when the operation never reaches done", async () => {
+			const pendingOp = { name: "projects/p/locations/global/workloadIdentityPools/pool/operations/op", done: false };
+			mockFetch.mockImplementation(() => jsonResponse(pendingOp));
+			mockFetch
+				.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+				.mockResolvedValueOnce(jsonResponse(pendingOp));
+
+			vi.useFakeTimers();
+			const promise = setupWIF(BASE_OPTIONS);
+			const assertion = expect(promise).rejects.toThrow(/Operation timed out after 60 s/);
+			await vi.advanceTimersByTimeAsync(62_000);
+			await assertion;
 			vi.useRealTimers();
 		});
 	});
@@ -329,6 +431,35 @@ describe("grantDrivePermissions", () => {
 
 		// only getIamPolicy is called, no setIamPolicy
 		expect(mockFetch).toHaveBeenCalledTimes(1);
+	});
+
+	test("adds the service account to an existing drive.file binding when missing", async () => {
+		mockFetch
+			.mockResolvedValueOnce(
+				jsonResponse({
+					bindings: [
+						{
+							role: "roles/drive.file",
+							members: ["serviceAccount:someone-else@my-project.iam.gserviceaccount.com"],
+						},
+					],
+					etag: "e",
+				}),
+			)
+			.mockResolvedValueOnce(jsonResponse({ bindings: [] }));
+
+		await grantDrivePermissions({
+			projectId: "my-project",
+			serviceAccountEmail: "sa@my-project.iam.gserviceaccount.com",
+		});
+
+		const setCall = mockFetch.mock.calls[1];
+		const body = JSON.parse(setCall[1].body as string) as {
+			policy: { bindings: Array<{ role: string; members: string[] }> };
+		};
+		expect(body.policy.bindings[0].members).toContain(
+			"serviceAccount:sa@my-project.iam.gserviceaccount.com",
+		);
 	});
 
 	test("passes keyFilePath to GoogleAuth", async () => {

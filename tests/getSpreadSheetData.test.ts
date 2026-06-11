@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import { isDataJsonNewer } from '../src/utils/isDataJsonNewer';
 import { readDataJson } from '../src/utils/readDataJson';
 import { findLocalChanges } from '../src/utils/dataConverter/findLocalChanges';
+import { createSpreadsheet } from '../src/utils/spreadsheetCreator';
 
 // Mock dependencies
 vi.mock('google-spreadsheet');
@@ -39,6 +40,12 @@ vi.mock('../src/utils/dataConverter/findLocalChanges', () => ({
 }));
 vi.mock('../src/utils/spreadsheetUpdater', () => ({
   updateSpreadsheetWithLocalChanges: vi.fn().mockResolvedValue(undefined)
+}));
+vi.mock('../src/utils/spreadsheetCreator', () => ({
+  createSpreadsheet: vi.fn().mockResolvedValue({
+    spreadsheetId: 'created-sheet-id',
+    url: 'https://docs.google.com/spreadsheets/d/created-sheet-id/edit'
+  })
 }));
 
 describe('getSpreadSheetData', () => {
@@ -208,6 +215,87 @@ describe('getSpreadSheetData', () => {
     const secondCall = (updateSpreadsheetWithLocalChanges as Mock).mock.calls[0];
     expect(secondCall[1]).toEqual(mockChanges); // changes
     expect(secondCall[3]).toBe(false); // autoTranslate (default)
+  });
+
+  test('should auto-create a spreadsheet and persist its ID when none is configured', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target === '/repo/.env');
+    (fs.readFileSync as Mock).mockReturnValue('EXISTING=1\n');
+
+    await getSpreadSheetData(['home']);
+
+    expect(createSpreadsheet).toHaveBeenCalledWith(
+      createAuthClient(),
+      expect.objectContaining({ title: 'google-sheet-translations' }),
+    );
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/repo/.env',
+      expect.stringContaining('GOOGLE_SPREADSHEET_ID=created-sheet-id'),
+      'utf8',
+    );
+  });
+
+  test('should create a new .env file when none exists during auto-create', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target !== '/repo/.env');
+
+    await getSpreadSheetData(['home']);
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/repo/.env',
+      'GOOGLE_SPREADSHEET_ID=created-sheet-id\n',
+      'utf8',
+    );
+  });
+
+  test('should warn when persisting the auto-created spreadsheet ID fails', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target === '/repo/.env');
+    (fs.readFileSync as Mock).mockReturnValue('EXISTING=1\n');
+    (fs.writeFileSync as Mock).mockImplementation((target: string) => {
+      if (target === '/repo/.env') {
+        throw new Error('permission denied');
+      }
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await getSpreadSheetData(['home']);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Could not write .env'));
+  });
+
+  test('should replace an existing GOOGLE_SPREADSHEET_ID entry in .env', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target === '/repo/.env');
+    (fs.readFileSync as Mock).mockReturnValue('GOOGLE_SPREADSHEET_ID=old-id\nEXISTING=1\n');
+
+    await getSpreadSheetData(['home']);
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/repo/.env',
+      expect.stringContaining('GOOGLE_SPREADSHEET_ID=created-sheet-id'),
+      'utf8',
+    );
+  });
+
+  test('should throw when autoCreate is disabled and no spreadsheet ID exists', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+
+    await expect(
+      getSpreadSheetData(['home'], { autoCreate: false }),
+    ).rejects.toThrow(/No spreadsheet ID provided/);
+  });
+
+  test('should throw a descriptive error when spreadsheet metadata cannot be loaded', async () => {
+    (mockDoc.loadInfo as Mock).mockRejectedValueOnce(new Error('boom'));
+
+    await expect(getSpreadSheetData(['home'])).rejects.toThrow(
+      'Failed to load spreadsheet "test-spreadsheet-id"',
+    );
   });
 });
 

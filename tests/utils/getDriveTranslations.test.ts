@@ -255,6 +255,26 @@ describe('manageDriveTranslations', () => {
     );
   });
 
+  it('passes normalized key credentials to moveSpreadsheetToFolder when env credentials are present', async () => {
+    mockScanDrive.mockResolvedValue([]);
+    process.env.GOOGLE_CLIENT_EMAIL = 'svc@example.com';
+    process.env.GOOGLE_PRIVATE_KEY = 'line1\\nline2';
+
+    await manageDriveTranslations({
+      driveFolderId: 'folder-123',
+    });
+
+    expect(mockBuildGoogleAuth).toHaveBeenCalledWith(
+      ['https://www.googleapis.com/auth/drive.file'],
+      expect.objectContaining({
+        client_email: 'svc@example.com',
+      }),
+    );
+
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+  });
+
   it('passes docTitles and translationOptions to getMultipleSpreadSheetsData', async () => {
     mockScanDrive.mockResolvedValue([makeSpreadsheet('s1', 'Translations')]);
 

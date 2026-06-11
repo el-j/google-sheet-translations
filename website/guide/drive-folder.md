@@ -59,6 +59,13 @@ GOOGLE_DRIVE_FOLDER_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
 The `driveFolderId` option overrides the `GOOGLE_DRIVE_FOLDER_ID` env var if
 both are set.
 
+### Operational notes
+
+- When `driveFolderId` is set and the folder contains no spreadsheets, `manageDriveTranslations()` bootstraps a new spreadsheet by default unless `translationOptions.autoCreate` is set to `false`.
+- That bootstrap step also attempts to move the new spreadsheet into the target Drive folder. If the move fails, the run continues and logs a warning so the spreadsheet can be moved manually.
+- `spreadsheetNameFilter` only filters spreadsheets discovered by scanning the Drive folder. Explicit `spreadsheetIds` are always included.
+- `flatten: false` writes each spreadsheet into its own subdirectory under `translationOptions.translationsOutputDir`, while `flatten: true` merges them into a single locale tree.
+
 ---
 
 ## Multiple spreadsheets without Drive scanning
@@ -143,6 +150,33 @@ console.log(result.errors);     // per-file errors (never fatal)
 ```
 
 The subfolder hierarchy from Drive is preserved in the local output path.
+
+### Incremental and clean sync semantics
+
+- `incrementalSync: true` treats Drive as the source of truth for freshness checks, but it skips re-downloads when the local file timestamp is newer or equal. Manual local edits are therefore preserved until Drive becomes strictly newer.
+- `cleanSync: true` removes local files that are missing from Drive after the scan completes. It does not roll back deletions if later downloads fail, so use it only when Drive should be authoritative for that directory.
+- `folderPattern` is matched against the relative Drive path, such as `projects/icons`.
+
+---
+
+## Doc ingestion
+
+Drive folder mode can also ingest Google Docs as one-way base-language sources:
+
+```typescript
+await manageDriveTranslations({
+  driveFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID,
+  scanForDocs: true,
+  docSourceLocale: 'en',
+  docUpdateMode: 'refresh-if-newer',
+});
+```
+
+Operational details:
+
+- `docSourceLocale` is used only when the doc filename does not already encode a locale suffix.
+- `docUpdateMode: 'refresh-if-newer'` refreshes only the base-locale values in the linked spreadsheet. Existing non-base locale values and formulas are left intact.
+- Docs are feeder sources only. The package never writes back to the original Google Doc.
 
 ---
 

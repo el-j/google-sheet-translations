@@ -104,6 +104,18 @@ describe('exportDoc', () => {
 
     await expect(exportDoc('doc-id', CREDENTIALS)).rejects.toThrow('Failed to export doc');
   });
+
+  it('throws when credentials are missing for Drive export', async () => {
+    const origEmail = process.env.GOOGLE_CLIENT_EMAIL;
+    const origKey = process.env.GOOGLE_PRIVATE_KEY;
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+
+    await expect(exportDoc('doc-id')).rejects.toThrow('Google Drive credentials required');
+
+    if (origEmail) process.env.GOOGLE_CLIENT_EMAIL = origEmail;
+    if (origKey) process.env.GOOGLE_PRIVATE_KEY = origKey;
+  });
 });
 
 // ── entriesToSeedKeys ─────────────────────────────────────────────────────────
@@ -165,6 +177,25 @@ describe('entriesToTranslationData', () => {
     const data = entriesToTranslationData(entries, 'de');
     expect(data.de).toBeDefined();
     expect(data.en).toBeUndefined();
+  });
+
+  it('ignores prototype-polluting locale, sheet, and key names', () => {
+    expect(entriesToTranslationData([{ sheetName: 'hero', key: 'title', value: 'Hello' }], '__proto__')).toEqual({});
+
+    const data = entriesToTranslationData(
+      [
+        { sheetName: '__proto__', key: 'ignored', value: 'x' },
+        { sheetName: 'hero', key: 'constructor', value: 'x' },
+        { sheetName: 'hero', key: 'title', value: 'Hello' },
+      ],
+      'en',
+    );
+
+    expect(data).toEqual({
+      en: {
+        hero: { title: 'Hello' },
+      },
+    });
   });
 });
 

@@ -1,5 +1,6 @@
 import * as core from '@actions/core';
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
+import { manageDriveTranslations } from '../src/utils/getDriveTranslations';
 
 vi.mock('@actions/core', () => ({
 	getInput: vi.fn(),
@@ -13,6 +14,9 @@ vi.mock('@actions/core', () => ({
 vi.mock('../src/getSpreadSheetData', () => ({
 	getSpreadSheetData: vi.fn().mockResolvedValue({}),
 }));
+vi.mock('../src/utils/getDriveTranslations', () => ({
+	manageDriveTranslations: vi.fn().mockResolvedValue({ translations: {} }),
+}));
 
 // Import run after mocks are set up so the bottom-level call uses mocked deps
 import { run } from '../src/action-entrypoint';
@@ -22,6 +26,7 @@ const mockSetOutput = vi.mocked(core.setOutput);
 const mockSetFailed = vi.mocked(core.setFailed);
 const mockInfo = vi.mocked(core.info);
 const mockGetSpreadSheetData = vi.mocked(getSpreadSheetData);
+const mockManageDriveTranslations = vi.mocked(manageDriveTranslations);
 
 /** Default set of valid action inputs */
 function makeInputs(overrides: Record<string, string> = {}): Record<string, string> {
@@ -48,6 +53,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	process.env.GITHUB_WORKSPACE = '/workspace';
 	mockGetSpreadSheetData.mockResolvedValue({});
+	mockManageDriveTranslations.mockResolvedValue({ translations: {} } as Awaited<ReturnType<typeof manageDriveTranslations>>);
 });
 
 describe('action-entrypoint', () => {
@@ -112,6 +118,30 @@ describe('action-entrypoint', () => {
 	});
 
 	describe('error handling', () => {
+		it('calls core.setFailed for an invalid row-limit', async () => {
+			const inputs = makeInputs({ 'row-limit': '0' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid row-limit value'),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
+		});
+
+		it('calls core.setFailed for an invalid wait-seconds value', async () => {
+			const inputs = makeInputs({ 'wait-seconds': 'abc' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid wait-seconds value'),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
+		});
+
 		it('calls core.setFailed with the error message when getSpreadSheetData throws an Error', async () => {
 			const inputs = makeInputs();
 			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
@@ -144,6 +174,46 @@ describe('action-entrypoint', () => {
 				expect.stringContaining('Authentication required'),
 			);
 		});
+
+		it('calls core.setFailed when manageDriveTranslations throws', async () => {
+			const inputs = makeInputs({ 'drive-folder-id': 'folder-123' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockManageDriveTranslations.mockRejectedValueOnce(new Error('Drive sync failed'));
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith('Drive sync failed');
+		});
+	});
+
+	describe('drive-folder mode', () => {
+		it('uses manageDriveTranslations when drive-folder-id is provided', async () => {
+			const inputs = makeInputs({
+				'drive-folder-id': 'folder-123',
+				'sync-images': 'true',
+				'image-output-path': './public/images',
+				'spreadsheet-ids': 'sheet-a,sheet-b',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockManageDriveTranslations.mockResolvedValueOnce({
+				translations: { en: {}, de: {} },
+				spreadsheetIds: ['sheet-a', 'sheet-b'],
+			} as Awaited<ReturnType<typeof manageDriveTranslations>>);
+
+			await run();
+
+			expect(mockManageDriveTranslations).toHaveBeenCalledWith(
+				expect.objectContaining({
+					driveFolderId: 'folder-123',
+					spreadsheetIds: ['sheet-a', 'sheet-b'],
+					syncImages: true,
+					imageOutputPath: './public/images',
+					docTitles: ['home', 'about'],
+				}),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
+			expect(mockInfo).toHaveBeenCalledWith('✅ Fetched translations for 2 locales');
+		});
 	});
 
 	describe('sheet-titles parsing', () => {
@@ -165,6 +235,54 @@ describe('action-entrypoint', () => {
 
 			const [sheetTitles] = mockGetSpreadSheetData.mock.calls[0];
 			expect(sheetTitles).toEqual(['landing']);
+		});
+
+		it('uses documented defaults for optional path and title inputs when they are absent', async () => {
+			const inputs = makeInputs({
+				'translations-output-dir': '',
+				'locales-output-path': '',
+				'data-json-path': '',
+				'row-limit': '',
+				'wait-seconds': '',
+				'spreadsheet-title': '',
+				'source-locale': '',
+				'drive-folder-id': '',
+				'spreadsheet-ids': '',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			const [, options] = mockGetSpreadSheetData.mock.calls[0];
+			expect(options?.translationsOutputDir).toContain('/workspace/translations');
+			expect(options?.localesOutputPath).toContain('/workspace/src/i18n/locales.ts');
+			expect(options?.dataJsonPath).toContain('/workspace/src/lib/languageData.json');
+			expect(options?.spreadsheetTitle).toBe('google-sheet-translations');
+			expect(options?.sourceLocale).toBe('en');
+		});
+		it('uses manageDriveTranslations when spreadsheet-ids are provided without drive-folder-id', async () => {
+			const inputs = makeInputs({
+				'drive-folder-id': '',
+				'spreadsheet-ids': 'sheet-a,sheet-b',
+				'sync-images': 'false',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockManageDriveTranslations.mockResolvedValueOnce({
+				translations: { en: {}, de: {} },
+				spreadsheetIds: ['sheet-a', 'sheet-b'],
+			} as Awaited<ReturnType<typeof manageDriveTranslations>>);
+
+			await run();
+
+			expect(mockManageDriveTranslations).toHaveBeenCalledWith(
+				expect.objectContaining({
+					driveFolderId: undefined,
+					spreadsheetIds: ['sheet-a', 'sheet-b'],
+					syncImages: false,
+					imageOutputPath: undefined,
+				}),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
 		});
 	});
 
