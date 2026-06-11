@@ -1,3 +1,10 @@
+## [2.2.0-beta.5](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.4...v2.2.0-beta.5) (2026-06-11)
+
+### 🚀 Features
+
+* add `gst-setup-wif` CLI to automate Workload Identity Federation setup ([#68](https://github.com/el-j/google-sheet-translations/issues/68)) ([1acc5a5](https://github.com/el-j/google-sheet-translations/commit/1acc5a587de0e89dfd98556c1ece4aac5a1512f3))
+* **tests:** enhance test coverage for spreadsheet and Drive functionalities + fix CodeQL URL host validation ([#79](https://github.com/el-j/google-sheet-translations/issues/79)) ([fab276a](https://github.com/el-j/google-sheet-translations/commit/fab276ac729389e8c8675a6e8f7c7b4fbe58cdba))
+
 ## [2.2.0-beta.4](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.3...v2.2.0-beta.4) (2026-04-03)
 
 ### 🚀 Features
