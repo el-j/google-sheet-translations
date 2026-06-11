@@ -544,7 +544,6 @@ describe('manageDriveTranslations – scanForDocs', () => {
     const result = await manageDriveTranslations({ driveFolderId: 'folder-id' });
     expect(result.docIngestResults).toBeUndefined();
   });
-});
 
   it('passes existing manifest entry to ingestDoc when previous manifest has docs', async () => {
     const existingDocEntry = {
@@ -577,3 +576,4 @@ describe('manageDriveTranslations – scanForDocs', () => {
     const [, options] = mockIngestDoc.mock.calls[0];
     expect(options.existingEntry).toEqual(existingDocEntry);
   });
+});
