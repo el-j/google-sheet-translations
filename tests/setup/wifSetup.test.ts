@@ -376,6 +376,121 @@ describe("setupWIF", () => {
 			await assertion;
 			vi.useRealTimers();
 		});
+
+		describe("URL validation in pollOperation", () => {
+			test("accepts https URLs with iam.googleapis.com hostname", async () => {
+				mockFetch
+					.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+					.mockResolvedValueOnce(jsonResponse({ name: "p/op1", done: true }))
+					.mockResolvedValueOnce(jsonResponse({ name: "p/op2", done: true }))
+					.mockResolvedValueOnce(jsonResponse({ bindings: [], etag: "e" }))
+					.mockResolvedValueOnce(jsonResponse({}));
+
+				vi.useFakeTimers();
+				const promise = setupWIF(BASE_OPTIONS);
+				await vi.runAllTimersAsync();
+				await expect(promise).resolves.toMatchObject({ projectNumber: "123" });
+				vi.useRealTimers();
+			});
+
+			test("rejects URLs with non-Google hostnames", async () => {
+				mockFetch
+					.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+					// Return a full URL with non-Google hostname
+					.mockResolvedValueOnce(
+						jsonResponse({
+							name: "https://evil.com/v1/operation",
+							done: false,
+						}),
+					);
+
+				vi.useFakeTimers();
+				const promise = setupWIF(BASE_OPTIONS);
+				const assertion = expect(promise).rejects.toThrow(
+					/Invalid operation URL: hostname must be a Google API endpoint/,
+				);
+				await vi.runAllTimersAsync();
+				await assertion;
+				vi.useRealTimers();
+			});
+
+			test("rejects URLs with google.com in path but wrong hostname", async () => {
+				mockFetch
+					.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+					// Try to trick with "google.com" in the URL but at attacker.com
+					.mockResolvedValueOnce(
+						jsonResponse({
+							name: "https://attacker.com/google.com/operation",
+							done: false,
+						}),
+					);
+
+				vi.useFakeTimers();
+				const promise = setupWIF(BASE_OPTIONS);
+				const assertion = expect(promise).rejects.toThrow(
+					/Invalid operation URL: hostname must be a Google API endpoint/,
+				);
+				await vi.runAllTimersAsync();
+				await assertion;
+				vi.useRealTimers();
+			});
+
+			test("accepts URLs with googleapis.com subdomains", async () => {
+				mockFetch
+					.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+					.mockResolvedValueOnce(
+						jsonResponse({
+							name: "https://custom.googleapis.com/v1/operation",
+							done: true,
+						}),
+					)
+					.mockResolvedValueOnce(jsonResponse({ name: "p/op2", done: true }))
+					.mockResolvedValueOnce(jsonResponse({ bindings: [], etag: "e" }))
+					.mockResolvedValueOnce(jsonResponse({}));
+
+				vi.useFakeTimers();
+				const promise = setupWIF(BASE_OPTIONS);
+				await vi.runAllTimersAsync();
+				await expect(promise).resolves.toMatchObject({ projectNumber: "123" });
+				vi.useRealTimers();
+			});
+
+			test("rejects malformed URLs", async () => {
+				mockFetch
+					.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+					.mockResolvedValueOnce(
+						jsonResponse({
+							name: "https://not a valid url at all",
+							done: false,
+						}),
+					);
+
+				vi.useFakeTimers();
+				const promise = setupWIF(BASE_OPTIONS);
+				const assertion = expect(promise).rejects.toThrow(
+					/Invalid operation URL: hostname must be a Google API endpoint/,
+				);
+				await vi.runAllTimersAsync();
+				await assertion;
+				vi.useRealTimers();
+			});
+
+			test("accepts regular operation names without http prefix", async () => {
+				mockFetch
+					.mockResolvedValueOnce(jsonResponse({ projectNumber: "123" }))
+					.mockResolvedValueOnce(jsonResponse({ name: "p/op1", done: true }))
+					// Regular operation name should NOT trigger URL validation
+					.mockResolvedValueOnce(jsonResponse({ name: "projects/p/operations/op2", done: true }))
+					.mockResolvedValueOnce(jsonResponse({ bindings: [], etag: "e" }))
+					.mockResolvedValueOnce(jsonResponse({}));
+
+				vi.useFakeTimers();
+				const promise = setupWIF(BASE_OPTIONS);
+				await vi.runAllTimersAsync();
+				await expect(promise).resolves.toMatchObject({ projectNumber: "123" });
+				vi.useRealTimers();
+			});
+		});;
 	});
 });
 
