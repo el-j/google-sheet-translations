@@ -20,6 +20,8 @@ concurrency:
 
 jobs:
   release:
+    environment: 
+      name: production
     name: Semantic Release
     runs-on: ubuntu-latest
     if: >-
