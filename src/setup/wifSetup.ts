@@ -116,9 +116,29 @@ async function pollOperation(
 ): Promise<void> {
 	// Operation names returned by IAM are full resource paths, e.g.:
 	// "projects/my-project/locations/global/workloadIdentityPools/pool/operations/abc"
-	const opUrl = operationName.startsWith("http")
-		? operationName
-		: `https://iam.googleapis.com/v1/${operationName}`;
+	let opUrl: string;
+	if (operationName.startsWith("http")) {
+		let isGoogleHost;
+		try {
+			const parsedUrl = new URL(operationName);
+			const hostname = (parsedUrl.hostname || "").toLowerCase();
+			isGoogleHost =
+				hostname === "iam.googleapis.com" ||
+				hostname.endsWith(".iam.googleapis.com") ||
+				hostname === "googleapis.com" ||
+				hostname.endsWith(".googleapis.com");
+		} catch {
+			isGoogleHost = false;
+		}
+		if (!isGoogleHost) {
+			throw new Error(
+				`Invalid operation URL: hostname must be a Google API endpoint (*.googleapis.com), got: ${operationName}`,
+			);
+		}
+		opUrl = operationName;
+	} else {
+		opUrl = `https://iam.googleapis.com/v1/${operationName}`;
+	}
 	const deadline = Date.now() + maxWaitMs;
 	const maxWaitSecs = Math.round(maxWaitMs / 1000);
 

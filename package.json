@@ -93,7 +93,7 @@
     "semantic-release": "^25.0.5",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vitepress": "^1.6.4",
+    "vitepress": "2.0.0-alpha.17",
     "vitest": "^4.1.8",
     "vitest-mock-extended": "^4.0.0"
   },
@@ -103,9 +103,6 @@
   "overrides": {
     "google-spreadsheet": {
       "google-auth-library": "^10.7.0"
-    },
-    "vite": {
-      "esbuild": "^0.25.0"
     },
     "@actions/http-client": {
       "undici": "^7.0.0"
