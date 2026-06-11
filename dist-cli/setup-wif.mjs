@@ -17237,15 +17237,7 @@ var require_gdchclient = __commonJS({
       async requestAsync(opts, retry = false) {
         if (this.caCertPath && !opts.agent) {
           const url = (opts.url || "").toString();
-          let isGoogleHost = false;
-          try {
-            const parsedUrl = new URL(url);
-            const hostname = (parsedUrl.hostname || "").toLowerCase();
-            isGoogleHost = hostname === "googleapis.com" || hostname.endsWith(".googleapis.com") || hostname === "google.com" || hostname.endsWith(".google.com");
-          } catch {
-            isGoogleHost = false;
-          }
-          if (!isGoogleHost) {
+          if (!url.includes("googleapis.com") && !url.includes("google.com")) {
             opts.agent = await this.getCaAgent();
           }
         }
