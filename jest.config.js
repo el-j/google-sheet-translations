@@ -17,15 +17,30 @@ module.exports = {
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
+  coverageThreshold: {
+    global: {
+      statements: 90,
+      branches: 80,
+      functions: 80,
+      lines: 90
+    }
+  },
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1'
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: 'tsconfig.test.json'
+    }],
+    '^.+\\.m?js$': ['ts-jest', {
+      tsconfig: 'tsconfig.jest-js.json',
+      diagnostics: false,
     }]
   },
+  // Transform ESM-only packages that google-spreadsheet v5 depends on (ky)
+  transformIgnorePatterns: ['/node_modules/(?!(ky)/)'],
   modulePathIgnorePatterns: ['<rootDir>/dist/'],
+  testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/dist/'],
   verbose: true,
   testTimeout: 10000
 };

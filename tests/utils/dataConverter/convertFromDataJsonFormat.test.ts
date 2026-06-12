@@ -2,7 +2,7 @@ import { convertFromDataJsonFormat } from '../../../src/utils/dataConverter/conv
 import type { TranslationData } from '../../../src/types';
 
 describe('convertFromDataJsonFormat', () => {
-  test('should convert empty data.json to empty translation data', () => {
+  test('should convert empty languageData.json to empty translation data', () => {
     const dataJson: Record<string, unknown>[] = [];
     const result = convertFromDataJsonFormat(dataJson);
     expect(result).toEqual({});
@@ -116,5 +116,16 @@ describe('convertFromDataJsonFormat', () => {
     
     const result = convertFromDataJsonFormat(dataJson);
     expect(result).toEqual({});
+  });
+
+  test('should skip entry and warn when sheet value is not an object', () => {
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+
+    const dataJson = [{ 'mySheet': 'invalid-string-instead-of-object' }] as unknown as Record<string, unknown>[];
+    const result = convertFromDataJsonFormat(dataJson);
+
+    expect(result).toEqual({});
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('mySheet'));
+    consoleSpy.mockRestore();
   });
 });

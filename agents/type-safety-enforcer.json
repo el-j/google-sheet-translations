@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "type-safety-enforcer",
+  "name": "Type Safety Enforcer",
+  "version": "1.0.0",
+  "description": "Refactors TypeScript source to eliminate unsafe patterns: as-casts, any, implicit unknown, missing generics, and loose null checks. Targets strict-mode compliance for the @el-j/google-sheet-translations package.",
+  "model": "claude-sonnet-4-5",
+  "tools": ["read_file", "edit_file", "bash"],
+  "systemPrompt": "You are a TypeScript strict-mode expert. Fix all as-casts, any/unknown misuse, missing generic parameters, and non-null assertions in src/**/*.ts. Preserve runtime behavior. After each edit run `npx tsc --noEmit` to confirm zero type errors. Prefer type narrowing and type guards over casts.",
+  "inputSchema": {
+    "type": "object",
+    "required": ["auditIssues"],
+    "additionalProperties": false,
+    "properties": {
+      "auditIssues": {
+        "type": "array",
+        "description": "Issues array from code-auditor output, filtered to type-safety rules.",
+        "items": {
+          "type": "object",
+          "required": ["file", "line", "rule"],
+          "properties": {
+            "file": { "type": "string" },
+            "line": { "type": "integer" },
+            "rule": { "type": "string" },
+            "message": { "type": "string" },
+            "codeSnippet": { "type": "string" }
+          }
+        }
+      },
+      "dryRun": {
+        "type": "boolean",
+        "description": "If true, output proposed diffs without writing files.",
+        "default": false
+      },
+      "strictRules": {
+        "type": "array",
+        "description": "Subset of strict TS compiler flags to enforce.",
+        "items": {
+          "type": "string",
+          "enum": [
+            "strictNullChecks",
+            "noImplicitAny",
+            "strictFunctionTypes",
+            "strictPropertyInitialization",
+            "noUncheckedIndexedAccess"
+          ]
+        },
+        "default": ["strictNullChecks", "noImplicitAny"]
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": ["fixedFiles", "remainingIssues"],
+    "additionalProperties": false,
+    "properties": {
+      "fixedFiles": {
+        "type": "array",
+        "description": "Paths of files that were successfully modified.",
+        "items": { "type": "string" }
+      },
+      "remainingIssues": {
+        "type": "array",
+        "description": "Issues that could not be automatically fixed.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "file": { "type": "string" },
+            "line": { "type": "integer" },
+            "rule": { "type": "string" },
+            "reason": { "type": "string" }
+          }
+        }
+      },
+      "patchSummary": {
+        "type": "string",
+        "description": "Human-readable summary of changes made."
+      },
+      "tscExitCode": {
+        "type": "integer",
+        "description": "Exit code of tsc --noEmit after all fixes (0 = success)."
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "Replace unsafe as-cast with type guard in sheetProcessor.ts",
+      "input": {
+        "auditIssues": [
+          {
+            "file": "src/utils/sheetProcessor.ts",
+            "line": 34,
+            "rule": "no-unsafe-cast",
+            "message": "Avoid 'as string'; use a type guard instead.",
+            "codeSnippet": "const val = row[key] as string;"
+          }
+        ],
+        "dryRun": false,
+        "strictRules": ["strictNullChecks", "noImplicitAny"]
+      },
+      "output": {
+        "fixedFiles": ["src/utils/sheetProcessor.ts"],
+        "remainingIssues": [],
+        "patchSummary": "Replaced 1 as-cast with typeof guard; tsc reports 0 errors.",
+        "tscExitCode": 0
+      }
+    }
+  ]
+}

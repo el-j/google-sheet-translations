@@ -40,3 +40,13 @@ tsconfig.*.json
 # Examples and documentation source
 examples/
 docs/
+
+# Documentation site source
+website/
+CHANGELOG.md
+CONTRIBUTING.md
+
+# GitHub Actions bundle (not needed in npm package)
+dist-action/
+action.yml
+licenses.txt

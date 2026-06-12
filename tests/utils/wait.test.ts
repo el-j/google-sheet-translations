@@ -1,12 +1,16 @@
-import { wait } from '../../src/utils/wait';
+jest.mock('node:timers/promises', () => ({
+  setTimeout: jest.fn(),
+}));
 
-// Mock setTimeout to avoid actually waiting in tests
-jest.useFakeTimers();
+import { wait } from '../../src/utils/wait';
+import { setTimeout as mockDelay } from 'node:timers/promises';
+
+const mockDelayFn = mockDelay as jest.MockedFunction<typeof mockDelay>;
 
 describe('wait', () => {
   beforeEach(() => {
     jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.clearAllTimers();
+    mockDelayFn.mockReset();
   });
 
   afterEach(() => {
@@ -14,42 +18,41 @@ describe('wait', () => {
   });
 
   test('should wait for the specified number of seconds', async () => {
+    let resolveDelay!: () => void;
+    mockDelayFn.mockReturnValueOnce(
+      new Promise<void>(resolve => { resolveDelay = resolve; })
+    );
+
     const waitPromise = wait(2, 'test wait');
-    
-    // The promise should not resolve immediately
     let resolved = false;
-    waitPromise.then(() => {
-      resolved = true;
-    });
-    
-    // Fast-forward time by less than the wait duration
-    jest.advanceTimersByTime(1000);
-    await Promise.resolve(); // Let any pending microtasks run
-    
-    // Promise should not be resolved yet
+    waitPromise.then(() => { resolved = true; });
+
+    // Before resolving the delay, promise should still be pending
+    await Promise.resolve();
     expect(resolved).toBe(false);
-    
-    // Fast-forward time to complete the wait duration
-    jest.advanceTimersByTime(1000);
-    await Promise.resolve(); // Let any pending microtasks run
-    
-    // Promise should now be resolved
+
+    // Resolve the delay and flush microtasks
+    resolveDelay();
+    await Promise.resolve();
+    await Promise.resolve();
     expect(resolved).toBe(true);
   });
 
   test('should log the reason for waiting', () => {
+    mockDelayFn.mockResolvedValueOnce(undefined);
     wait(1, 'test reason');
     expect(console.log).toHaveBeenCalledWith('wait', 1, 'test reason');
   });
 
+  test('passes the correct delay in milliseconds', () => {
+    mockDelayFn.mockResolvedValueOnce(undefined);
+    wait(3, 'three seconds');
+    expect(mockDelayFn).toHaveBeenCalledWith(3000);
+  });
+
   test('should resolve immediately with 0 seconds', async () => {
-    const waitPromise = wait(0, 'no wait');
-    
-    // Fast-forward all timers
-    jest.runAllTimers();
-    await waitPromise;
-    
-    // If we got here, the promise resolved successfully
+    mockDelayFn.mockResolvedValueOnce(undefined);
+    await wait(0, 'no wait');
     expect(true).toBe(true);
   });
 });

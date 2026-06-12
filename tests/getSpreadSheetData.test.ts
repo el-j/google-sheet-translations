@@ -1,7 +1,7 @@
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
 import { mock } from 'jest-mock-extended';
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
-import updateSpreadsheetWithLocalChanges from '../src/utils/spreadsheetUpdater';
+import { updateSpreadsheetWithLocalChanges } from '../src/utils/spreadsheetUpdater';
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -13,8 +13,8 @@ import { findLocalChanges } from '../src/utils/dataConverter/findLocalChanges';
 jest.mock('google-spreadsheet');
 jest.mock('node:fs');
 jest.mock('node:path');
-jest.mock('../src/utils/wait', () => ({
-  wait: jest.fn().mockResolvedValue(undefined)
+jest.mock('../src/utils/rateLimiter', () => ({
+  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 jest.mock('../src/utils/auth', () => ({
   createAuthClient: jest.fn().mockReturnValue({})
@@ -36,13 +36,9 @@ jest.mock('../src/utils/dataConverter/convertToDataJsonFormat', () => ({
 jest.mock('../src/utils/dataConverter/findLocalChanges', () => ({
   findLocalChanges: jest.fn().mockReturnValue({})
 }));
-jest.mock('../src/utils/spreadsheetUpdater', () => {
-  const mockFn = jest.fn().mockResolvedValue(undefined);
-  return {
-    __esModule: true,
-    default: mockFn
-  };
-});
+jest.mock('../src/utils/spreadsheetUpdater', () => ({
+  updateSpreadsheetWithLocalChanges: jest.fn().mockResolvedValue(undefined)
+}));
 
 describe('getSpreadSheetData', () => {
   // Mock GoogleSpreadsheet
@@ -59,8 +55,7 @@ describe('getSpreadSheetData', () => {
   
   beforeEach(() => {
     jest.clearAllMocks();
-    
-    // Set up mock implementations
+    process.env.GOOGLE_SPREADSHEET_ID = 'test-spreadsheet-id';
     (mockDoc.loadInfo as jest.Mock) = jest.fn().mockResolvedValue(undefined);
     // Use type assertion to deal with readonly property
     (mockDoc as unknown as Record<string, unknown>).sheetsByTitle = { 'home': mockSheet };
@@ -96,6 +91,7 @@ describe('getSpreadSheetData', () => {
   });
   
   afterEach(() => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
     jest.restoreAllMocks();
   });
 
@@ -115,14 +111,14 @@ describe('getSpreadSheetData', () => {
     await getSpreadSheetData(['home']);
     
     // Check paths are using defaults
-    expect(path.join).toHaveBeenCalledWith(expect.anything(), 'src/lib/data.json');
+    expect(path.join).toHaveBeenCalledWith(expect.anything(), 'src/lib/languageData.json');
     // Instead of checking for path.join with translations, check for mkdir call
     expect(fs.mkdirSync).toHaveBeenCalled();
   });
 
   test('should use custom options when provided', async () => {
     await getSpreadSheetData(['home'], {
-      dataJsonPath: '/custom/data.json',
+      dataJsonPath: '/custom/languageData.json',
       translationsOutputDir: '/custom/translations',
       localesOutputPath: '/custom/locales.ts',
       waitSeconds: 2
@@ -184,20 +180,15 @@ describe('getSpreadSheetData', () => {
     };
     (findLocalChanges as jest.Mock).mockReturnValue(mockChanges);
     
-    // Import the actual mock function directly to avoid reference issues
-    const spreadsheetUpdater = require('../src/utils/spreadsheetUpdater').default;
-    
     // Call with autoTranslate = true
     await getSpreadSheetData(['home'], { autoTranslate: true });
     
-    // Log the mock calls for debugging
-    console.log('Mock calls:', spreadsheetUpdater.mock.calls);
-    
     // Check that the function was called
-    expect(spreadsheetUpdater).toHaveBeenCalled();
+    expect(updateSpreadsheetWithLocalChanges).toHaveBeenCalled();
     
     // Verify the arguments individually
-    const firstCall = spreadsheetUpdater.mock.calls[0];
+    const mockFn = updateSpreadsheetWithLocalChanges as jest.Mock;
+    const firstCall = mockFn.mock.calls[0];
     expect(firstCall[1]).toEqual(mockChanges); // changes
     expect(firstCall[3]).toBe(true); // autoTranslate
     
@@ -210,13 +201,96 @@ describe('getSpreadSheetData', () => {
     await getSpreadSheetData(['home']);
     
     // Check that the function was called again
-    expect(spreadsheetUpdater).toHaveBeenCalled();
+    expect(updateSpreadsheetWithLocalChanges).toHaveBeenCalled();
     
     // Verify the arguments individually for the second call
-    const secondCall = spreadsheetUpdater.mock.calls[0];
+    const secondCall = (updateSpreadsheetWithLocalChanges as jest.Mock).mock.calls[0];
     expect(secondCall[1]).toEqual(mockChanges); // changes
     expect(secondCall[3]).toBe(false); // autoTranslate (default)
   });
 });
 
-// Add more focused integration tests if needed
+// ---------------------------------------------------------------------------
+// Public sheet path tests
+// ---------------------------------------------------------------------------
+
+jest.mock('../src/utils/publicSheetReader', () => ({
+  readPublicSheet: jest.fn(),
+}));
+
+import { readPublicSheet } from '../src/utils/publicSheetReader';
+
+describe('getSpreadSheetData (publicSheet mode)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Reset fs / path mocks that are already mocked at module level above
+    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    (fs.statSync as jest.Mock).mockReturnValue({ mtime: new Date() });
+    (fs.readdirSync as jest.Mock).mockReturnValue([]);
+    (fs.readFileSync as jest.Mock).mockReturnValue('{}');
+    (fs.writeFileSync as jest.Mock).mockReturnValue(undefined);
+    (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
+
+    (path.join as jest.Mock).mockImplementation((...args: string[]) => args.join('/'));
+    (path.dirname as jest.Mock).mockReturnValue('/mock/path');
+
+    jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('uses readPublicSheet instead of the authenticated path when publicSheet=true', async () => {
+    (readPublicSheet as jest.Mock).mockResolvedValue([
+      { key: 'welcome', en: 'Welcome', de: 'Willkommen' },
+    ]);
+
+    await getSpreadSheetData(['home'], {
+      spreadsheetId: 'PUBLIC_SHEET_ID',
+      publicSheet: true,
+    });
+
+    expect(readPublicSheet).toHaveBeenCalled();
+    // createAuthClient / GoogleSpreadsheet should NOT be called
+    const { createAuthClient } = require('../src/utils/auth');
+    expect(createAuthClient).not.toHaveBeenCalled();
+  });
+
+  test('uses spreadsheetId from options instead of env var', async () => {
+    (readPublicSheet as jest.Mock).mockResolvedValue([]);
+
+    await getSpreadSheetData(['home'], {
+      spreadsheetId: 'OPTION_SHEET_ID',
+      publicSheet: true,
+    });
+
+    expect(readPublicSheet).toHaveBeenCalledWith('OPTION_SHEET_ID', expect.any(String));
+  });
+
+  test('warns and continues when a sheet cannot be fetched in public mode', async () => {
+    (readPublicSheet as jest.Mock).mockRejectedValue(new Error('Not public'));
+
+    const result = await getSpreadSheetData(['home'], {
+      spreadsheetId: 'PUBLIC_SHEET_ID',
+      publicSheet: true,
+    });
+
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('could not be fetched'));
+    expect(result).toEqual({});
+  });
+
+  test('throws when no spreadsheetId is available in public mode', async () => {
+    // Remove the env var for this test
+    const original = process.env.GOOGLE_SPREADSHEET_ID;
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+
+    await expect(
+      getSpreadSheetData(['home'], { publicSheet: true }),
+    ).rejects.toThrow(/No spreadsheet ID provided/);
+
+    process.env.GOOGLE_SPREADSHEET_ID = original;
+  });
+});

@@ -1,0 +1,129 @@
+# Release workflow
+#
+# Gate: A full `quality-gate` job (multi-node test matrix) MUST pass before the
+#       semantic-release step is allowed to run. This prevents broken releases.
+#
+# Triggered: push to main / develop / next (same branches as CI)
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - next
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # ────────────────────────────────────────────────────────────────────────────
+  # QUALITY GATE – must pass on ALL nodes before release is allowed
+  # ────────────────────────────────────────────────────────────────────────────
+  quality-gate:
+    name: Quality Gate (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
+      fail-fast: true   # fail fast so we don't waste minutes on a broken build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit production dependencies
+        # Only audit production deps – devDep vulnerabilities in the npm CLI
+        # bundled inside @semantic-release/npm are unfixable from our side.
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # RELEASE – only runs when every quality-gate matrix leg succeeds
+  # ────────────────────────────────────────────────────────────────────────────
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    needs: [quality-gate]   # ← blocks release until all quality gates pass
+
+    permissions:
+      contents: write       # create tags + commits
+      issues: write         # comment on issues
+      pull-requests: write  # comment on PRs
+      id-token: write       # npm provenance
+
+    steps:
+      - name: Checkout (full history required by semantic-release)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Build action bundle
+        run: npm run build:action
+
+      - name: Release
+        id: release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npx semantic-release
+
+      # After a successful release, update the floating major-version tag
+      # (e.g. v2) so that GitHub Action users referencing @v2 always get
+      # the latest 2.x.x release.
+      - name: Update floating major-version tag
+        if: steps.release.outcome == 'success'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Read the just-released version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+
+          echo "Released version: v${VERSION}"
+          echo "Updating floating tag: v${MAJOR}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Configure remote with token (persist-credentials: false above)
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+          # Force-create the major-version tag and push it
+          git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}"
+          git push origin "v${MAJOR}" --force

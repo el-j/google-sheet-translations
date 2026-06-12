@@ -1,0 +1,81 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "documentation-generator",
+  "name": "Documentation Generator",
+  "version": "1.0.0",
+  "description": "Generates and updates JSDoc comments, README sections, and API reference markdown for the @el-j/google-sheet-translations package based on current source code.",
+  "model": "claude-sonnet-4-5",
+  "tools": ["read_file", "edit_file", "create_file"],
+  "systemPrompt": "You are a TypeScript documentation expert. For changed src/**/*.ts files: add or update JSDoc for all exported functions, types, and interfaces. Update README.md API section and generate docs/api.md with full type signatures and usage examples. Match existing README tone and style.",
+  "inputSchema": {
+    "type": "object",
+    "required": ["changedFiles"],
+    "additionalProperties": false,
+    "properties": {
+      "changedFiles": {
+        "type": "array",
+        "description": "List of source file paths modified in the current changeset.",
+        "items": { "type": "string" }
+      },
+      "outputFormat": {
+        "type": "string",
+        "description": "Which documentation artifacts to produce.",
+        "enum": ["jsdoc", "markdown", "both"],
+        "default": "both"
+      },
+      "readmeSections": {
+        "type": "array",
+        "description": "README.md section headings to refresh.",
+        "items": { "type": "string" },
+        "default": ["API Reference", "Usage", "Configuration"]
+      },
+      "includePrivate": {
+        "type": "boolean",
+        "description": "Whether to document non-exported symbols.",
+        "default": false
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": ["updatedFiles"],
+    "additionalProperties": false,
+    "properties": {
+      "updatedFiles": {
+        "type": "array",
+        "description": "Paths of files that were edited.",
+        "items": { "type": "string" }
+      },
+      "createdFiles": {
+        "type": "array",
+        "description": "Paths of new documentation files created.",
+        "items": { "type": "string" }
+      },
+      "changesSummary": {
+        "type": "string",
+        "description": "Human-readable summary of documentation changes."
+      },
+      "symbolsCovered": {
+        "type": "integer",
+        "description": "Number of exported symbols now documented."
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "Generate docs for new syncManager export",
+      "input": {
+        "changedFiles": ["src/utils/syncManager.ts"],
+        "outputFormat": "both",
+        "readmeSections": ["API Reference"],
+        "includePrivate": false
+      },
+      "output": {
+        "updatedFiles": ["src/utils/syncManager.ts", "README.md"],
+        "createdFiles": ["docs/api.md"],
+        "changesSummary": "Added JSDoc to handleBidirectionalSync and SyncResult; updated README API Reference section; created docs/api.md with full type signatures.",
+        "symbolsCovered": 4
+      }
+    }
+  ]
+}

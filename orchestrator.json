@@ -1,0 +1,751 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "name": "@el-j/google-sheet-translations",
+  "version": "1.3.0",
+  "description": "A package to manage translations stored in Google Spreadsheets",
+  "repository": "el-j/google-sheet-translations",
+  "features": [
+    "Authenticated access via Google Cloud service account (JWT)",
+    "Unauthenticated public sheet access via Google Visualization API (gviz/tq)",
+    "Bidirectional sync (authenticated mode only)",
+    "Auto-translation via GOOGLETRANSLATE formulas (authenticated mode only)",
+    "Smart locale filtering and normalization",
+    "TypeScript strict mode"
+  ],
+  "publicSheetMode": {
+    "description": "Read public Google Spreadsheets without any credentials using the gviz/tq endpoint",
+    "requiredOptions": [
+      "spreadsheetId or GOOGLE_SPREADSHEET_ID env var",
+      "publicSheet: true"
+    ],
+    "limitations": [
+      "read-only",
+      "no bidirectional sync",
+      "no auto-translate"
+    ],
+    "demoSpreadsheet": "https://docs.google.com/spreadsheets/d/1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0/edit"
+  },
+  "techStack": {
+    "language": "TypeScript",
+    "runtime": "Node.js >=18.0.0",
+    "testFramework": "Jest + ts-jest",
+    "buildTool": "tsc",
+    "packageManager": "npm",
+    "keyDependencies": [
+      "google-spreadsheet@^4.1.5",
+      "google-auth-library@^10.1.0"
+    ]
+  },
+  "agents": [
+    {
+      "id": "code-auditor",
+      "name": "Code Auditor",
+      "description": "Deep static analysis of TypeScript source for quality, maintainability, and correctness issues.",
+      "definitionFile": "agents/code-auditor.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": [
+        "read_file",
+        "grep",
+        "glob",
+        "bash"
+      ],
+      "trigger": {
+        "events": [
+          "push",
+          "pull_request",
+          "schedule"
+        ],
+        "schedule": "0 2 * * 1"
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "targetPaths"
+        ],
+        "properties": {
+          "targetPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "severity": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ],
+            "default": "medium"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "issues",
+          "summary"
+        ],
+        "properties": {
+          "issues": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "file",
+                "line",
+                "severity",
+                "message",
+                "rule"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "integer"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                  ]
+                },
+                "message": {
+                  "type": "string"
+                },
+                "rule": {
+                  "type": "string"
+                },
+                "suggestion": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "totalIssues": {
+                "type": "integer"
+              },
+              "bySeverity": {
+                "type": "object"
+              },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "type-safety-enforcer",
+      "name": "Type Safety Enforcer",
+      "description": "Eliminates unsafe TypeScript patterns: any casts, as-casts, missing generics, and loose null checks.",
+      "definitionFile": "agents/type-safety-enforcer.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": [
+        "read_file",
+        "edit_file",
+        "bash"
+      ],
+      "trigger": {
+        "events": [
+          "pull_request"
+        ],
+        "conditions": [
+          "code-auditor.issues[?severity=='high']"
+        ]
+      },
+      "parallel": false,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "auditIssues"
+        ],
+        "properties": {
+          "auditIssues": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "dryRun": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "fixedFiles",
+          "remainingIssues"
+        ],
+        "properties": {
+          "fixedFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "remainingIssues": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "patchSummary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "test-coverage-improver",
+      "name": "Test Coverage Improver",
+      "description": "Writes missing Jest tests following ts-jest patterns; targets edge cases and error paths.",
+      "definitionFile": "agents/test-coverage-improver.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": [
+        "read_file",
+        "create_file",
+        "bash"
+      ],
+      "trigger": {
+        "events": [
+          "push"
+        ],
+        "conditions": [
+          "coverage.lines < 80"
+        ]
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "coverageReport"
+        ],
+        "properties": {
+          "coverageReport": {
+            "type": "object"
+          },
+          "targetCoverage": {
+            "type": "number",
+            "default": 80
+          },
+          "focusPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "createdFiles",
+          "coverageDelta"
+        ],
+        "properties": {
+          "createdFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "coverageDelta": {
+            "type": "number"
+          },
+          "newCoverage": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    {
+      "id": "security-auditor",
+      "name": "Security Auditor",
+      "description": "Reviews env var handling, path traversal risks, injection vectors, and accidental secret logging.",
+      "definitionFile": "agents/security-auditor.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": [
+        "read_file",
+        "grep",
+        "bash"
+      ],
+      "trigger": {
+        "events": [
+          "push",
+          "pull_request",
+          "schedule"
+        ],
+        "schedule": "0 3 * * *"
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "targetPaths"
+        ],
+        "properties": {
+          "targetPaths": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rulesets": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [
+              "owasp-top10",
+              "cwe-top25"
+            ]
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "vulnerabilities",
+          "passed"
+        ],
+        "properties": {
+          "vulnerabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "file",
+                "line",
+                "cwe",
+                "severity",
+                "description"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "line": {
+                  "type": "integer"
+                },
+                "cwe": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high",
+                    "critical"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "remediation": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "passed": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "id": "documentation-generator",
+      "name": "Documentation Generator",
+      "description": "Generates and updates JSDoc comments, README sections, and API reference from source.",
+      "definitionFile": "agents/documentation-generator.json",
+      "modelHint": "claude-sonnet-4-5",
+      "tools": [
+        "read_file",
+        "edit_file",
+        "create_file"
+      ],
+      "trigger": {
+        "events": [
+          "push"
+        ],
+        "conditions": [
+          "branch == 'main'"
+        ]
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "changedFiles"
+        ],
+        "properties": {
+          "changedFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "outputFormat": {
+            "type": "string",
+            "enum": [
+              "jsdoc",
+              "markdown",
+              "both"
+            ],
+            "default": "both"
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "updatedFiles"
+        ],
+        "properties": {
+          "updatedFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdFiles": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "changesSummary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "id": "public-sheet-validator",
+      "name": "Public Sheet Validator",
+      "description": "Verifies that the demo spreadsheet is accessible, has the expected structure, and that the gviz endpoint returns valid data. Runs on schedule to alert if the demo link breaks.",
+      "definitionFile": "agents/public-sheet-validator.json",
+      "modelHint": "claude-haiku-4-5",
+      "tools": [
+        "bash"
+      ],
+      "trigger": {
+        "events": [
+          "schedule"
+        ],
+        "schedule": "0 6 * * 1"
+      },
+      "parallel": true,
+      "inputSchema": {
+        "type": "object",
+        "required": [
+          "spreadsheetId"
+        ],
+        "properties": {
+          "spreadsheetId": {
+            "type": "string"
+          },
+          "sheetNames": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "outputSchema": {
+        "type": "object",
+        "required": [
+          "accessible",
+          "hasCorrectStructure"
+        ],
+        "properties": {
+          "accessible": {
+            "type": "boolean"
+          },
+          "hasCorrectStructure": {
+            "type": "boolean"
+          },
+          "localesFound": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "pipeline": {
+    "stages": [
+      {
+        "id": "audit",
+        "name": "Audit",
+        "description": "Parallel static analysis: code quality + security",
+        "parallel": true,
+        "agents": [
+          "code-auditor",
+          "security-auditor"
+        ],
+        "onFailure": "stop",
+        "outputArtifacts": [
+          "audit-report.json",
+          "security-report.json"
+        ]
+      },
+      {
+        "id": "fix",
+        "name": "Fix",
+        "description": "Apply type-safety and security fixes based on audit findings",
+        "parallel": false,
+        "agents": [
+          "type-safety-enforcer"
+        ],
+        "dependsOn": [
+          "audit"
+        ],
+        "conditions": [
+          "audit.code-auditor.summary.totalIssues > 0"
+        ],
+        "onFailure": "continue",
+        "outputArtifacts": [
+          "fix-report.json"
+        ]
+      },
+      {
+        "id": "test",
+        "name": "Test",
+        "description": "Run existing tests and improve coverage",
+        "parallel": false,
+        "agents": [
+          "test-coverage-improver"
+        ],
+        "dependsOn": [
+          "fix"
+        ],
+        "onFailure": "stop",
+        "outputArtifacts": [
+          "coverage/lcov.info"
+        ]
+      },
+      {
+        "id": "document",
+        "name": "Document",
+        "description": "Regenerate docs for changed public API",
+        "parallel": true,
+        "agents": [
+          "documentation-generator"
+        ],
+        "dependsOn": [
+          "test"
+        ],
+        "onFailure": "continue",
+        "outputArtifacts": [
+          "docs/api.md"
+        ]
+      },
+      {
+        "id": "sync-and-verify",
+        "name": "Sync & Verify Translations",
+        "description": "Push i18n keys to the demo spreadsheet, auto-translate via GOOGLETRANSLATE formulas, then read back and verify all keys returned correctly.",
+        "parallel": false,
+        "agents": [],
+        "dependsOn": ["document"],
+        "commands": [
+          "node scripts/sync-demo-translations.mjs",
+          "node scripts/verify-demo-translations.mjs"
+        ],
+        "secrets": {
+          "GOOGLE_CLIENT_EMAIL": "mail",
+          "GOOGLE_PRIVATE_KEY": "private-key",
+          "GOOGLE_SPREADSHEET_ID": "docId"
+        },
+        "onFailure": "continue",
+        "outputArtifacts": []
+      },
+      {
+        "id": "release",
+        "name": "Release",
+        "description": "Version bump, changelog, and npm publish",
+        "parallel": false,
+        "agents": [],
+        "dependsOn": [
+          "sync-and-verify"
+        ],
+        "commands": [
+          "npm run build",
+          "npm publish --access public"
+        ],
+        "onFailure": "stop",
+        "conditions": [
+          "branch == 'main'",
+          "test.coverage.lines >= 80"
+        ]
+      }
+    ]
+  },
+  "policies": {
+    "retries": {
+      "default": 2,
+      "perAgent": {
+        "code-auditor": 3,
+        "security-auditor": 3,
+        "type-safety-enforcer": 1,
+        "test-coverage-improver": 2,
+        "documentation-generator": 2
+      },
+      "backoffSeconds": 10
+    },
+    "timeouts": {
+      "defaultSeconds": 300,
+      "perAgent": {
+        "code-auditor": 180,
+        "security-auditor": 180,
+        "type-safety-enforcer": 300,
+        "test-coverage-improver": 600,
+        "documentation-generator": 120
+      }
+    },
+    "escalation": {
+      "onCriticalVulnerability": "block-merge",
+      "onAuditScoreBelow": 60,
+      "notifyChannel": "security-alerts",
+      "createIssue": true
+    },
+    "concurrency": {
+      "maxParallelAgents": 3
+    }
+  },
+  "notifications": {
+    "channels": {
+      "slack": {
+        "enabled": false,
+        "webhookUrl": "${SLACK_WEBHOOK_URL}",
+        "events": [
+          "pipeline.failed",
+          "security.critical"
+        ]
+      },
+      "github": {
+        "enabled": true,
+        "createCheckRun": true,
+        "commentOnPR": true
+      },
+      "email": {
+        "enabled": false,
+        "recipients": [],
+        "events": [
+          "pipeline.failed"
+        ]
+      }
+    }
+  },
+  "todo": {
+    "description": "Comprehensive task backlog. Track all future work here. Status: open | in-progress | done | deferred.",
+    "items": [
+      {
+        "id": "T-001",
+        "title": "Fix docs.yml: use correct GitHub Secrets (mail / private-key / docId)",
+        "status": "done",
+        "priority": "critical",
+        "detail": "Updated docs.yml to map mail→GOOGLE_CLIENT_EMAIL, private-key→GOOGLE_PRIVATE_KEY, docId→GOOGLE_SPREADSHEET_ID. Fixed broken if-condition using a pre-check step."
+      },
+      {
+        "id": "T-002",
+        "title": "Push website i18n keys to demo spreadsheet on every main push",
+        "status": "done",
+        "priority": "high",
+        "detail": "scripts/sync-demo-translations.mjs pushes landingPage.en.json + ui.en.json keys with GOOGLETRANSLATE formulas. Runs in docs.yml after build."
+      },
+      {
+        "id": "T-003",
+        "title": "Verify translations are readable back from spreadsheet after sync",
+        "status": "done",
+        "priority": "high",
+        "detail": "scripts/verify-demo-translations.mjs reads back translations via public gviz endpoint, checks all expected keys are present. Runs in docs.yml after sync."
+      },
+      {
+        "id": "T-004",
+        "title": "Fixed wrong version number in docs (v2.0.0 → v1.3.0)",
+        "status": "done",
+        "priority": "medium",
+        "detail": "website/changelog.md incorrectly listed v2.0.0 as current. Fixed to v1.3.0 with correct feature list. src/index.ts wrong v2.0.0 comment also fixed."
+      },
+      {
+        "id": "T-005",
+        "title": "Add global language switcher to VitePress nav bar",
+        "status": "done",
+        "priority": "high",
+        "detail": "Created website/.vitepress/theme/index.ts + LangSwitcher.vue. Injects a locale dropdown into the nav-bar-content-after slot. Synced with translations from the spreadsheet at build time. Selection persisted in localStorage."
+      },
+      {
+        "id": "T-006",
+        "title": "Full website i18n: translate all page content via spreadsheet",
+        "status": "open",
+        "priority": "high",
+        "detail": "Currently only landingPage and i18n (UI) keys are translated. Future: push all docs page content as i18n keys and render translated content per locale. Requires significant doc restructuring. Consider VitePress built-in locales config."
+      },
+      {
+        "id": "T-007",
+        "title": "Locale regex consolidation",
+        "status": "open",
+        "priority": "low",
+        "detail": "Deferred from v2: consolidate locale validation regex into a single canonical pattern. Currently there are multiple similar regex patterns across localeFilter.ts and localeNormalizer.ts."
+      },
+      {
+        "id": "T-008",
+        "title": "SpreadsheetUpdater helper extraction",
+        "status": "open",
+        "priority": "low",
+        "detail": "Deferred from v2: extract reusable helper functions from spreadsheetUpdater.ts to reduce duplication."
+      },
+      {
+        "id": "T-009",
+        "title": "Remove duplicate tests in tests/basic.test.js",
+        "status": "open",
+        "priority": "low",
+        "detail": "Deferred from v2: tests/basic.test.js has duplicate test cases that should be deduplicated or migrated to the TypeScript test files."
+      },
+      {
+        "id": "T-010",
+        "title": "Add language switcher to all doc pages (not just Live Demo)",
+        "status": "open",
+        "priority": "medium",
+        "detail": "The global LangSwitcher is in the nav bar and stores the selected locale. Next step: consume selected locale in all page components that have i18n keys in the spreadsheet."
+      },
+      {
+        "id": "T-011",
+        "title": "Add translated UI strings to VitePress config (nav/footer) dynamically",
+        "status": "open",
+        "priority": "medium",
+        "detail": "nav_guide, nav_api, nav_npm, footer_license, footer_copyright keys are in ui.en.json / spreadsheet. Plan to inject these into VitePress themeConfig at build time via the translations data loader."
+      },
+      {
+        "id": "T-012",
+        "title": "Add weekly schedule to docs.yml to keep demo spreadsheet fresh",
+        "status": "open",
+        "priority": "low",
+        "detail": "Add `schedule: - cron: '0 6 * * 1'` to docs.yml so GOOGLETRANSLATE formulas are re-evaluated weekly even without a code push."
+      }
+    ]
+  }
+}

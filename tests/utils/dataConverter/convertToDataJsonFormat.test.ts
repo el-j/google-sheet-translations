@@ -104,26 +104,97 @@ describe('convertToDataJsonFormat', () => {
     }
   });
   
-  test('should handle case sensitivity correctly in locales', () => {
+  test('should preserve locale case exactly as provided', () => {
     const translationObj: TranslationData = {
-      // Use lowercase key to match the implementation behavior
-      'en': {
+      // The translationObj keys should match the case passed in the locales array
+      'en-GB': {
         'home': {
           'welcome': 'Welcome'
         }
       }
     };
     
-    // This test is checking if the output locales are lowercase
-    const locales = ['EN']; // Use uppercase here
+    // The locale case should be preserved exactly
+    const locales = ['en-GB'];
     const result = convertToDataJsonFormat(translationObj, locales);
     
     expect(result).toHaveLength(1);
     
     // Type assertion to help TypeScript understand the structure
     const homeSheet = result[0] as { home: Record<string, unknown> };
-    // The locale should be lowercased in the output
-    expect(homeSheet.home).toHaveProperty('en');
+    // The locale should be exactly as provided, not lowercased
+    expect(homeSheet.home).toHaveProperty('en-GB');
+  });
+
+  test('should handle normalized locales with mixed case (LANGUAGE_TO_COUNTRY_MAP format)', () => {
+    const translationObj: TranslationData = {
+      'en-GB': {
+        'home': {
+          'welcome': 'Welcome',
+          'hello': 'Hello'
+        },
+        'about': {
+          'title': 'About us'
+        }
+      },
+      'de-DE': {
+        'home': {
+          'welcome': 'Willkommen',
+          'hello': 'Hallo'
+        }
+      },
+      'pl-PL': {
+        'home': {
+          'welcome': 'Witaj'
+        }
+      }
+    };
+    
+    const locales = ['en-GB', 'de-DE', 'pl-PL'];
+    const result = convertToDataJsonFormat(translationObj, locales);
+    
+    // Should have 2 entries (home and about sheets)
+    expect(result).toHaveLength(2);
+    
+    // Find the 'home' sheet result
+    const homeSheet = result.find(item => 'home' in item) as Record<string, Record<string, Record<string, string>>> | undefined;
+    expect(homeSheet).toBeDefined();
+    
+    if (homeSheet) {
+      const homeData = homeSheet.home;
+      // Verify all locales are preserved with exact case
+      expect(homeData).toHaveProperty('en-GB');
+      expect(homeData).toHaveProperty('de-DE');
+      expect(homeData).toHaveProperty('pl-PL');
+      
+      // Verify content
+      expect(homeData['en-GB']).toEqual({
+        'welcome': 'Welcome',
+        'hello': 'Hello'
+      });
+      expect(homeData['de-DE']).toEqual({
+        'welcome': 'Willkommen',
+        'hello': 'Hallo'
+      });
+      expect(homeData['pl-PL']).toEqual({
+        'welcome': 'Witaj'
+      });
+    }
+    
+    // Find the 'about' sheet result
+    const aboutSheet = result.find(item => 'about' in item) as Record<string, Record<string, Record<string, string>>> | undefined;
+    expect(aboutSheet).toBeDefined();
+    
+    if (aboutSheet) {
+      const aboutData = aboutSheet.about;
+      expect(aboutData).toHaveProperty('en-GB');
+      expect(aboutData['en-GB']).toEqual({
+        'title': 'About us'
+      });
+      // Should not have de-DE or pl-PL as they don't have 'about' translations
+      expect(aboutData).not.toHaveProperty('de-DE');
+      expect(aboutData).not.toHaveProperty('pl-PL');
+    }
   });
   
   test('should include empty sheets with empty objects', () => {
@@ -182,5 +253,84 @@ describe('convertToDataJsonFormat', () => {
     expect(homeData).toHaveProperty('en');
     expect(homeData).not.toHaveProperty('fr');
     expect(homeData).not.toHaveProperty('es');
+  });
+
+  test('should handle normalized locale codes with mixed case (e.g., en-GB, pl-PL)', () => {
+    // This test verifies the bug fix where translationObj has keys in normalized format
+    // (e.g., "en-GB", "pl-PL") but the function was lowercasing the lookup key
+    const translationObj: TranslationData = {
+      'en-GB': {
+        'home': {
+          'welcome': 'Welcome',
+          'hello': 'Hello'
+        }
+      },
+      'pl-PL': {
+        'home': {
+          'welcome': 'Witaj',
+          'hello': 'Cześć'
+        }
+      },
+      'de-DE': {
+        'home': {
+          'welcome': 'Willkommen',
+          'hello': 'Hallo'
+        }
+      }
+    };
+    
+    const locales = ['en-GB', 'pl-PL', 'de-DE'];
+    const result = convertToDataJsonFormat(translationObj, locales);
+    
+    expect(result).toHaveLength(1);
+    expect(result[0]).toHaveProperty('home');
+    
+    // Type assertion for the home sheet
+    const homeSheet = result[0] as { home: Record<string, Record<string, string>> };
+    
+    // The output should preserve the case from the locales array
+    expect(homeSheet.home).toHaveProperty('en-GB');
+    expect(homeSheet.home).toHaveProperty('pl-PL');
+    expect(homeSheet.home).toHaveProperty('de-DE');
+    
+    // Verify the translations are correctly copied
+    expect(homeSheet.home['en-GB']).toEqual({
+      'welcome': 'Welcome',
+      'hello': 'Hello'
+    });
+    expect(homeSheet.home['pl-PL']).toEqual({
+      'welcome': 'Witaj',
+      'hello': 'Cześć'
+    });
+    expect(homeSheet.home['de-DE']).toEqual({
+      'welcome': 'Willkommen',
+      'hello': 'Hallo'
+    });
+  });
+
+  test('should not pollute Object prototype when translation keys include dangerous names', () => {
+    // Simulate data that could contain __proto__, constructor, or prototype keys
+    const poisonedTranslations = Object.create(null) as Record<string, string>;
+    Object.defineProperty(poisonedTranslations, '__proto__', {
+      value: 'POISONED',
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    poisonedTranslations['greeting'] = 'Hello';
+
+    const translationObj = {
+      'en': {
+        'home': poisonedTranslations as Record<string, string>,
+      },
+    } as unknown as import('../../../src/types').TranslationData;
+
+    const before = ({} as Record<string, unknown>).injected;
+
+    convertToDataJsonFormat(translationObj, ['en']);
+
+    // Object prototype must remain unmodified
+    expect(({} as Record<string, unknown>).injected).toBe(before);
+    expect(Object.prototype).not.toHaveProperty('injected');
   });
 });

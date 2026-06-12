@@ -10,6 +10,7 @@ export function getFileLastModified(filePath: string): Date | null {
 		const stats = fs.statSync(filePath);
 		return stats.mtime;
 	} catch (error) {
+		console.warn(`Could not read file stats for "${filePath}":`, error);
 		return null;
 	}
 }

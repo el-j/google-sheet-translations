@@ -1,4 +1,4 @@
-import { validateEnv } from '../../src/utils/validateEnv';
+import { validateEnv, validateCredentials } from '../../src/utils/validateEnv';
 import type { GoogleEnvVars } from '../../src/types';
 
 describe('validateEnv', () => {
@@ -68,5 +68,47 @@ describe('validateEnv', () => {
       GOOGLE_PRIVATE_KEY: privateKey,
       GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
     });
+  });
+});
+
+describe('validateCredentials', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  test('should throw when GOOGLE_CLIENT_EMAIL is missing', () => {
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    process.env.GOOGLE_PRIVATE_KEY = 'key';
+    expect(() => validateCredentials()).toThrow(/Missing required environment variables/);
+  });
+
+  test('should throw when GOOGLE_PRIVATE_KEY is missing', () => {
+    process.env.GOOGLE_CLIENT_EMAIL = 'test@example.com';
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    expect(() => validateCredentials()).toThrow(/Missing required environment variables/);
+  });
+
+  test('should throw when both credentials are missing', () => {
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    expect(() => validateCredentials()).toThrow(/Missing required environment variables/);
+  });
+
+  test('should return credentials when both are set (no spreadsheet ID required)', () => {
+    process.env.GOOGLE_CLIENT_EMAIL = 'service@project.iam.gserviceaccount.com';
+    process.env.GOOGLE_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n';
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+
+    const result = validateCredentials();
+    expect(result.GOOGLE_CLIENT_EMAIL).toBe('service@project.iam.gserviceaccount.com');
+    expect(result.GOOGLE_PRIVATE_KEY).toContain('BEGIN PRIVATE KEY');
+    // TypeScript type must not include GOOGLE_SPREADSHEET_ID
+    expect((result as Record<string, unknown>)['GOOGLE_SPREADSHEET_ID']).toBeUndefined();
   });
 });

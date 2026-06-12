@@ -1,0 +1,148 @@
+name: 'Fetch Google Sheet Translations'
+description: >-
+  Fetch translations from Google Sheets and write locale JSON files, locales.ts index, and languageData.json snapshot.
+
+branding:
+  icon: 'globe'
+  color: 'green'
+
+inputs:
+  google-client-email:
+    description: 'Google service-account client e-mail (GOOGLE_CLIENT_EMAIL)'
+    required: true
+  google-private-key:
+    description: 'Google service-account private key (GOOGLE_PRIVATE_KEY)'
+    required: true
+  google-spreadsheet-id:
+    description: 'ID of the Google Spreadsheet (GOOGLE_SPREADSHEET_ID). If omitted and auto-create is true, a new spreadsheet is created automatically.'
+    required: false
+    default: ''
+  sheet-titles:
+    description: >
+      Comma-separated list of sheet tab names to process
+      (e.g. "landingPage,about"). The "i18n" sheet is always included
+      automatically.
+    required: true
+  row-limit:
+    description: 'Maximum number of rows to read per sheet'
+    required: false
+    default: '100'
+  wait-seconds:
+    description: >
+      Seconds to wait between consecutive Google Sheets write API calls
+      (proactive throttle) and as the base back-off delay when retrying
+      rate-limited calls (HTTP 429/503). Increase this value if you hit quota
+      errors during sync or fresh-push with many keys.
+    required: false
+    default: '1'
+  translations-output-dir:
+    description: 'Directory to write per-locale JSON translation files'
+    required: false
+    default: 'translations'
+  locales-output-path:
+    description: 'File path for the generated locales.ts index'
+    required: false
+    default: 'src/i18n/locales.ts'
+  data-json-path:
+    description: 'File path for the languageData.json snapshot'
+    required: false
+    default: 'src/lib/languageData.json'
+  sync-local-changes:
+    description: >
+      Push local changes from languageData.json back to the spreadsheet
+      before fetching. Set to "false" to disable.
+    required: false
+    default: 'true'
+  auto-translate:
+    description: >
+      Automatically add GOOGLETRANSLATE formulas for missing locale columns
+      when new keys are pushed to the spreadsheet. Set to "true" to enable.
+    required: false
+    default: 'false'
+  override:
+    description: >
+      When "true" and auto-translate is also "true", existing translations in
+      other language columns are overwritten with GOOGLETRANSLATE formulas
+      whenever a key is pushed.  When "false" (the default) only empty cells
+      receive a formula – existing translations are preserved.
+    required: false
+    default: 'false'
+  clean-push:
+    description: >
+      When "true", ALL keys from the local languageData.json are pushed to the
+      spreadsheet – including keys that already exist there – and the
+      file-timestamp guard is bypassed.  Existing cell values are updated with
+      the local value when they differ; whether other language columns receive
+      GOOGLETRANSLATE formulas depends on the auto-translate and override flags.
+      Useful when the file has been copied from another project and the
+      spreadsheet needs a complete refresh.  Default: "false".
+    required: false
+    default: 'false'
+  auto-create:
+    description: >
+      Automatically create a new Google Spreadsheet when no spreadsheet ID is
+      provided. Requires google-client-email and google-private-key.
+    required: false
+    default: 'true'
+  spreadsheet-title:
+    description: 'Title for the auto-created spreadsheet'
+    required: false
+    default: 'google-sheet-translations'
+  source-locale:
+    description: 'Source locale for GOOGLETRANSLATE formulas in the auto-created spreadsheet'
+    required: false
+    default: 'en'
+  target-locales:
+    description: 'Comma-separated target locales for auto-translation (e.g. "de,fr,es")'
+    required: false
+    default: 'de,fr,es,it,pt,ja,zh'
+  node-version:
+    description: 'DEPRECATED – no longer used. The action always runs on Node 20.'
+    required: false
+    default: '20'
+  package-version:
+    description: 'DEPRECATED – no longer used. The bundled package version is fixed at release time.'
+    required: false
+    default: 'latest'
+  drive-folder-id:
+    description: >
+      Google Drive folder ID to scan for spreadsheets and/or images.
+      When set, the action automatically discovers all Google Spreadsheet
+      files inside the folder (and sub-folders) and fetches translations
+      from each one.
+    required: false
+  scan-for-spreadsheets:
+    description: >
+      Scan the drive-folder-id for Google Spreadsheet files automatically.
+      Set to "false" to disable auto-discovery (useful when you supply
+      spreadsheet-ids explicitly).
+    required: false
+    default: 'true'
+  spreadsheet-ids:
+    description: >
+      Comma-separated list of additional spreadsheet IDs to fetch translations
+      from, in addition to (or instead of) Drive folder auto-discovery.
+      Example: "1abc…,1def…"
+    required: false
+  sync-images:
+    description: >
+      When "true", downloads image assets from the Drive folder to the local
+      path specified by image-output-path.  Requires drive-folder-id.
+    required: false
+    default: 'false'
+  image-output-path:
+    description: 'Local directory to download Drive images into'
+    required: false
+    default: './public/remote-images'
+
+outputs:
+  translations-dir:
+    description: 'Absolute path of the directory containing locale JSON files'
+  locales-file:
+    description: 'Absolute path of the generated locales.ts file'
+  data-json-file:
+    description: 'Absolute path of the languageData.json snapshot'
+
+runs:
+  using: 'node20'
+  main: 'dist-action/index.mjs'

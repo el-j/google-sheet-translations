@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "id": "test-coverage-improver",
+  "name": "Test Coverage Improver",
+  "version": "1.0.0",
+  "description": "Writes missing Jest tests for the @el-j/google-sheet-translations package following existing ts-jest patterns. Targets uncovered edge cases, error paths, and boundary conditions.",
+  "model": "claude-sonnet-4-5",
+  "tools": ["read_file", "create_file", "bash"],
+  "systemPrompt": "You are a Jest/ts-jest expert for TypeScript Node.js packages. Write tests in tests/*.test.ts mirroring existing patterns: jest-mock-extended for Google Sheets mocks, dotenv for env setup, describe/it blocks. Cover error paths, null inputs, and boundary values. Run `npx jest --coverage` to verify improvement.",
+  "inputSchema": {
+    "type": "object",
+    "required": ["coverageReport"],
+    "additionalProperties": false,
+    "properties": {
+      "coverageReport": {
+        "type": "object",
+        "description": "Jest JSON coverage summary (output of jest --json --coverage).",
+        "required": ["total"],
+        "properties": {
+          "total": {
+            "type": "object",
+            "properties": {
+              "lines": { "type": "object", "properties": { "pct": { "type": "number" } } },
+              "branches": { "type": "object", "properties": { "pct": { "type": "number" } } },
+              "functions": { "type": "object", "properties": { "pct": { "type": "number" } } },
+              "statements": { "type": "object", "properties": { "pct": { "type": "number" } } }
+            }
+          }
+        }
+      },
+      "targetCoverage": {
+        "type": "number",
+        "description": "Target line coverage percentage.",
+        "minimum": 0,
+        "maximum": 100,
+        "default": 80
+      },
+      "focusPaths": {
+        "type": "array",
+        "description": "Source files with lowest coverage to prioritize.",
+        "items": { "type": "string" },
+        "default": []
+      },
+      "testStyle": {
+        "type": "string",
+        "description": "Preferred assertion style.",
+        "enum": ["jest-native", "expect-extended"],
+        "default": "jest-native"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "required": ["createdFiles", "coverageDelta"],
+    "additionalProperties": false,
+    "properties": {
+      "createdFiles": {
+        "type": "array",
+        "description": "Paths of new test files created.",
+        "items": { "type": "string" }
+      },
+      "coverageDelta": {
+        "type": "number",
+        "description": "Change in line coverage percentage (positive = improved)."
+      },
+      "newCoverage": {
+        "type": "number",
+        "description": "Final line coverage percentage after new tests.",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "testResults": {
+        "type": "object",
+        "description": "Jest run summary.",
+        "properties": {
+          "passed": { "type": "integer" },
+          "failed": { "type": "integer" },
+          "skipped": { "type": "integer" }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "description": "Improve coverage for localeFilter.ts from 40% to 90%",
+      "input": {
+        "coverageReport": {
+          "total": {
+            "lines": { "pct": 55.3 },
+            "branches": { "pct": 48.1 },
+            "functions": { "pct": 60.0 },
+            "statements": { "pct": 55.3 }
+          }
+        },
+        "targetCoverage": 80,
+        "focusPaths": ["src/utils/localeFilter.ts", "src/utils/localeNormalizer.ts"],
+        "testStyle": "jest-native"
+      },
+      "output": {
+        "createdFiles": ["tests/localeFilter.test.ts", "tests/localeNormalizer.test.ts"],
+        "coverageDelta": 26.4,
+        "newCoverage": 81.7,
+        "testResults": { "passed": 18, "failed": 0, "skipped": 0 }
+      }
+    }
+  ]
+}

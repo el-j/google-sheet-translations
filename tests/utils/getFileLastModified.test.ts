@@ -50,4 +50,20 @@ describe('getFileLastModified', () => {
     expect(fs.statSync).toHaveBeenCalledWith(filePath);
     expect(result).toBeNull();
   });
+
+  test('should call console.warn with the file path when statSync throws', () => {
+    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+    (fs.statSync as jest.Mock).mockImplementation(() => {
+      throw new Error('stat error');
+    });
+
+    const filePath = '/some/specific/path.json';
+    getFileLastModified(filePath);
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      expect.stringContaining(filePath),
+      expect.any(Error)
+    );
+    consoleSpy.mockRestore();
+  });
 });

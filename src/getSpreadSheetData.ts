@@ -1,261 +1,213 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import { GoogleSpreadsheet } from "google-spreadsheet";
-import fs from "node:fs";
-import path from "node:path";
-import type { SheetRow, TranslationData } from "./types";
-import { wait } from "./utils/wait";
+import type { TranslationData } from "./types";
 import { createAuthClient } from "./utils/auth";
-import { validateEnv } from "./utils/validateEnv";
-import { 
-	convertToDataJsonFormat} from "./utils/dataConverter/convertToDataJsonFormat";
-import { findLocalChanges } from "./utils/dataConverter/findLocalChanges";
-import updateSpreadsheetWithLocalChanges from "./utils/spreadsheetUpdater";
-import { isDataJsonNewer } from "./utils/isDataJsonNewer";
-import { readDataJson } from "./utils/readDataJson";
-
-// Default wait time between API calls (in seconds)
-export const DEFAULT_WAIT_SECONDS = 5;
+import { normalizeConfig, type SpreadsheetOptions } from "./utils/configurationHandler";
+import { processSheet, processRawRows } from "./utils/sheetProcessor";
+import { writeTranslationFiles, writeLocalesFile, writeLanguageDataFile } from "./utils/fileWriter";
+import { handleBidirectionalSync } from "./utils/syncManager";
+import { withRetry } from "./utils/rateLimiter";
+import { readPublicSheet } from "./utils/publicSheetReader";
+import { createSpreadsheet } from "./utils/spreadsheetCreator";
+import { DEFAULT_WAIT_SECONDS } from "./constants";
+export { DEFAULT_WAIT_SECONDS };
 
 /**
- * Fetches and processes data from a Google Spreadsheet
- * @param range - The range to fetch (currently not used but kept for API compatibility)
- * @param _docTitle - Array of sheet titles to process
- * @param options - Additional options for fetching data
- *   - rowLimit: Maximum number of rows to fetch (kept for API compatibility)
- *   - waitSeconds: Time to wait between API calls (default: 5)
- *   - dataJsonPath: Path for data.json file (default: 'src/lib/data.json')
- *   - localesOutputPath: Path for locales.ts file (default: 'src/i18n/locales.ts')
- *   - translationsOutputDir: Directory for translations output (default: 'translations')
- *   - syncLocalChanges: Whether to sync local changes back to the spreadsheet (default: true)
- *   - autoTranslate: Whether to auto-generate Google Translate formulas for missing translations 
- *                   when new keys are added to the spreadsheet (default: false)
- * @returns Processed translation data
+ * Fetches and processes data from a Google Spreadsheet.
+ *
+ * Modes:
+ * - **Authenticated** (default): uses a Google Cloud service account.
+ *   Supports bidirectional sync, auto-translate, and auto-create.
+ * - **Public** (`publicSheet: true`): reads via the Google Visualization API
+ *   with no credentials. The spreadsheet must be shared publicly.
+ *
+ * **Auto-create**: when no spreadsheet ID is available and `autoCreate` is true
+ * (the default), a new spreadsheet is created automatically on first run.
  */
+const MAX_SYNC_REFRESH_DEPTH = 1;
+
+/** Appends (or updates) GOOGLE_SPREADSHEET_ID in .env when the file exists. */
+async function persistSpreadsheetId(id: string): Promise<void> {
+	const envPath = path.join(process.cwd(), '.env');
+	try {
+		let content = '';
+		if (fs.existsSync(envPath)) {
+			content = fs.readFileSync(envPath, 'utf8');
+			if (/^GOOGLE_SPREADSHEET_ID=/m.test(content)) {
+				content = content.replace(/^GOOGLE_SPREADSHEET_ID=.*/m, `GOOGLE_SPREADSHEET_ID=${id}`);
+			} else {
+				content = content.trimEnd() + `\nGOOGLE_SPREADSHEET_ID=${id}\n`;
+			}
+		} else {
+			content = `GOOGLE_SPREADSHEET_ID=${id}\n`;
+		}
+		fs.writeFileSync(envPath, content, 'utf8');
+		console.log(`   Saved GOOGLE_SPREADSHEET_ID to ${envPath}`);
+	} catch (err) {
+		console.warn(`   Could not write .env: ${(err as Error).message}`);
+	}
+}
+
 export async function getSpreadSheetData(
 	_docTitle?: string[],
-	options: {
-		rowLimit?: number;
-		waitSeconds?: number;
-		dataJsonPath?: string;
-		localesOutputPath?: string;
-		translationsOutputDir?: string;
-		syncLocalChanges?: boolean;
-		autoTranslate?: boolean;
-	} = {},
+	options: SpreadsheetOptions = {},
+	_refreshDepth = 0,
 ): Promise<TranslationData> {
-	// Set defaults
-	const waitSeconds = options.waitSeconds || DEFAULT_WAIT_SECONDS;
-	const dataJsonPath =
-		options.dataJsonPath || path.join(process.cwd(), "src/lib/data.json");
-	const localesOutputPath = options.localesOutputPath || "src/i18n/locales.ts";
-	const translationsOutputDir = options.translationsOutputDir || "translations";
-	const syncLocalChanges = options.syncLocalChanges !== false; // Default to true
-	const autoTranslate = options.autoTranslate === true; // Default to false
+	const config = normalizeConfig(options);
+	const baseDelayMs = config.waitSeconds * 1000;
 
-	// Get spreadsheet ID from environment variables
-	const { GOOGLE_SPREADSHEET_ID } = validateEnv();
-	const contentDocId = GOOGLE_SPREADSHEET_ID;
-
-	const obj: TranslationData = {};
-	const serviceAuthClient = createAuthClient();
-	const doc = new GoogleSpreadsheet(contentDocId, serviceAuthClient);
-
-	await doc.loadInfo(true);
-	const prepareOutput: string[] = [];
-	let dataUpdated = false;
-	let locales: string[] = [];
-	let docTitle: string[] = _docTitle || [];
-
-	// Check if data.json exists and read it
-	const localData = readDataJson(dataJsonPath);
-	const dataJsonExists = localData !== null;
-	
-	// Check if we need to sync local changes to the spreadsheet
-	const shouldSyncToSheet = syncLocalChanges && 
-		dataJsonExists && 
-		isDataJsonNewer(dataJsonPath, translationsOutputDir);
-
-	// Start downloading and processing sheet data
-	if (!docTitle || docTitle.length === 0) {
+	const docTitle: string[] = _docTitle ?? [];
+	if (docTitle.length === 0) {
 		console.warn("No sheet titles provided, cannot process spreadsheet data");
-		return obj;
+		return {};
+	}
+	if (!docTitle.includes("i18n")) {
+		docTitle.push("i18n");
 	}
 
-	if (prepareOutput.length > 0) {
-		docTitle = [...docTitle, ...prepareOutput];
-	}
+	const finalTranslations: TranslationData = {};
+	const allLocales = new Set<string>();
+	const localesWithContent = new Set<string>();
+	const globalLocaleMapping: Record<string, string> = {};
+	const globalOriginalMapping: Record<string, string> = {};
 
-	// Log the sheets we're going to process
-	console.log(`Processing ${docTitle.length} sheets: ${docTitle.join(", ")}`);
-
-	await Promise.all(
-		docTitle.map(async (title) => {
-			await wait(waitSeconds, `before get cells for sheet: ${title}`);
-			const sheet = doc.sheetsByTitle[title];
-
-			if (!sheet) {
-				console.warn(`Sheet "${title}" not found in the document`);
-				return;
+	function mergeResult(result: Awaited<ReturnType<typeof processRawRows>>, title: string) {
+		if (!result.success) return;
+		for (const [normalized, original] of Object.entries(result.localeMapping)) {
+			if (!globalLocaleMapping[normalized]) globalLocaleMapping[normalized] = original;
+		}
+		for (const [original, normalized] of Object.entries(result.originalMapping)) {
+			if (!globalOriginalMapping[original]) globalOriginalMapping[original] = normalized;
+		}
+		for (const locale of result.locales) {
+			if (finalTranslations[locale]) {
+				finalTranslations[locale] = { ...finalTranslations[locale], ...result.translations[locale] };
+			} else {
+				finalTranslations[locale] = result.translations[locale];
 			}
-
-			const rows = await sheet.getRows({ limit: options.rowLimit ?? 100 });
-
-			if (!rows || rows.length === 0) {
-				console.warn(`No rows found in sheet "${title}"`);
-				return;
-			}
-
-			const rowObject = rows[0].toObject();
-			const headerRow: string[] = Object.keys(rowObject).map((key) =>
-				key.toLowerCase(),
-			);
-			console.log("headerRow", headerRow);
-			const keyColumn = headerRow[0];
-			locales = headerRow.filter((key) => {
-				if (key !== keyColumn) {
-					return key.toLowerCase();
-				}
-			});
-			const cells = rows.map((row) => {
-				const rowData = row.toObject();
-				return rowData;
-			});
-
-			if (!cells || cells.length === 0) {
-				console.warn(`No cells data found for sheet "${title}"`);
-				return;
-			}
-
-			for (const locale of locales) {
-				const languageCells = cells.map((row: SheetRow) => {
-					// Look for the key column (case-insensitive)
-					const keyField = Object.keys(row).find(
-						(k) => k.toLowerCase() === keyColumn,
-					);
-					const localeField = Object.keys(row).find(
-						(k) => k.toLowerCase() === locale,
-					);
-
-					if (
-						!keyField ||
-						!localeField ||
-						!row[keyField] ||
-						!row[localeField]
-					) {
-						return {}; // Skip rows without key or translation
-					}
-
-					const rowLocal: SheetRow = {};
-					// Convert key to lowercase
-					rowLocal[row[keyField].toString().toLowerCase()] = row[localeField];
-					return rowLocal;
-				});
-
-				// Filter out empty objects before combining
-				const nonEmptyLanguageCells = languageCells.filter(
-					(cell) => Object.keys(cell).length > 0,
+			allLocales.add(locale);
+			if (title !== "i18n" && result.translations[locale]) {
+				const hasActualTranslations = Object.values(result.translations[locale]).some(
+					(sheetTranslations) => Object.keys(sheetTranslations).length > 0,
 				);
-
-				// Combine all keys into one object
-				const prepareObj: Record<string, Record<string, string>> = {};
-				prepareObj[title] = Object.assign({}, ...nonEmptyLanguageCells);
-
-				if (obj[locale]) {
-					obj[locale] = { ...obj[locale], ...prepareObj };
-				} else {
-					obj[locale] = { ...prepareObj };
-				}
+				if (hasActualTranslations) localesWithContent.add(locale);
 			}
+		}
+	}
 
-			// Mark data as updated to indicate fresh content
-			dataUpdated = true;
+	if (config.publicSheet) {
+		// ── Public (unauthenticated) path ──────────────────────────────────────
+		const spreadsheetId =
+			config.spreadsheetId ?? process.env.GOOGLE_SPREADSHEET_ID;
 
-			await wait(waitSeconds, `after processing sheet: ${title}`);
-		}),
+		if (!spreadsheetId) {
+			throw new Error(
+				"No spreadsheet ID provided. Set GOOGLE_SPREADSHEET_ID or pass spreadsheetId in options.",
+			);
+		}
+
+		console.log(`Processing ${docTitle.length} sheets: ${docTitle.join(", ")}`);
+
+		await Promise.all(
+			docTitle.map(async (title) => {
+				let rows;
+				try {
+					rows = await withRetry(
+						() => readPublicSheet(spreadsheetId, title),
+						`readPublicSheet: ${title}`,
+						baseDelayMs,
+					);
+				} catch (err) {
+					console.warn(`Sheet "${title}" could not be fetched: ${(err as Error).message}`);
+					return;
+				}
+				mergeResult(await processRawRows(rows, title), title);
+			}),
+		);
+	} else {
+		// ── Authenticated path ─────────────────────────────────────────────────
+		const serviceAuthClient = createAuthClient();
+
+		// Resolve spreadsheet ID: option > env var > auto-create
+		let spreadsheetId =
+			config.spreadsheetId ?? process.env.GOOGLE_SPREADSHEET_ID;
+
+		if (!spreadsheetId) {
+			if (config.autoCreate) {
+				const created = await createSpreadsheet(serviceAuthClient, {
+					title: config.spreadsheetTitle,
+					sourceLocale: config.sourceLocale,
+					targetLocales: config.targetLocales,
+				});
+				spreadsheetId = created.spreadsheetId;
+				await persistSpreadsheetId(spreadsheetId);
+			} else {
+				throw new Error(
+					"No spreadsheet ID provided. Set GOOGLE_SPREADSHEET_ID or pass spreadsheetId in options.",
+				);
+			}
+		}
+
+		console.log(`Processing ${docTitle.length} sheets: ${docTitle.join(", ")}`);
+
+		const doc = new GoogleSpreadsheet(spreadsheetId, serviceAuthClient);
+		try {
+			await withRetry(() => doc.loadInfo(true), "loadInfo", baseDelayMs);
+		} catch (err) {
+			throw new Error(`Failed to load spreadsheet "${spreadsheetId}"`, { cause: err });
+		}
+
+		await Promise.all(
+			docTitle.map(async (title) => {
+				const sheet = doc.sheetsByTitle[title];
+				if (!sheet) {
+					console.warn(`Sheet "${title}" not found in the document`);
+					return;
+				}
+				mergeResult(await processSheet(sheet, title, config.rowLimit, baseDelayMs), title);
+			}),
+		);
+
+		const syncResult = await handleBidirectionalSync(
+			doc,
+			config.dataJsonPath,
+			config.translationsOutputDir,
+			config.syncLocalChanges,
+			config.autoTranslate,
+			finalTranslations,
+			config.waitSeconds,
+			globalLocaleMapping,
+			config.override,
+			config.cleanPush,
+		);
+
+		if (syncResult.shouldRefresh && _refreshDepth < MAX_SYNC_REFRESH_DEPTH) {
+			return getSpreadSheetData(
+				_docTitle,
+				{ ...options, syncLocalChanges: false },
+				_refreshDepth + 1,
+			);
+		}
+	}
+
+	const localesForOutput =
+		localesWithContent.size > 0 ? Array.from(localesWithContent) : Array.from(allLocales);
+	const allLocalesArray = Array.from(allLocales);
+
+	writeTranslationFiles(finalTranslations, allLocalesArray, config.translationsOutputDir);
+	writeLocalesFile(localesForOutput, globalLocaleMapping, config.localesOutputPath);
+
+	console.log(
+		`Writing locales file with ${localesForOutput.length} locales that have actual translations:`,
+		localesForOutput,
 	);
 
-	// If we need to sync local changes to the spreadsheet, do it before writing files
-	if (shouldSyncToSheet && localData) {
-		console.log("Local data.json is newer than translation files. Checking for changes...");
-		
-		// Find differences between local data and spreadsheet data
-		const changes = findLocalChanges(localData, obj);
-		
-		// If there are changes, update the spreadsheet
-		if (
-			Object.keys(changes).length > 0 && 
-			Object.keys(changes).some(locale => 
-				Object.keys(changes[locale]).length > 0
-			)
-		) {
-			console.log("Found local changes to sync to the spreadsheet:");
-			console.log(JSON.stringify(changes, null, 2));
-			
-			// Update the spreadsheet with the changes, passing the autoTranslate option
-			await updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate);
-			
-			// Refresh the spreadsheet data to include the changes
-			return getSpreadSheetData(_docTitle, {
-				...options,
-				syncLocalChanges: false, // Prevent infinite loop
-			});
-		}
-		
-		console.log("No local changes found that need to be synced to the spreadsheet.");
+	if (Object.keys(finalTranslations).length > 0) {
+		writeLanguageDataFile(finalTranslations, allLocalesArray, config.dataJsonPath);
 	}
 
-	// Make sure the translations directory exists
-	if (!fs.existsSync(translationsOutputDir)) {
-		fs.mkdirSync(translationsOutputDir, { recursive: true });
-	}
-
-	// Create locales.ts file
-	const localesOutputDir = path.dirname(localesOutputPath);
-	if (!fs.existsSync(localesOutputDir)) {
-		fs.mkdirSync(localesOutputDir, { recursive: true });
-	}
-
-	fs.writeFileSync(
-		localesOutputPath,
-		`export const locales = ${JSON.stringify(locales)};\nexport default locales;`,
-		"utf8",
-	);
-
-	// Write files for all locales
-	for (const locale of locales) {
-		if (!obj[locale] || Object.keys(obj[locale]).length === 0) {
-			console.warn(`No translations found for locale "${locale}"`);
-			continue;
-		}
-
-		fs.writeFileSync(
-			`${translationsOutputDir}/${locale.toLowerCase()}.json`,
-			JSON.stringify(obj[locale], null, 2),
-			"utf8",
-		);
-		console.log(`Successfully wrote translations for ${locale}`);
-	}
-
-	// If we have updated data, write it to data.json
-	if (dataUpdated || !dataJsonExists) {
-		// Create data.json directory if it doesn't exist
-		const dataJsonDir = path.dirname(dataJsonPath);
-		if (!fs.existsSync(dataJsonDir)) {
-			fs.mkdirSync(dataJsonDir, { recursive: true });
-		}
-
-		// Convert the object format to the array format expected in data.json
-		const dataJsonContent = convertToDataJsonFormat(obj, locales);
-
-		// Write the updated data to data.json
-		fs.writeFileSync(
-			dataJsonPath,
-			JSON.stringify(dataJsonContent, null, 2),
-			"utf8",
-		);
-		console.log("Successfully updated data.json with fresh spreadsheet data");
-	}
-
-	return obj;
+	return finalTranslations;
 }
 
 export default getSpreadSheetData;

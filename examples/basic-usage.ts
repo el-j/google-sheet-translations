@@ -21,7 +21,7 @@ async function main() {
       {
         rowLimit: 100,
         waitSeconds: 2,
-        dataJsonPath: './data.json',
+        dataJsonPath: './languageData.json',
         localesOutputPath: './locales.ts',
         translationsOutputDir: './translations'
       }
