@@ -47,7 +47,7 @@ jobs:
       github.event.workflow_run.conclusion == 'success'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           # When triggered by workflow_run, check out main HEAD so we get the
           # version-bumped package.json committed by semantic-release.
@@ -103,7 +103,7 @@ jobs:
         uses: actions/configure-pages@v6
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v5
         with:
           path: website/.vitepress/dist
 
