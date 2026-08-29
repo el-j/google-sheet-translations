@@ -93,7 +93,7 @@
     "semantic-release": "^25.0.9",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
-    "vitepress": "2.0.0-alpha.17",
+    "vitepress": "2.0.0-alpha.19",
     "vitest": "^4.1.11",
     "vitest-mock-extended": "^5.1.1"
   },
@@ -107,5 +107,8 @@
     "@actions/http-client": {
       "undici": "^7.0.0"
     }
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
   }
 }
