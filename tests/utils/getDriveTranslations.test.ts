@@ -8,24 +8,31 @@ vi.mock('../../src/utils/driveProjectIndex');
 vi.mock('../../src/getSpreadSheetData');
 vi.mock('../../src/utils/spreadsheetCreator');
 vi.mock('../../src/utils/auth');
+vi.mock('../../src/utils/driveDocScanner');
+vi.mock('../../src/utils/docIngester');
 
 import { getMultipleSpreadSheetsData } from '../../src/getMultipleSpreadSheetsData';
 import { scanDriveFolderForSpreadsheets } from '../../src/utils/driveFolderScanner';
 import { syncDriveImages } from '../../src/utils/driveImageSync';
-import { buildManifest, writeManifest } from '../../src/utils/driveProjectIndex';
+import { buildManifest, readManifest, writeManifest } from '../../src/utils/driveProjectIndex';
 import { getSpreadSheetData } from '../../src/getSpreadSheetData';
 import { createSpreadsheet } from '../../src/utils/spreadsheetCreator';
 import { createAuthClient, buildGoogleAuth } from '../../src/utils/auth';
+import { scanDriveFolderForDocs } from '../../src/utils/driveDocScanner';
+import { ingestDoc } from '../../src/utils/docIngester';
 
 const mockGetMultiple = getMultipleSpreadSheetsData as MockedFunction<typeof getMultipleSpreadSheetsData>;
 const mockScanDrive = scanDriveFolderForSpreadsheets as MockedFunction<typeof scanDriveFolderForSpreadsheets>;
 const mockSyncImages = syncDriveImages as MockedFunction<typeof syncDriveImages>;
 const mockBuildManifest = buildManifest as MockedFunction<typeof buildManifest>;
 const mockWriteManifest = writeManifest as MockedFunction<typeof writeManifest>;
+const mockReadManifest = readManifest as MockedFunction<typeof readManifest>;
 const mockGetSpreadSheetData = getSpreadSheetData as MockedFunction<typeof getSpreadSheetData>;
 const mockCreateSpreadsheet = createSpreadsheet as MockedFunction<typeof createSpreadsheet>;
 const mockCreateAuthClient = createAuthClient as MockedFunction<typeof createAuthClient>;
 const mockBuildGoogleAuth = buildGoogleAuth as MockedFunction<typeof buildGoogleAuth>;
+const mockScanDocs = scanDriveFolderForDocs as MockedFunction<typeof scanDriveFolderForDocs>;
+const mockIngestDoc = ingestDoc as MockedFunction<typeof ingestDoc>;
 
 const MOCK_TRANSLATIONS = { en: { home: { title: 'Hello' } } };
 const MOCK_IMAGE_RESULT = { downloaded: ['img1.png'], skipped: [], deleted: [], errors: [] };
@@ -53,6 +60,7 @@ beforeEach(() => {
   const MOCK_MANIFEST = { version: '1' as const, generatedAt: '2026-01-01T00:00:00.000Z', locales: ['en'], spreadsheets: [], outputDirectory: 'translations', flatten: true };
   mockBuildManifest.mockReturnValue(MOCK_MANIFEST);
   mockWriteManifest.mockImplementation(() => {});
+  mockReadManifest.mockReturnValue(undefined);
   mockGetSpreadSheetData.mockResolvedValue(MOCK_TRANSLATIONS);
 
   // Bootstrap mocks: createSpreadsheet + Drive auth for moveSpreadsheetToFolder
@@ -429,25 +437,6 @@ describe('manifest / createManifest', () => {
 
 // ── Doc ingestion integration ─────────────────────────────────────────────────
 
-vi.mock('../../src/utils/driveDocScanner');
-vi.mock('../../src/utils/docIngester');
-
-import { scanDriveFolderForDocs } from '../../src/utils/driveDocScanner';
-import { ingestDoc } from '../../src/utils/docIngester';
-
-const mockScanDocs = scanDriveFolderForDocs as MockedFunction<typeof scanDriveFolderForDocs>;
-const mockIngestDoc = ingestDoc as MockedFunction<typeof ingestDoc>;
-const mockReadManifest = vi.fn().mockReturnValue(undefined);
-
-vi.mock('../../src/utils/driveProjectIndex', async () => {
-  const actual = await vi.importActual('../../src/utils/driveProjectIndex');
-  return {
-    ...actual,
-    buildManifest: vi.fn().mockReturnValue({ version: '1', generatedAt: '', locales: [], spreadsheets: [], outputDirectory: 'translations', flatten: true }),
-    writeManifest: vi.fn(),
-    readManifest: (...args: unknown[]) => mockReadManifest(...args),
-  };
-});
 
 describe('manageDriveTranslations – scanForDocs', () => {
   beforeEach(() => {
