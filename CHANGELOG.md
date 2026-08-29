@@ -1,3 +1,11 @@
+## [2.2.0-beta.6](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.5...v2.2.0-beta.6) (2026-08-29)
+
+### 🐛 Bug Fixes
+
+* **ci:** pin conventionalcommits preset to ^9.3.1 for semantic-release and update github actions to v7 ([cb34645](https://github.com/el-j/google-sheet-translations/commit/cb3464573e2a9e79916d401f6ad26e4e5ec6c9c6))
+* **deps:** update all dependencies to latest ([4b9f7cd](https://github.com/el-j/google-sheet-translations/commit/4b9f7cdae5a69807237af3343dbfd85a158b30ee))
+* **tests:** consolidate hoisted mocks and imports in getDriveTranslations test ([030e665](https://github.com/el-j/google-sheet-translations/commit/030e66506e5823af2e820157377f670111fad5a3))
+
 ## [2.2.0-beta.5](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.4...v2.2.0-beta.5) (2026-06-11)
 
 ### 🚀 Features
