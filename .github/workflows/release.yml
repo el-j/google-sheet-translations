@@ -44,10 +44,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set current branch for semantic-release
+      - name: Fetch all branches and tags for semantic-release
         run: |
           TARGET_BRANCH="${{ github.event.workflow_run.head_branch || github.ref_name }}"
-          echo "Checking out target branch: $TARGET_BRANCH"
+          echo "Target branch: $TARGET_BRANCH"
+          git fetch --all --tags --prune
+          # Create local branch refs for branches configured in .releaserc.json
+          git branch -r | grep -v '\->' | while read -r remote; do
+            branch="${remote#origin/}"
+            if [ "$branch" != "$TARGET_BRANCH" ]; then
+              git branch --track "$branch" "$remote" 2>/dev/null || true
+            fi
+          done
           git checkout -B "$TARGET_BRANCH"
 
       - name: Setup Node.js
