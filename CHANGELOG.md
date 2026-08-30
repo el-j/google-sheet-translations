@@ -1,3 +1,21 @@
+## [2.2.0-beta.8](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.7...v2.2.0-beta.8) (2026-08-30)
+
+### 🚀 Features
+
+* **quality:** test coverage to 99.9% lines, fix test types, column AA+ conversion, docs & multi-version archival ([3e0b566](https://github.com/el-j/google-sheet-translations/commit/3e0b5667d81b14717fbc95222a9af619c9bbce03))
+
+### 🐛 Bug Fixes
+
+* **release:** support release type in semantic-release, add workflow_dispatch and remove skip ci ([fca3383](https://github.com/el-j/google-sheet-translations/commit/fca3383bd32c15d6ea5e18a906ec9384e4b3f171))
+
+### ♻️ Refactoring
+
+* **arch:** modularize wifSetup transport, spreadsheet formulas, and drive bootstrap ([77a448e](https://github.com/el-j/google-sheet-translations/commit/77a448e8b3bf5f0af0901656cd75851c501ced5a))
+
+### 📝 Documentation
+
+* **code:** complete JSDoc annotations and update action bundle ([f94c62f](https://github.com/el-j/google-sheet-translations/commit/f94c62f6f3b7c9300780daccdd667bc908e79a45))
+
 ## [2.2.0-beta.7](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.6...v2.2.0-beta.7) (2026-08-30)
 
 ### 🚀 Features
