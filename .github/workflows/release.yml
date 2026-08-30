@@ -48,7 +48,8 @@ jobs:
         run: |
           TARGET_BRANCH="${{ github.event.workflow_run.head_branch || github.ref_name }}"
           echo "Target branch: $TARGET_BRANCH"
-          git fetch --all --tags --prune
+          # Fetch and force-update tags so floating tags never cause git fetch rejection
+          git fetch --tags --force --prune
           for remote in $(git branch -r | grep -v '\->'); do
             branch="${remote#origin/}"
             if [ "$branch" != "$TARGET_BRANCH" ]; then
@@ -56,6 +57,8 @@ jobs:
             fi
           done
           git checkout -B "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          # Ensure local tags match remote exactly
+          git fetch --tags --force
           git status
 
       - name: Setup Node.js
@@ -80,36 +83,33 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
 
-      # After a successful release, update the floating major-version tag
+      # After a successful STABLE release on main, update the floating major-version tag
       # (e.g. v2) so that GitHub Action users referencing @v2 always get
-      # the latest 2.x.x release.
+      # the latest 2.x.x stable release.
       - name: Update floating major-version tag
-        if: steps.release.outcome == 'success'
+        if: steps.release.outcome == 'success' && (github.event.workflow_run.head_branch == 'main' || github.ref_name == 'main')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Read the just-released version from package.json
           VERSION=$(node -p "require('./package.json').version")
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-
-          echo "Released version: v${VERSION}"
-          echo "Updating floating tag: v${MAJOR}"
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Configure remote with token (persist-credentials: false above)
-          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
-
-          # Force-create the major-version tag and push it
-          git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}"
-          git push origin "v${MAJOR}" --force
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            echo "Stable released version: v${VERSION}"
+            echo "Updating floating tag: v${MAJOR}"
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+            git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}"
+            git push origin "v${MAJOR}" --force
+          else
+            echo "Skipping floating tag update for pre-release version v${VERSION}"
+          fi
 
       # When a stable release is created on main, merge the release commit
       # (package.json + CHANGELOG.md) back into develop so develop and main
       # never diverge and stay 100% conflict-free.
       - name: Sync main release commit back to develop
-        if: steps.release.outcome == 'success' && github.event.workflow_run.head_branch == 'main'
+        if: steps.release.outcome == 'success' && (github.event.workflow_run.head_branch == 'main' || github.ref_name == 'main')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
