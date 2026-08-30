@@ -1,3 +1,51 @@
+## [2.2.0](https://github.com/el-j/google-sheet-translations/compare/v2.1.4...v2.2.0) (2026-08-30)
+
+### 🚀 Features
+
+* add `gst-setup-wif` CLI to automate Workload Identity Federation setup ([#68](https://github.com/el-j/google-sheet-translations/issues/68)) ([1acc5a5](https://github.com/el-j/google-sheet-translations/commit/1acc5a587de0e89dfd98556c1ece4aac5a1512f3))
+* add Drive folder scanner utility ([f5ca785](https://github.com/el-j/google-sheet-translations/commit/f5ca785458a258e1b8b614d0a3b3c63207776299))
+* add driveImageSync utility for syncing Drive images to local disk ([23cb96d](https://github.com/el-j/google-sheet-translations/commit/23cb96dbe8b82253939b29ef81d271150af95444))
+* add getMultipleSpreadSheetsData for multi-spreadsheet support ([f241bda](https://github.com/el-j/google-sheet-translations/commit/f241bda7a936b819eb7428587584178f16a690b9))
+* add manageDriveTranslations orchestrator ([35c0d37](https://github.com/el-j/google-sheet-translations/commit/35c0d37a34cc25d20960f1b5db4bd577e18b4078))
+* Google Drive folder management – multi-spreadsheet, folder scanner, image sync, headless CMS orchestrator ([2e917f2](https://github.com/el-j/google-sheet-translations/commit/2e917f22f2dbb3f7bb247064ee2aed3471cf712f))
+* incremental image sync, extension normalization, and local image utilities ([#56](https://github.com/el-j/google-sheet-translations/issues/56)) ([3749e3e](https://github.com/el-j/google-sheet-translations/commit/3749e3e840ef34c346a131abefec62b6f7baab84))
+* one-way Google Docs → Spreadsheet ingestion pipeline ([#58](https://github.com/el-j/google-sheet-translations/issues/58)) ([1d70af3](https://github.com/el-j/google-sheet-translations/commit/1d70af32504cf1dcfbfd4e370c28ac322289ca93))
+* **quality:** quality & definition of done excellence (resolves all 7 milestone issues) ([#111](https://github.com/el-j/google-sheet-translations/issues/111)) ([1e97042](https://github.com/el-j/google-sheet-translations/commit/1e97042d282e15b9cc0b16e4607925849674cd86))
+* **quality:** test coverage to 99.9% lines, fix test types, column AA+ conversion, docs & multi-version archival ([3e0b566](https://github.com/el-j/google-sheet-translations/commit/3e0b5667d81b14717fbc95222a9af619c9bbce03))
+* **release:** release v2.2.0 stable to production ([596a542](https://github.com/el-j/google-sheet-translations/commit/596a542d2eac22c60a005905851267e5d838fbc0))
+* **release:** release v2.2.0 stable to production ([4acd365](https://github.com/el-j/google-sheet-translations/commit/4acd3658c1f835e7084ce212cd86f87ff208b5d5))
+* **tests:** enhance test coverage for spreadsheet and Drive functionalities + fix CodeQL URL host validation ([#79](https://github.com/el-j/google-sheet-translations/issues/79)) ([fab276a](https://github.com/el-j/google-sheet-translations/commit/fab276ac729389e8c8675a6e8f7c7b4fbe58cdba))
+
+### 🐛 Bug Fixes
+
+* **ci:** fetch all branch heads for multi-branch semantic-release ([c29a464](https://github.com/el-j/google-sheet-translations/commit/c29a4649601dc8c867139d8b4e30c3661e6e770a))
+* **ci:** fetch all branch heads for multi-branch semantic-release ([52fc276](https://github.com/el-j/google-sheet-translations/commit/52fc2768d67ea0e3adcd7c9e3a21fe458a078e19))
+* **ci:** pin conventionalcommits preset to ^9.3.1 for semantic-release and update github actions to v7 ([cb34645](https://github.com/el-j/google-sheet-translations/commit/cb3464573e2a9e79916d401f6ad26e4e5ec6c9c6))
+* **deps:** update all dependencies to latest ([4b9f7cd](https://github.com/el-j/google-sheet-translations/commit/4b9f7cdae5a69807237af3343dbfd85a158b30ee))
+* rebuild dist-action, normalize action inputs to kebab-case, add Drive docs ([f851942](https://github.com/el-j/google-sheet-translations/commit/f8519425cbf99b4afa7b69def5088247ba770aa5))
+* regenerate package-lock.json with lockfileVersion 2 to fix npm ci on Node 22 ([#65](https://github.com/el-j/google-sheet-translations/issues/65)) ([e902f04](https://github.com/el-j/google-sheet-translations/commit/e902f04bd8a049e6267aa0041afc852a6740da2e))
+* **release:** attach branch explicitly for semantic-release on main ([67e741c](https://github.com/el-j/google-sheet-translations/commit/67e741c085f1818bd69b5dec60b985c18391c9e2))
+* **release:** attach branch explicitly for semantic-release on main ([180b9c6](https://github.com/el-j/google-sheet-translations/commit/180b9c6df3e92e896e06676e3d31924771d19d4a))
+* **release:** execute git checkout in main shell for target branch ([5867f2c](https://github.com/el-j/google-sheet-translations/commit/5867f2ca4144238e910e28b9d608e53eea3a55d5))
+* **release:** force fetch tags and constrain floating tag updates to stable releases ([d7e3aca](https://github.com/el-j/google-sheet-translations/commit/d7e3acab540f57a9db989c98faebbaf4574964ac))
+* **release:** support release type in semantic-release, add workflow_dispatch and remove skip ci ([fca3383](https://github.com/el-j/google-sheet-translations/commit/fca3383bd32c15d6ea5e18a906ec9384e4b3f171))
+* restore dynamic formula approach with locale-aware separators and zh-TW guard ([4c93b4e](https://github.com/el-j/google-sheet-translations/commit/4c93b4e74affb58a20d5cae32963af45f02fa222))
+* **tests:** consolidate hoisted mocks and imports in getDriveTranslations test ([030e665](https://github.com/el-j/google-sheet-translations/commit/030e66506e5823af2e820157377f670111fad5a3))
+* use hard-coded GOOGLETRANSLATE language codes instead of broken dynamic extraction ([a5cc95c](https://github.com/el-j/google-sheet-translations/commit/a5cc95ce9f2ea859562a470501253d3b2a32806e))
+
+### ♻️ Refactoring
+
+* **arch:** modularize wifSetup transport, spreadsheet formulas, and drive bootstrap ([77a448e](https://github.com/el-j/google-sheet-translations/commit/77a448e8b3bf5f0af0901656cd75851c501ced5a))
+
+### 🚀 Releases
+
+* **stable:** release v2.2.0 stable to production ([#112](https://github.com/el-j/google-sheet-translations/issues/112)) ([bba719e](https://github.com/el-j/google-sheet-translations/commit/bba719ecd4812dfd5c8455313da5ab916b42c87f)), closes [#51](https://github.com/el-j/google-sheet-translations/issues/51)
+
+### 📝 Documentation
+
+* **code:** complete JSDoc annotations and update action bundle ([f94c62f](https://github.com/el-j/google-sheet-translations/commit/f94c62f6f3b7c9300780daccdd667bc908e79a45))
+* update formula examples and rebuild dist-action bundle ([1a99632](https://github.com/el-j/google-sheet-translations/commit/1a99632bde1d9697ad43cf8236aa8f8e1a3bd998))
+
 ## [2.2.0-beta.9](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.8...v2.2.0-beta.9) (2026-08-30)
 
 ### 🚀 Features
