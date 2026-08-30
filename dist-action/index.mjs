@@ -49936,6 +49936,8 @@ function findLocalChanges(localData, spreadsheetData) {
 
 // src/utils/spreadsheetUpdater.ts
 import { setTimeout as delay3 } from "node:timers/promises";
+
+// src/utils/spreadsheetFormulas.ts
 function columnIndexToLetter(index) {
   let result = "";
   let i2 = index;
@@ -49958,6 +49960,8 @@ function langCodeFormula(cellRef, sep) {
   const full = `LOWER(${cellRef})`;
   return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
+
+// src/utils/spreadsheetUpdater.ts
 async function updateSpreadsheetWithLocalChanges(doc, changes, waitSeconds, autoTranslate = false, localeMapping = {}, override = false) {
   console.log("Updating spreadsheet with local changes...");
   const baseDelayMs = waitSeconds * 1e3;
@@ -51414,7 +51418,7 @@ async function ingestDoc(docFile, options = {}) {
   return { action: "refreshed", entry };
 }
 
-// src/utils/getDriveTranslations.ts
+// src/utils/driveSpreadsheetBootstrap.ts
 function sanitizeFolderName(name) {
   return name.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "") || "sheet";
 }
@@ -51444,6 +51448,8 @@ async function moveSpreadsheetToFolder(spreadsheetId, folderId) {
     }
   });
 }
+
+// src/utils/getDriveTranslations.ts
 async function manageDriveTranslations(options) {
   const {
     driveFolderId,

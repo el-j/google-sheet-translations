@@ -1,0 +1,114 @@
+import { GoogleAuth } from "google-auth-library";
+
+export interface GcpOperation {
+	name: string;
+	done?: boolean;
+	error?: { code: number; message: string };
+}
+
+export interface IamPolicy {
+	bindings?: Array<{ role: string; members: string[] }>;
+	etag?: string;
+	version?: number;
+}
+
+export class GcpApiError extends Error {
+	constructor(
+		message: string,
+		public readonly status: number,
+	) {
+		super(message);
+		this.name = "GcpApiError";
+	}
+}
+
+export async function getGcpAccessToken(keyFilePath?: string): Promise<string> {
+	const auth = new GoogleAuth({
+		...(keyFilePath ? { keyFilename: keyFilePath } : {}),
+		scopes: ["https://www.googleapis.com/auth/cloud-platform"],
+	});
+	const client = await auth.getClient();
+	const tokenResponse = await client.getAccessToken();
+	if (!tokenResponse.token) {
+		throw new Error(
+			"Failed to obtain a Google Cloud access token. " +
+				"Ensure you are authenticated via Application Default Credentials " +
+				"(run: gcloud auth application-default login) " +
+				"or provide --key-file pointing to a service account JSON key.",
+		);
+	}
+	return tokenResponse.token;
+}
+
+export async function gcpFetch(
+	url: string,
+	token: string,
+	method = "GET",
+	body?: unknown,
+): Promise<unknown> {
+	const response = await fetch(url, {
+		method,
+		headers: {
+			Authorization: `Bearer ${token}`,
+			"Content-Type": "application/json",
+		},
+		body: body !== undefined ? JSON.stringify(body) : undefined,
+	});
+	const data = (await response.json()) as unknown;
+	if (!response.ok) {
+		const errData = data as { error?: { message?: string } };
+		const message = errData.error?.message ?? `HTTP ${response.status}`;
+		throw new GcpApiError(message, response.status);
+	}
+	return data;
+}
+
+export async function waitForOperation(
+	operationName: string,
+	token: string,
+	maxWaitMs = 60_000,
+): Promise<void> {
+	let opUrl: string;
+	if (operationName.startsWith("http")) {
+		let isGoogleHost;
+		try {
+			const parsedUrl = new URL(operationName);
+			const hostname = (parsedUrl.hostname || "").toLowerCase();
+			isGoogleHost =
+				hostname === "iam.googleapis.com" ||
+				hostname.endsWith(".iam.googleapis.com") ||
+				hostname === "googleapis.com" ||
+				hostname.endsWith(".googleapis.com");
+		} catch {
+			isGoogleHost = false;
+		}
+		if (!isGoogleHost) {
+			throw new Error(
+				`Invalid operation URL: hostname must be a Google API endpoint (*.googleapis.com), got: ${operationName}`,
+			);
+		}
+		opUrl = operationName;
+	} else {
+		opUrl = `https://iam.googleapis.com/v1/${operationName}`;
+	}
+	const deadline = Date.now() + maxWaitMs;
+	const maxWaitSecs = Math.round(maxWaitMs / 1000);
+
+	while (Date.now() < deadline) {
+		const op = (await gcpFetch(opUrl, token)) as GcpOperation;
+		if (op.done) {
+			if (op.error) {
+				throw new Error(`Operation failed: ${op.error.message}`);
+			}
+			return;
+		}
+		await new Promise<void>((resolve) => setTimeout(resolve, 2000));
+	}
+	if (Date.now() >= deadline) {
+		throw new Error(
+			`Operation timed out after ${maxWaitSecs} s. ` +
+				"The resources may still be provisioning in the background – " +
+				"re-running the command is safe (existing resources are reused).",
+		);
+	}
+}

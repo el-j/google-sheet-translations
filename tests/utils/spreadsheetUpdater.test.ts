@@ -920,4 +920,12 @@ describe('columnIndexToLetter', () => {
     expect(columnIndexToLetter(702)).toBe('AAA');
     expect(columnIndexToLetter(703)).toBe('AAB');
   });
+
+  test('buildGoogleTranslateFormula builds correct translate formula', async () => {
+    const { buildGoogleTranslateFormula } = await import('../../src/utils/spreadsheetFormulas');
+    const formula = buildGoogleTranslateFormula('B', 'C', ';');
+    expect(formula).toContain('=GOOGLETRANSLATE(INDIRECT("B"&ROW());');
+    expect(formula).toContain('$B$1');
+    expect(formula).toContain('C$1');
+  });
 });
