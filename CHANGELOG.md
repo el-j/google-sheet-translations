@@ -1,3 +1,9 @@
+## [2.2.0-beta.7](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.6...v2.2.0-beta.7) (2026-08-30)
+
+### 🚀 Features
+
+* **quality:** quality & definition of done excellence (resolves all 7 milestone issues) ([#111](https://github.com/el-j/google-sheet-translations/issues/111)) ([1e97042](https://github.com/el-j/google-sheet-translations/commit/1e97042d282e15b9cc0b16e4607925849674cd86))
+
 ## [2.2.0-beta.6](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.5...v2.2.0-beta.6) (2026-08-29)
 
 ### 🐛 Bug Fixes
