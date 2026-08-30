@@ -4,8 +4,8 @@ import {
 } from '../../src/utils/driveDocScanner';
 
 vi.mock('google-auth-library', () => ({
-  GoogleAuth: vi.fn().mockImplementation(class {
-    getClient = vi.fn().mockResolvedValue({
+  GoogleAuth: vi.fn().mockImplementation(function (this: any) {
+    this.getClient = vi.fn().mockResolvedValue({
       getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
     });
   }),
@@ -240,5 +240,23 @@ describe('scanDriveFolderForDocs', () => {
     await expect(
       scanDriveFolderForDocs({ folderId: 'root-id', credentials }),
     ).rejects.toThrow('Drive API error 403');
+  });
+
+  it('scans deeply nested subfolders and constructs full folderPath', async () => {
+    const sub1 = [{ id: 'sub1-id', name: 'docs', mimeType: FOLDER_MIME }];
+    const sub2 = [{ id: 'sub2-id', name: 'nested', mimeType: FOLDER_MIME }];
+    const docInSub2 = [{ id: 'doc-nested', name: 'deep_en', mimeType: DOC_MIME }];
+
+    mockFetch
+      .mockResolvedValueOnce(mockOkResponse([])) // root docs
+      .mockResolvedValueOnce(mockOkResponse(sub1)) // root subfolders -> docs
+      .mockResolvedValueOnce(mockOkResponse([])) // sub1 docs
+      .mockResolvedValueOnce(mockOkResponse(sub2)) // sub1 subfolders -> nested
+      .mockResolvedValueOnce(mockOkResponse(docInSub2)) // sub2 docs
+      .mockResolvedValueOnce(mockOkResponse([])); // sub2 subfolders
+
+    const result = await scanDriveFolderForDocs({ folderId: 'root-id', credentials });
+    expect(result).toHaveLength(1);
+    expect(result[0].folderPath).toBe('docs/nested');
   });
 });

@@ -285,4 +285,28 @@ describe('handleBidirectionalSync', () => {
 		expect(mockUpdateSpreadsheet).not.toHaveBeenCalled();
 	});
 
+	test('should catch and log error when updateSpreadsheetWithLocalChanges rejects', async () => {
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const localData = { 'en': { 'home': { 'hello': 'Hello New' } } };
+		mockReadDataJson.mockReturnValue(localData);
+		mockIsDataJsonNewer.mockReturnValue(true);
+		mockFindLocalChanges.mockReturnValue({ 'en': { 'home': { 'hello': 'Hello New' } } });
+		mockUpdateSpreadsheet.mockRejectedValueOnce(new Error('Update failed'));
+
+		const result = await handleBidirectionalSync(
+			mockDoc,
+			'path/to/languageData.json',
+			'translations/',
+			true,
+			false,
+			{},
+			0
+		);
+
+		expect(result).toEqual({ shouldRefresh: false, hasChanges: false });
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			'Failed to sync local changes to spreadsheet:',
+			expect.any(Error)
+		);
+	});
 });

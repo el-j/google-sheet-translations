@@ -288,4 +288,35 @@ describe('readPublicSheet', () => {
     expect(rows).toHaveLength(1);
     expect(callCount).toBe(2);
   });
+
+  test('follows a redirect to an http (non-https) URL using http module', async () => {
+    const http = await import('node:http');
+    const redirectRes: FakeResponse = Object.assign(new EventEmitter(), {
+      statusCode: 301,
+      headers: { location: 'http://docs.google.com/spreadsheets/redirect-http' },
+    });
+    const redirectReq = Object.assign(new EventEmitter(), { end: vi.fn() });
+
+    const payload = {
+      status: 'ok',
+      table: {
+        cols: [{ id: 'A', label: 'key', type: 'string' }],
+        rows: [{ c: [{ v: 'from-http' }] }],
+      },
+    };
+    const { trigger: finalTrigger } = buildFakeHttp(200, gvizWrap(payload));
+
+    (https.get as Mock).mockImplementationOnce((_url: string, cb: (r: unknown) => void) => {
+      process.nextTick(() => cb(redirectRes));
+      return redirectReq;
+    });
+
+    (http.default.get as Mock).mockImplementationOnce((_url: string, cb: (r: unknown) => void) => {
+      return finalTrigger(cb);
+    });
+
+    const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].key).toBe('from-http');
+  });
 });

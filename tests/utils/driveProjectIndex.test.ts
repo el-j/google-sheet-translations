@@ -125,7 +125,7 @@ describe('writeManifest', () => {
   });
 
   it('logs the output path after writing', () => {
-    const logSpy = vi.spyOn(console, 'log').mockImplementation();
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     writeManifest(MANIFEST, './out/manifest.json');
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('./out/manifest.json'));
     logSpy.mockRestore();
@@ -144,7 +144,7 @@ describe('readManifest', () => {
       outputDirectory: './translations',
       flatten: true,
     };
-    mockFs.readFileSync.mockReturnValueOnce(JSON.stringify(manifest) as unknown as Buffer);
+    mockFs.readFileSync.mockReturnValueOnce(Buffer.from(JSON.stringify(manifest)) as any);
 
     const result = readManifest('./translations/i18n-manifest.json');
 
@@ -162,7 +162,7 @@ describe('readManifest', () => {
   });
 
   it('returns undefined when the file contains invalid JSON', () => {
-    mockFs.readFileSync.mockReturnValueOnce('not-json' as unknown as Buffer);
+    mockFs.readFileSync.mockReturnValueOnce(Buffer.from('not-json') as any);
 
     const result = readManifest('./broken/manifest.json');
 

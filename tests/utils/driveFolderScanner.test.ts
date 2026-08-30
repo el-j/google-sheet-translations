@@ -1,8 +1,8 @@
 import { scanDriveFolderForSpreadsheets } from '../../src/utils/driveFolderScanner';
 
 vi.mock('google-auth-library', () => ({
-  GoogleAuth: vi.fn().mockImplementation(class {
-    getClient = vi.fn().mockResolvedValue({
+  GoogleAuth: vi.fn().mockImplementation(function (this: any) {
+    this.getClient = vi.fn().mockResolvedValue({
       getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
     });
   }),
@@ -161,8 +161,10 @@ describe('scanDriveFolderForSpreadsheets', () => {
   it('throws on missing credentials', async () => {
     const origEmail = process.env.GOOGLE_CLIENT_EMAIL;
     const origKey = process.env.GOOGLE_PRIVATE_KEY;
+    const origAppCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS;
     delete process.env.GOOGLE_CLIENT_EMAIL;
     delete process.env.GOOGLE_PRIVATE_KEY;
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
     await expect(
       scanDriveFolderForSpreadsheets({ folderId: 'root-id' })
@@ -170,6 +172,27 @@ describe('scanDriveFolderForSpreadsheets', () => {
 
     process.env.GOOGLE_CLIENT_EMAIL = origEmail;
     process.env.GOOGLE_PRIVATE_KEY = origKey;
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = origAppCreds;
+  });
+
+  it('uses GOOGLE_APPLICATION_CREDENTIALS fallback when inline credentials are not provided', async () => {
+    const origEmail = process.env.GOOGLE_CLIENT_EMAIL;
+    const origKey = process.env.GOOGLE_PRIVATE_KEY;
+    const origAppCreds = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+    delete process.env.GOOGLE_CLIENT_EMAIL;
+    delete process.env.GOOGLE_PRIVATE_KEY;
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = '/path/to/wif.json';
+
+    mockFetch
+      .mockResolvedValueOnce(mockOkResponse([]))
+      .mockResolvedValueOnce(mockOkResponse([]));
+
+    const result = await scanDriveFolderForSpreadsheets({ folderId: 'root-id' });
+    expect(result).toEqual([]);
+
+    process.env.GOOGLE_CLIENT_EMAIL = origEmail;
+    process.env.GOOGLE_PRIVATE_KEY = origKey;
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = origAppCreds;
   });
 
   it('throws on Drive API error response (non-2xx)', async () => {

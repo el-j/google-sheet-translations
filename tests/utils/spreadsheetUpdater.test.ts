@@ -1,5 +1,5 @@
 import { mock } from 'vitest-mock-extended';
-import { updateSpreadsheetWithLocalChanges } from '../../src/utils/spreadsheetUpdater';
+import { updateSpreadsheetWithLocalChanges, columnIndexToLetter } from '../../src/utils/spreadsheetUpdater';
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
 import type { TranslationData } from '../../src/types';
 
@@ -618,7 +618,7 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
     expect(mockRow.set).toHaveBeenCalledWith('en', 'Home Updated');
     // 'fr' already has a value and override=false → must NOT be overwritten with a formula
-    const frCalls = (mockRow.set as Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
+    const frCalls = (mockRow.set as Mock).mock.calls.filter((call: any[]) => call[0] === 'fr');
     expect(frCalls).toHaveLength(0);
     // 'de' is empty → should get a formula
     expect(mockRow.set).toHaveBeenCalledWith('de', expect.stringMatching(/^=GOOGLETRANSLATE\(INDIRECT\(/));
@@ -652,7 +652,7 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
     expect(mockRow.set).toHaveBeenCalledWith('en', 'Click me now');
     // autoTranslate=false → other columns must not be touched
-    const otherCalls = (mockRow.set as Mock).mock.calls.filter(([h]: [string]) => h !== 'en');
+    const otherCalls = (mockRow.set as Mock).mock.calls.filter((call: any[]) => call[0] !== 'en');
     expect(otherCalls).toHaveLength(0);
   });
 
@@ -675,10 +675,10 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
     // 'fr' should have been set with the actual value (from the 'fr' locale iteration),
     // not a GOOGLETRANSLATE formula (which would have come from the 'en' locale iteration).
-    const frCalls = (rowEn.set as Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
+    const frCalls = (rowEn.set as Mock).mock.calls.filter((call: any[]) => call[0] === 'fr');
     // All 'fr' calls must be actual string values, not GOOGLETRANSLATE formulas
-    frCalls.forEach(([, val]: [string, string]) => {
-      expect(val).not.toMatch(/^=GOOGLETRANSLATE/);
+    frCalls.forEach((call: any[]) => {
+      expect(call[1]).not.toMatch(/^=GOOGLETRANSLATE/);
     });
     expect(rowEn.set).toHaveBeenCalledWith('fr', 'Titre FR');
   });
@@ -867,5 +867,65 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     vi.useRealTimers();
 
     expect(mockSheet.addRows).toHaveBeenCalledTimes(2);
+  });
+
+  test('should catch and log error when row.save fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockRow.toObject.mockReturnValue({ key: 'existing_key', en: 'Old' });
+    mockRow.save.mockRejectedValueOnce(new Error('Quota exceeded'));
+
+    const changes: TranslationData = {
+      en: { home: { existing_key: 'New Value' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to save row for key "existing_key"'),
+      expect.any(Error)
+    );
+    consoleErrorSpy.mockRestore();
+  });
+
+  test('should safely continue when existing row autoTranslate targets a non-existent header', async () => {
+    mockRow.toObject.mockReturnValue({ key: 'existing_key', en: 'Value' });
+    // Header only has 'key' and 'en'
+    (mockSheet as any).headerValues = ['key', 'en'];
+
+    const changes: TranslationData = {
+      en: { home: { existing_key: 'Value Updated' } },
+    };
+
+    // 'fr' is passed in localeMapping, but sheet header doesn't have 'fr'
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, true, { en: 'en', fr: 'fr' });
+    expect(mockRow.set).toHaveBeenCalledWith('en', 'Value Updated');
+  });
+});
+
+describe('columnIndexToLetter', () => {
+  test('converts 0-based column indices correctly for single letters A-Z', () => {
+    expect(columnIndexToLetter(0)).toBe('A');
+    expect(columnIndexToLetter(1)).toBe('B');
+    expect(columnIndexToLetter(25)).toBe('Z');
+  });
+
+  test('converts indices for two-letter columns AA-ZZ', () => {
+    expect(columnIndexToLetter(26)).toBe('AA');
+    expect(columnIndexToLetter(27)).toBe('AB');
+    expect(columnIndexToLetter(51)).toBe('AZ');
+    expect(columnIndexToLetter(52)).toBe('BA');
+    expect(columnIndexToLetter(701)).toBe('ZZ');
+  });
+
+  test('converts indices for three-letter columns AAA+', () => {
+    expect(columnIndexToLetter(702)).toBe('AAA');
+    expect(columnIndexToLetter(703)).toBe('AAB');
+  });
+
+  test('buildGoogleTranslateFormula builds correct translate formula', async () => {
+    const { buildGoogleTranslateFormula } = await import('../../src/utils/spreadsheetFormulas');
+    const formula = buildGoogleTranslateFormula('B', 'C', ';');
+    expect(formula).toContain('=GOOGLETRANSLATE(INDIRECT("B"&ROW());');
+    expect(formula).toContain('$B$1');
+    expect(formula).toContain('C$1');
   });
 });

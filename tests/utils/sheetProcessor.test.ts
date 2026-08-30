@@ -159,4 +159,23 @@ describe('sheetProcessor', () => {
     expect(result.translations.en.home.hello).toBe('Hello');
     expect(result.localeMapping).toEqual({ en: 'en' });
   });
+
+  test('processRawRows merges translations when multiple headers normalize to the same locale', async () => {
+    mockFilterValidLocales.mockReturnValueOnce(['en', 'en-US']);
+    mockCreateLocaleMapping.mockReturnValueOnce({
+      normalizedLocales: ['en', 'en'],
+      localeMapping: { en: 'en', 'en-US': 'en' },
+      originalMapping: { en: 'en', 'en-US': 'en' },
+    });
+
+    const rows = [
+      { key: 'greet', en: 'Hello', 'en-US': 'Hello US' },
+    ];
+
+    const result = await processRawRows(rows, 'home');
+    expect(result.success).toBe(true);
+    expect(result.translations.en.home).toEqual({
+      greet: 'Hello',
+    });
+  });
 });

@@ -302,4 +302,23 @@ describe('findLocalChanges', () => {
     expect(result['en']?.['i18n']).toBeUndefined();
     expect(result['en']?.['ui']).toEqual({ 'btn': 'Click me' });
   });
+
+  test('should gracefully skip undefined or null locale and sheet values in localData', () => {
+    const localData = {
+      'en': undefined,
+      'fr': {
+        'home': undefined,
+        'about': { 'title': 'À propos' },
+      },
+    } as unknown as TranslationData;
+
+    const spreadsheetData: TranslationData = {};
+    const result = findLocalChanges(localData, spreadsheetData);
+
+    expect(result).toEqual({
+      'fr': {
+        'about': { 'title': 'À propos' },
+      },
+    });
+  });
 });

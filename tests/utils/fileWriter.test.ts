@@ -47,7 +47,7 @@ describe('fileWriter', () => {
 			const outputDir = 'translations';
 
 			// Mock console.warn
-			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			writeTranslationFiles(translations, locales, outputDir);
 
@@ -160,7 +160,7 @@ describe('fileWriter', () => {
 			const translations: TranslationData = {
 				[dangerousLocale]: { 'sheet1': { 'hello': 'Hello' } }
 			};
-			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
+			const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			writeTranslationFiles(translations, [dangerousLocale], 'translations');
 
@@ -179,7 +179,7 @@ describe('fileWriter', () => {
 			const translations: TranslationData = {
 				'en-gb': { 'sheet1': { 'hello': 'Hello' } }
 			};
-			vi.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 
 			writeTranslationFiles(translations, ['en-gb'], 'translations');
 
@@ -194,7 +194,7 @@ describe('fileWriter', () => {
 			const translations: TranslationData = {
 				'ZH-CN': { 'sheet1': { 'hello': '你好' } }
 			};
-			vi.spyOn(console, 'log').mockImplementation();
+			vi.spyOn(console, 'log').mockImplementation(() => {});
 
 			writeTranslationFiles(translations, ['ZH-CN'], 'translations');
 

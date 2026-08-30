@@ -4,6 +4,16 @@ import { getSpreadSheetData } from './getSpreadSheetData';
 import { manageDriveTranslations } from './utils/getDriveTranslations';
 import type { SpreadsheetOptions } from './utils/configurationHandler';
 
+/**
+ * Main GitHub Action entrypoint.
+ *
+ * Reads action inputs from the runner environment, configures Google Cloud
+ * credentials (WIF or classic service account key), executes either
+ * `manageDriveTranslations` (if `drive-folder-id` is present) or `getSpreadSheetData`,
+ * and sets step outputs (`translations-dir`, `locales-file`, `data-json-file`).
+ *
+ * @throws {Error} If authentication or required inputs are missing or sync fails.
+ */
 export async function run(): Promise<void> {
 	try {
 		// ── Authentication setup ────────────────────────────────────────────────
