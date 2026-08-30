@@ -96,8 +96,36 @@ jobs:
           GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
         run: node scripts/verify-demo-translations.mjs
 
+      - name: Download existing gh-pages artifact for version archival
+        uses: actions/checkout@v7
+        with:
+          ref: gh-pages
+          path: _previous_pages
+        continue-on-error: true
+
       - name: Build with VitePress
         run: npm run docs:build
+
+      - name: Archive versions into deployment bundle
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
+          # Preserve older versioned directories from previous deployments
+          if [ -d "_previous_pages" ]; then
+            for dir in _previous_pages/v*/; do
+              if [ -d "$dir" ]; then
+                base=$(basename "$dir")
+                echo "Preserving historical documentation: $base"
+                cp -r "$dir" "website/.vitepress/dist/$base"
+              fi
+            done
+          fi
+          # Archive current version under its specific major.minor tag (e.g. /v2.2/)
+          if [ -n "$MAJOR_MINOR" ]; then
+            echo "Archiving current version as v${MAJOR_MINOR}"
+            mkdir -p "website/.vitepress/dist/v${MAJOR_MINOR}"
+            cp -r website/.vitepress/dist/* "website/.vitepress/dist/v${MAJOR_MINOR}/" 2>/dev/null || true
+          fi
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v6

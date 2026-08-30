@@ -6,7 +6,7 @@ import { getOriginalHeaderForLocale, getLanguagePrefix } from "./localeNormalize
 import { I18N_SHEET_NAME } from "../constants";
 
 /** Converts a 0-based column index to a spreadsheet column letter (A, B, ..., Z, AA, AB, ...) */
-function columnIndexToLetter(index: number): string {
+export function columnIndexToLetter(index: number): string {
     let result = '';
     let i = index;
     do {

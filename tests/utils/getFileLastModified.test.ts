@@ -52,7 +52,7 @@ describe('getFileLastModified', () => {
   });
 
   test('should call console.warn with the file path when statSync throws', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     (fs.statSync as Mock).mockImplementation(() => {
       throw new Error('stat error');
     });

@@ -37,6 +37,8 @@ export default defineConfig({
         items: [
           { text: 'Changelog', link: '/changelog' },
           { text: 'Contributing', link: '/contributing' },
+          { text: 'v2.2.x', link: '/google-sheet-translations/v2.2/' },
+          { text: 'v2.1.x', link: '/google-sheet-translations/v2.1/' },
         ],
       },
       {
@@ -57,19 +59,21 @@ export default defineConfig({
           ],
         },
         {
-          text: 'Setup',
+          text: 'Setup & Auth',
           items: [
             { text: 'Service Account Setup', link: '/guide/service-account-setup' },
+            { text: 'Workload Identity Federation (WIF)', link: '/guide/wif-setup' },
             { text: 'Spreadsheet Setup', link: '/guide/spreadsheet-setup' },
             { text: 'Environment Variables', link: '/guide/environment-variables' },
           ],
         },
         {
-          text: 'Guides',
+          text: 'Guides & Integrations',
           items: [
             { text: 'GitHub Actions', link: '/guide/github-actions' },
             { text: 'Bidirectional Sync', link: '/guide/bidirectional-sync' },
             { text: 'Auto-Translation', link: '/guide/auto-translation' },
+            { text: 'Google Docs Ingestion', link: '/guide/google-docs-ingestion' },
             { text: 'Public Sheets (No Auth)', link: '/guide/public-sheets' },
             { text: 'Live Demo', link: '/guide/live-demo' },
             { text: 'Next.js Integration', link: '/guide/nextjs' },
@@ -91,22 +95,31 @@ export default defineConfig({
       ],
       '/api/': [
         {
-          text: 'API Reference',
+          text: 'Core API',
           items: [
             { text: 'Overview', link: '/api/' },
             { text: 'getSpreadSheetData', link: '/api/get-spreadsheet-data' },
             { text: 'validateEnv', link: '/api/validate-env' },
+            { text: 'readPublicSheet', link: '/api/public-sheet-reader' },
+            { text: 'createSpreadsheet', link: '/api/spreadsheet-creator' },
+            { text: 'withRetry (Rate Limiter)', link: '/api/rate-limiter' },
             { text: 'Locale Utilities', link: '/api/locale-utilities' },
+            { text: 'Data Converters', link: '/api/data-converters' },
             { text: 'Types', link: '/api/types' },
           ],
         },
         {
-          text: 'Google Drive',
+          text: 'Google Drive & Docs',
           items: [
             { text: 'manageDriveTranslations', link: '/api/manage-drive-translations' },
             { text: 'getMultipleSpreadSheetsData', link: '/api/get-multiple-spreadsheets-data' },
             { text: 'scanDriveFolderForSpreadsheets', link: '/api/drive-folder-scanner' },
             { text: 'syncDriveImages', link: '/api/drive-image-sync' },
+            { text: 'Drive Project Index', link: '/api/drive-project-index' },
+            { text: 'scanDriveFolderForDocs', link: '/api/drive-doc-scanner' },
+            { text: 'Doc Ingester', link: '/api/doc-ingester' },
+            { text: 'Doc Parser', link: '/api/doc-parser' },
+            { text: 'WIF Setup', link: '/api/wif-setup' },
           ],
         },
       ],

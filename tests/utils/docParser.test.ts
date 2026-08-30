@@ -240,4 +240,21 @@ describe('parseDocContent (defaults)', () => {
     const entries = parseDocContent(content);
     expect(entries[0].sheetName).toBe('content');
   });
+
+  it('falls back to defaultSheetName when H1 title produces an empty slug', () => {
+    const content = `# !@#\n## key\nValue`;
+    const entries = parseDocContent(content, { defaultSheetName: 'fallback_sheet' });
+    expect(entries[0].sheetName).toBe('fallback_sheet');
+  });
+
+  it('ignores markers where sheetName or key slugifies to empty string', () => {
+    const content = `[[key:!@#.!@#]] Some text\n[[key:valid.key]] Valid text`;
+    const entries = parseDocContent(content, { strategy: 'marker' });
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toEqual({
+      sheetName: 'valid',
+      key: 'key',
+      value: 'Valid text',
+    });
+  });
 });

@@ -135,6 +135,13 @@ describe('getSpreadSheetData', () => {
     expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('No sheet titles provided'));
   });
 
+  test('should handle undefined sheet titles argument', async () => {
+    const result = await getSpreadSheetData();
+    
+    expect(result).toEqual({});
+    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('No sheet titles provided'));
+  });
+
   test('should warn when sheet is not found', async () => {
     // Use type assertion to handle readonly property
     (mockDoc as any).sheetsByTitle = {};

@@ -86,4 +86,14 @@ describe('withRetry', () => {
     await expect(withRetry(fn, 'test')).rejects.toBe(notFoundErr);
     expect(fn).toHaveBeenCalledTimes(1);
   });
+
+  test('does not retry when error is non-object (e.g. primitive string or null)', async () => {
+    const fnString = vi.fn().mockRejectedValue('primitive string error');
+    await expect(withRetry(fnString, 'test')).rejects.toBe('primitive string error');
+    expect(fnString).toHaveBeenCalledTimes(1);
+
+    const fnNull = vi.fn().mockRejectedValue(null);
+    await expect(withRetry(fnNull, 'test')).rejects.toBeNull();
+    expect(fnNull).toHaveBeenCalledTimes(1);
+  });
 });

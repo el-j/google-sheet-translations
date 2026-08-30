@@ -602,4 +602,26 @@ describe("GcpApiError", () => {
 		expect(err.message).toBe("Permission denied");
 		expect(err).toBeInstanceOf(Error);
 	});
+
+	test("handles full https://iam.googleapis.com operation URL in setupWIF", async () => {
+		mockFetch
+			.mockResolvedValueOnce(jsonResponse({ projectNumber: "123456789" }))
+			.mockResolvedValueOnce(
+				jsonResponse({
+					name: "https://iam.googleapis.com/v1/projects/proj/locations/global/workloadIdentityPools/pool/operations/op1",
+					done: true,
+				}),
+			)
+			.mockResolvedValueOnce(
+				jsonResponse({
+					name: "https://iam.googleapis.com/v1/projects/proj/locations/global/workloadIdentityPools/pool/operations/op2",
+					done: true,
+				}),
+			)
+			.mockResolvedValueOnce(jsonResponse({ bindings: [], etag: "etag1" }))
+			.mockResolvedValueOnce(jsonResponse({ bindings: [] }));
+
+		const result = await setupWIF(BASE_OPTIONS);
+		expect(result.poolId).toBe("github-actions");
+	});
 });

@@ -15,11 +15,10 @@ vi.mock('../../src/utils/validateEnv', () => ({
   })
 }));
 
-// Mock GoogleAuth constructor
 vi.mock('google-auth-library', () => {
   return {
-    GoogleAuth: vi.fn().mockImplementation(class {
-      constructor(private _opts: unknown) {}
+    GoogleAuth: vi.fn().mockImplementation(function (this: any, opts: unknown) {
+      this._opts = opts;
     }),
   };
 });

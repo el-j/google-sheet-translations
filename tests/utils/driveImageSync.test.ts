@@ -9,7 +9,7 @@ vi.mock('node:fs', () => ({
   createWriteStream: vi.fn().mockReturnValue({
     write: vi.fn(),
     end: vi.fn(),
-    on: vi.fn((event: string, cb: Function) => {
+    on: vi.fn((event: string, cb: () => void) => {
       if (event === 'finish') setTimeout(cb, 0);
     }),
   }),
@@ -29,8 +29,8 @@ vi.mock('node:stream', () => ({
 }));
 
 vi.mock('google-auth-library', () => ({
-  GoogleAuth: vi.fn().mockImplementation(class {
-    getClient = vi.fn().mockResolvedValue({
+  GoogleAuth: vi.fn().mockImplementation(function (this: any) {
+    this.getClient = vi.fn().mockResolvedValue({
       getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
     });
   }),
@@ -63,8 +63,8 @@ function makeDownloadResponse() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  fs.existsSync.mockReturnValue(false);
-  fs.readdirSync.mockReturnValue([]);
+  vi.mocked(fs.existsSync).mockReturnValue(false);
+  vi.mocked(fs.readdirSync).mockReturnValue([]);
 });
 
 describe('syncDriveImages', () => {
@@ -91,7 +91,7 @@ describe('syncDriveImages', () => {
   });
 
   it('skips files that already exist locally', async () => {
-    fs.existsSync.mockReturnValue(true);
+    vi.mocked(fs.existsSync).mockReturnValue(true);
 
     mockFetch.mockResolvedValueOnce(
       makeListResponse([
@@ -109,16 +109,12 @@ describe('syncDriveImages', () => {
     expect(result.downloaded).toHaveLength(0);
   });
 
-  it('recursively traverses subfolders and preserves folder structure', async () => {
+  it('filters out non-image MIME types', async () => {
     mockFetch
       .mockResolvedValueOnce(
         makeListResponse([
-          { id: 'sub1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
-        ])
-      )
-      .mockResolvedValueOnce(
-        makeListResponse([
-          { id: 'file1', name: 'icon.png', mimeType: 'image/png' },
+          { id: 'file1', name: 'doc.pdf', mimeType: 'application/pdf' },
+          { id: 'file2', name: 'image.png', mimeType: 'image/png' },
         ])
       )
       .mockResolvedValue(makeDownloadResponse());
@@ -126,19 +122,62 @@ describe('syncDriveImages', () => {
     const result = await syncDriveImages({
       folderId: 'root-folder',
       outputPath: '/output',
-      recursive: true,
       credentials,
     });
 
     expect(result.downloaded).toHaveLength(1);
-    expect(result.downloaded[0]).toContain('icons');
-    expect(result.downloaded[0]).toContain('icon.png');
+    expect(result.downloaded[0]).toBe('/output/image.png');
   });
 
-  it('does not recurse into subfolders when recursive is false', async () => {
+  it('applies nameFilter option', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'file1', name: 'hero-banner.png', mimeType: 'image/png' },
+          { id: 'file2', name: 'icon-close.png', mimeType: 'image/png' },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'root-folder',
+      outputPath: '/output',
+      nameFilter: /^hero-/,
+      credentials,
+    });
+
+    expect(result.downloaded).toHaveLength(1);
+    expect(result.downloaded[0]).toBe('/output/hero-banner.png');
+  });
+
+  it('recurses into subfolders when recursive: true (default)', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'subfolder1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
+        ])
+      )
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'file1', name: 'check.svg', mimeType: 'image/svg+xml' },
+        ])
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'root-folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.downloaded).toHaveLength(1);
+    expect(result.downloaded[0]).toBe('/output/icons/check.svg');
+  });
+
+  it('does not recurse into subfolders when recursive: false', async () => {
     mockFetch.mockResolvedValueOnce(
       makeListResponse([
-        { id: 'sub1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
+        { id: 'subfolder1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
         { id: 'file1', name: 'root.png', mimeType: 'image/png' },
       ])
     ).mockResolvedValue(makeDownloadResponse());
@@ -151,15 +190,16 @@ describe('syncDriveImages', () => {
     });
 
     expect(result.downloaded).toHaveLength(1);
-    expect(result.downloaded[0]).toContain('root.png');
+    expect(result.downloaded[0]).toBe('/output/root.png');
+    expect(mockFetch).toHaveBeenCalledTimes(2); // 1 list call + 1 download call
   });
 
-  it('applies folderPattern filter to subfolders', async () => {
+  it('applies folderPattern filter to subfolder traversal', async () => {
     mockFetch
       .mockResolvedValueOnce(
         makeListResponse([
           { id: 'sub1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
-          { id: 'sub2', name: 'photos', mimeType: 'application/vnd.google-apps.folder' },
+          { id: 'sub2', name: 'docs', mimeType: 'application/vnd.google-apps.folder' },
         ])
       )
       .mockResolvedValueOnce(
@@ -181,9 +221,9 @@ describe('syncDriveImages', () => {
   });
 
   it('cleanSync deletes local files not present in Drive', async () => {
-    fs.readdirSync.mockReturnValue(['extra.png']);
-    fs.statSync.mockReturnValue({ isDirectory: () => false });
-    fs.existsSync.mockImplementation((p: string) => p === '/output');
+    vi.mocked(fs.readdirSync).mockReturnValue(['extra.png'] as any);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+    vi.mocked(fs.existsSync).mockImplementation((p: any) => p === '/output');
 
     mockFetch
       .mockResolvedValueOnce(makeListResponse([]))
@@ -201,11 +241,11 @@ describe('syncDriveImages', () => {
   });
 
   it('cleanSync walks nested local directories before deleting missing files', async () => {
-    fs.existsSync.mockImplementation((p: string) => p === '/output' || p === '/output/nested');
-    fs.readdirSync.mockImplementation((p: string) => (p === '/output' ? ['nested'] : ['old.png']));
-    fs.statSync.mockImplementation((p: string) => ({
+    vi.mocked(fs.existsSync).mockImplementation((p: any) => p === '/output' || p === '/output/nested');
+    vi.mocked(fs.readdirSync).mockImplementation((p: any) => (p === '/output' ? ['nested'] : ['old.png']) as any);
+    vi.mocked(fs.statSync).mockImplementation(((p: any) => ({
       isDirectory: () => p === '/output/nested',
-    }));
+    })) as any);
 
     mockFetch.mockResolvedValueOnce(makeListResponse([]));
 
@@ -256,8 +296,8 @@ describe('syncDriveImages', () => {
   });
 
   it('downloads when statSync fails during incremental sync', async () => {
-    fs.existsSync.mockReturnValue(true);
-    fs.statSync.mockImplementationOnce(() => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.statSync).mockImplementationOnce(() => {
       throw new Error('stat failed');
     });
 
@@ -429,14 +469,14 @@ describe('incrementalSync', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    fs.existsSync.mockReturnValue(false);
-    fs.readdirSync.mockReturnValue([]);
-    fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: localMtimeMid });
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+    vi.mocked(fs.readdirSync).mockReturnValue([]);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false, mtimeMs: localMtimeMid } as any);
     vi.mocked(pipeline).mockResolvedValue(undefined);
   });
 
   it('re-downloads a file when Drive modifiedTime is newer than local mtime', async () => {
-    fs.existsSync.mockReturnValue(true); // file exists locally
+    vi.mocked(fs.existsSync).mockReturnValue(true); // file exists locally
 
     mockFetch
       .mockResolvedValueOnce(
@@ -457,7 +497,7 @@ describe('incrementalSync', () => {
   });
 
   it('skips a file when Drive modifiedTime is older than local mtime', async () => {
-    fs.existsSync.mockReturnValue(true);
+    vi.mocked(fs.existsSync).mockReturnValue(true);
     // statSync returns mtimeMs: 5000 (above), drive has 1000 → local is newer
 
     mockFetch.mockResolvedValueOnce(
@@ -477,8 +517,8 @@ describe('incrementalSync', () => {
   });
 
   it('skips a file when Drive modifiedTime equals local mtime', async () => {
-    fs.existsSync.mockReturnValue(true);
-    fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: 5000 });
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false, mtimeMs: 5000 } as any);
     const driveModifiedEqual = new Date(5000).toISOString();
 
     mockFetch.mockResolvedValueOnce(
@@ -498,7 +538,7 @@ describe('incrementalSync', () => {
   });
 
   it('falls back to skip-existing when modifiedTime is absent (no re-download)', async () => {
-    fs.existsSync.mockReturnValue(true);
+    vi.mocked(fs.existsSync).mockReturnValue(true);
 
     // No modifiedTime in response → incremental check is bypassed → skip existing
     mockFetch.mockResolvedValueOnce(
@@ -518,7 +558,7 @@ describe('incrementalSync', () => {
   });
 
   it('incrementalSync: false always skips existing files (Drive modifiedTime ignored)', async () => {
-    fs.existsSync.mockReturnValue(true);
+    vi.mocked(fs.existsSync).mockReturnValue(true);
 
     mockFetch.mockResolvedValueOnce(
       makeListResponse([
@@ -562,9 +602,9 @@ describe('incrementalSync', () => {
 describe('normalizeExtensions option', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    fs.existsSync.mockReturnValue(false);
-    fs.readdirSync.mockReturnValue([]);
-    fs.statSync.mockReturnValue({ isDirectory: () => false, mtimeMs: 0 });
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+    vi.mocked(fs.readdirSync).mockReturnValue([]);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false, mtimeMs: 0 } as any);
   });
 
   it('normalizeExtensions: true (default) — JPEG becomes .jpg in local path', async () => {

@@ -272,4 +272,17 @@ describe('isDataJsonNewer', () => {
     expect(getFileLastModified).not.toHaveBeenCalledWith('/path/to/translations/.gitignore');
     expect(result).toBe(true);
   });
+
+  test('should return true if translation files exist but their mtime cannot be read (returns null)', () => {
+    const dataJsonDate = new Date('2023-01-10T12:00:00Z');
+    (getFileLastModified as Mock).mockImplementation((filePath: string) => {
+      if (filePath === '/path/to/languageData.json') return dataJsonDate;
+      return null;
+    });
+
+    (fs.readdirSync as Mock).mockReturnValue(['en.json', 'fr.json']);
+
+    const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
+    expect(result).toBe(true);
+  });
 });

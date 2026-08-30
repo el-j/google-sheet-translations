@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { manageDriveTranslations } from '../../src/utils/getDriveTranslations';
 import type { GoogleDriveManagerOptions } from '../../src/utils/getDriveTranslations';
 
@@ -563,6 +564,87 @@ describe('manageDriveTranslations – scanForDocs', () => {
     });
 
     const [, options] = mockIngestDoc.mock.calls[0];
-    expect(options.existingEntry).toEqual(existingDocEntry);
+    expect(options?.existingEntry).toEqual(existingDocEntry);
+  });
+
+  it('preserves existing manifest entry when ingestDoc throws an error', async () => {
+    const existingDocEntry = {
+      id: 'doc1',
+      name: 'content_en',
+      folderPath: '',
+      generatedFromDoc: true as const,
+      sourceLocale: 'en',
+      linkedSpreadsheetId: 'existing-sheet',
+      lastIngestedAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockReadManifest.mockReturnValueOnce({
+      version: '1',
+      generatedAt: '',
+      locales: ['en'],
+      spreadsheets: [],
+      outputDirectory: 'translations',
+      flatten: true,
+      docs: [existingDocEntry],
+    });
+    mockScanDocs.mockResolvedValue([
+      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+    ]);
+    mockIngestDoc.mockRejectedValueOnce(new Error('Ingestion crash'));
+
+    const result = await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      scanForDocs: true,
+      createManifest: true,
+    });
+
+    expect(mockBuildManifest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        docs: [existingDocEntry],
+      })
+    );
+  });
+
+  it('supports flatten: false to write spreadsheets to per-spreadsheet subdirectories', async () => {
+    mockScanDrive.mockResolvedValue([
+      { id: 'sheet-1', name: 'UI / Common', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
+      { id: 'sheet-2', name: 'Marketing', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
+    ]);
+    mockGetSpreadSheetData
+      .mockResolvedValueOnce({ en: { common: { title: 'Hello' } } })
+      .mockResolvedValueOnce({ en: { promo: { banner: 'Sale' } } });
+
+    const result = await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      flatten: false,
+      createManifest: true,
+    });
+
+    expect(mockGetSpreadSheetData).toHaveBeenCalledTimes(2);
+    expect(mockGetSpreadSheetData).toHaveBeenNthCalledWith(
+      1,
+      undefined,
+      expect.objectContaining({
+        spreadsheetId: 'sheet-1',
+        translationsOutputDir: path.join('translations', 'ui-common'),
+      })
+    );
+    expect(result.manifest).toBeDefined();
+  });
+
+  it('allows explicit spreadsheet IDs to pass through when spreadsheetNameFilter is set', async () => {
+    mockScanDrive.mockResolvedValue([
+      { id: 'discovered-1', name: 'prod-sheet', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
+      { id: 'discovered-2', name: 'draft-sheet', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
+    ]);
+
+    const result = await manageDriveTranslations({
+      driveFolderId: 'folder-id',
+      spreadsheetIds: ['explicit-custom-id'],
+      spreadsheetNameFilter: /^prod-/,
+    });
+
+    expect(result.spreadsheetIds).toContain('discovered-1');
+    expect(result.spreadsheetIds).toContain('explicit-custom-id');
+    expect(result.spreadsheetIds).not.toContain('discovered-2');
   });
 });

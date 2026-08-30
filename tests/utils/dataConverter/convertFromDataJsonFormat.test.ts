@@ -119,7 +119,7 @@ describe('convertFromDataJsonFormat', () => {
   });
 
   test('should skip entry and warn when sheet value is not an object', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const dataJson = [{ 'mySheet': 'invalid-string-instead-of-object' }] as unknown as Record<string, unknown>[];
     const result = convertFromDataJsonFormat(dataJson);
@@ -145,5 +145,30 @@ describe('convertFromDataJsonFormat', () => {
 
     expect(result.en).toEqual({ home: {} });
     expect(result.fr?.home?.welcome).toBe('Bienvenue');
+  });
+
+  test('should merge keys when multiple entries define the same sheet and locale', () => {
+    const dataJson = [
+      {
+        home: {
+          en: {
+            title: 'Welcome',
+          },
+        },
+      },
+      {
+        home: {
+          en: {
+            subtitle: 'Enjoy your stay',
+          },
+        },
+      },
+    ] as unknown as Record<string, unknown>[];
+
+    const result = convertFromDataJsonFormat(dataJson);
+    expect(result.en?.home).toEqual({
+      title: 'Welcome',
+      subtitle: 'Enjoy your stay',
+    });
   });
 });
