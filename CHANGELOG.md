@@ -1,3 +1,9 @@
+## [2.2.0-beta.10](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.9...v2.2.0-beta.10) (2026-08-30)
+
+### 🐛 Bug Fixes
+
+* **ci:** fetch all branch heads for multi-branch semantic-release ([c29a464](https://github.com/el-j/google-sheet-translations/commit/c29a4649601dc8c867139d8b4e30c3661e6e770a))
+
 ## [2.2.0-beta.9](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.8...v2.2.0-beta.9) (2026-08-30)
 
 ### 🚀 Features
