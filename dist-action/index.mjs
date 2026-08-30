@@ -50868,9 +50868,12 @@ async function listFilesInFolder2(folderId, token, mimeTypeFilter) {
       pageSize: "1000"
     });
     if (pageToken) params.set("pageToken", pageToken);
-    const response = await fetch(`${DRIVE_FILES_URL2}?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const response = await withRetry(
+      () => fetch(`${DRIVE_FILES_URL2}?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }),
+      `listDriveFiles(${folderId})`
+    );
     if (!response.ok) {
       const text = await response.text();
       throw new Error(`Drive API error ${response.status}: ${text}`);
@@ -50881,7 +50884,7 @@ async function listFilesInFolder2(folderId, token, mimeTypeFilter) {
   } while (pageToken);
   return results;
 }
-async function collectFiles(folderId, folderRelPath, outputPath, token, allowedMimeTypes, recursive, folderPattern, normalizeExts = true) {
+async function collectFiles(folderId, folderRelPath, outputPath, token, allowedMimeTypes, recursive, folderPattern, normalizeExts = true, nameFilter) {
   console.log(`[driveImageSync] Scanning folder: ${folderId} (path: "${folderRelPath}")`);
   const allItems = await listFilesInFolder2(folderId, token);
   const entries = [];
@@ -50898,10 +50901,12 @@ async function collectFiles(folderId, folderRelPath, outputPath, token, allowedM
         allowedMimeTypes,
         recursive,
         folderPattern,
-        normalizeExts
+        normalizeExts,
+        nameFilter
       );
       entries.push(...subEntries);
     } else if (allowedMimeTypes.includes(item.mimeType)) {
+      if (nameFilter && !nameFilter.test(item.name)) continue;
       const localName = normalizeExts ? normalizeExtension(item.name) : item.name;
       const localPath = folderRelPath ? join(outputPath, folderRelPath, localName) : join(outputPath, localName);
       entries.push({
@@ -50917,7 +50922,10 @@ async function collectFiles(folderId, folderRelPath, outputPath, token, allowedM
 }
 async function downloadFile(fileId, localPath, token) {
   const url = `${DRIVE_FILES_URL2}/${fileId}?alt=media`;
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await withRetry(
+    () => fetch(url, { headers: { Authorization: `Bearer ${token}` } }),
+    `downloadDriveFile(${fileId})`
+  );
   if (!response.ok) {
     throw new Error(`Failed to download ${fileId}: ${response.status}`);
   }
@@ -50954,6 +50962,7 @@ async function syncDriveImages(options) {
     mimeTypes = DEFAULT_IMAGE_MIME_TYPES,
     recursive = true,
     folderPattern,
+    nameFilter,
     credentials,
     cleanSync = false,
     concurrency = 3,
@@ -50970,7 +50979,8 @@ async function syncDriveImages(options) {
     mimeTypes,
     recursive,
     folderPattern,
-    normalizeExtensions
+    normalizeExtensions,
+    nameFilter
   );
   const downloaded = [];
   const skipped = [];
