@@ -1,3 +1,16 @@
+## [2.2.0-beta.11](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.10...v2.2.0-beta.11) (2026-08-30)
+
+### 🚀 Features
+
+* **release:** release v2.2.0 stable to production ([596a542](https://github.com/el-j/google-sheet-translations/commit/596a542d2eac22c60a005905851267e5d838fbc0))
+
+### 🐛 Bug Fixes
+
+* **ci:** fetch all branch heads for multi-branch semantic-release ([52fc276](https://github.com/el-j/google-sheet-translations/commit/52fc2768d67ea0e3adcd7c9e3a21fe458a078e19))
+* **release:** attach branch explicitly for semantic-release on main ([180b9c6](https://github.com/el-j/google-sheet-translations/commit/180b9c6df3e92e896e06676e3d31924771d19d4a))
+* **release:** execute git checkout in main shell for target branch ([5867f2c](https://github.com/el-j/google-sheet-translations/commit/5867f2ca4144238e910e28b9d608e53eea3a55d5))
+* **release:** force fetch tags and constrain floating tag updates to stable releases ([d7e3aca](https://github.com/el-j/google-sheet-translations/commit/d7e3acab540f57a9db989c98faebbaf4574964ac))
+
 ## [2.2.0-beta.10](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.9...v2.2.0-beta.10) (2026-08-30)
 
 ### 🐛 Bug Fixes
