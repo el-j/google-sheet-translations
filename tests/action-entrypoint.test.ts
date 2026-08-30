@@ -1,27 +1,32 @@
 import * as core from '@actions/core';
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
+import { manageDriveTranslations } from '../src/utils/getDriveTranslations';
 
-jest.mock('@actions/core', () => ({
-	getInput: jest.fn(),
-	setOutput: jest.fn(),
-	setFailed: jest.fn(),
-	info: jest.fn(),
-	warning: jest.fn(),
-	error: jest.fn(),
-	debug: jest.fn(),
+vi.mock('@actions/core', () => ({
+	getInput: vi.fn(),
+	setOutput: vi.fn(),
+	setFailed: vi.fn(),
+	info: vi.fn(),
+	warning: vi.fn(),
+	error: vi.fn(),
+	debug: vi.fn(),
 }));
-jest.mock('../src/getSpreadSheetData', () => ({
-	getSpreadSheetData: jest.fn().mockResolvedValue({}),
+vi.mock('../src/getSpreadSheetData', () => ({
+	getSpreadSheetData: vi.fn().mockResolvedValue({}),
+}));
+vi.mock('../src/utils/getDriveTranslations', () => ({
+	manageDriveTranslations: vi.fn().mockResolvedValue({ translations: {} }),
 }));
 
 // Import run after mocks are set up so the bottom-level call uses mocked deps
 import { run } from '../src/action-entrypoint';
 
-const mockGetInput = jest.mocked(core.getInput);
-const mockSetOutput = jest.mocked(core.setOutput);
-const mockSetFailed = jest.mocked(core.setFailed);
-const mockInfo = jest.mocked(core.info);
-const mockGetSpreadSheetData = jest.mocked(getSpreadSheetData);
+const mockGetInput = vi.mocked(core.getInput);
+const mockSetOutput = vi.mocked(core.setOutput);
+const mockSetFailed = vi.mocked(core.setFailed);
+const mockInfo = vi.mocked(core.info);
+const mockGetSpreadSheetData = vi.mocked(getSpreadSheetData);
+const mockManageDriveTranslations = vi.mocked(manageDriveTranslations);
 
 /** Default set of valid action inputs */
 function makeInputs(overrides: Record<string, string> = {}): Record<string, string> {
@@ -45,9 +50,10 @@ function makeInputs(overrides: Record<string, string> = {}): Record<string, stri
 }
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	process.env.GITHUB_WORKSPACE = '/workspace';
 	mockGetSpreadSheetData.mockResolvedValue({});
+	mockManageDriveTranslations.mockResolvedValue({ translations: {} } as Awaited<ReturnType<typeof manageDriveTranslations>>);
 });
 
 describe('action-entrypoint', () => {
@@ -96,9 +102,46 @@ describe('action-entrypoint', () => {
 				'-----BEGIN RSA PRIVATE KEY-----\nABC\n-----END RSA PRIVATE KEY-----',
 			);
 		});
+
+		it('succeeds without google-client-email/google-private-key when GOOGLE_APPLICATION_CREDENTIALS is set (WIF)', async () => {
+			process.env.GOOGLE_APPLICATION_CREDENTIALS = '/tmp/wif-creds.json';
+			const inputs = makeInputs({ 'google-client-email': '', 'google-private-key': '' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockGetSpreadSheetData.mockResolvedValue({ en: {} });
+
+			await run();
+
+			expect(mockSetFailed).not.toHaveBeenCalled();
+			expect(mockInfo).toHaveBeenCalledWith('✅ Fetched translations for 1 locales');
+			delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+		});
 	});
 
 	describe('error handling', () => {
+		it('calls core.setFailed for an invalid row-limit', async () => {
+			const inputs = makeInputs({ 'row-limit': '0' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid row-limit value'),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
+		});
+
+		it('calls core.setFailed for an invalid wait-seconds value', async () => {
+			const inputs = makeInputs({ 'wait-seconds': 'abc' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				expect.stringContaining('Invalid wait-seconds value'),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
+		});
+
 		it('calls core.setFailed with the error message when getSpreadSheetData throws an Error', async () => {
 			const inputs = makeInputs();
 			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
@@ -118,6 +161,58 @@ describe('action-entrypoint', () => {
 			await run();
 
 			expect(mockSetFailed).toHaveBeenCalledWith('network timeout');
+		});
+
+		it('calls core.setFailed when neither WIF nor service-account key credentials are provided', async () => {
+			delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+			const inputs = makeInputs({ 'google-client-email': '', 'google-private-key': '' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				expect.stringContaining('Authentication required'),
+			);
+		});
+
+		it('calls core.setFailed when manageDriveTranslations throws', async () => {
+			const inputs = makeInputs({ 'drive-folder-id': 'folder-123' });
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockManageDriveTranslations.mockRejectedValueOnce(new Error('Drive sync failed'));
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith('Drive sync failed');
+		});
+	});
+
+	describe('drive-folder mode', () => {
+		it('uses manageDriveTranslations when drive-folder-id is provided', async () => {
+			const inputs = makeInputs({
+				'drive-folder-id': 'folder-123',
+				'sync-images': 'true',
+				'image-output-path': './public/images',
+				'spreadsheet-ids': 'sheet-a,sheet-b',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockManageDriveTranslations.mockResolvedValueOnce({
+				translations: { en: {}, de: {} },
+				spreadsheetIds: ['sheet-a', 'sheet-b'],
+			} as Awaited<ReturnType<typeof manageDriveTranslations>>);
+
+			await run();
+
+			expect(mockManageDriveTranslations).toHaveBeenCalledWith(
+				expect.objectContaining({
+					driveFolderId: 'folder-123',
+					spreadsheetIds: ['sheet-a', 'sheet-b'],
+					syncImages: true,
+					imageOutputPath: './public/images',
+					docTitles: ['home', 'about'],
+				}),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
+			expect(mockInfo).toHaveBeenCalledWith('✅ Fetched translations for 2 locales');
 		});
 	});
 
@@ -140,6 +235,54 @@ describe('action-entrypoint', () => {
 
 			const [sheetTitles] = mockGetSpreadSheetData.mock.calls[0];
 			expect(sheetTitles).toEqual(['landing']);
+		});
+
+		it('uses documented defaults for optional path and title inputs when they are absent', async () => {
+			const inputs = makeInputs({
+				'translations-output-dir': '',
+				'locales-output-path': '',
+				'data-json-path': '',
+				'row-limit': '',
+				'wait-seconds': '',
+				'spreadsheet-title': '',
+				'source-locale': '',
+				'drive-folder-id': '',
+				'spreadsheet-ids': '',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			const [, options] = mockGetSpreadSheetData.mock.calls[0];
+			expect(options?.translationsOutputDir).toContain('/workspace/translations');
+			expect(options?.localesOutputPath).toContain('/workspace/src/i18n/locales.ts');
+			expect(options?.dataJsonPath).toContain('/workspace/src/lib/languageData.json');
+			expect(options?.spreadsheetTitle).toBe('google-sheet-translations');
+			expect(options?.sourceLocale).toBe('en');
+		});
+		it('uses manageDriveTranslations when spreadsheet-ids are provided without drive-folder-id', async () => {
+			const inputs = makeInputs({
+				'drive-folder-id': '',
+				'spreadsheet-ids': 'sheet-a,sheet-b',
+				'sync-images': 'false',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+			mockManageDriveTranslations.mockResolvedValueOnce({
+				translations: { en: {}, de: {} },
+				spreadsheetIds: ['sheet-a', 'sheet-b'],
+			} as Awaited<ReturnType<typeof manageDriveTranslations>>);
+
+			await run();
+
+			expect(mockManageDriveTranslations).toHaveBeenCalledWith(
+				expect.objectContaining({
+					driveFolderId: undefined,
+					spreadsheetIds: ['sheet-a', 'sheet-b'],
+					syncImages: false,
+					imageOutputPath: undefined,
+				}),
+			);
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
 		});
 	});
 

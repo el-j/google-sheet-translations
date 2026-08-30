@@ -1,0 +1,55 @@
+# Basic Translation Sync
+#
+# Fetches translations from a single Google Spreadsheet on a daily schedule
+# and commits the updated JSON files back to the repository.
+#
+# Required secrets:
+#   GOOGLE_CLIENT_EMAIL  – service account client_email
+#   GOOGLE_PRIVATE_KEY   – service account private_key
+#   GOOGLE_SPREADSHEET_ID – target spreadsheet ID
+#
+# See: https://el-j.github.io/google-sheet-translations/guide/service-account-setup
+
+name: Sync Translations
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # daily at 06:00 UTC
+  workflow_dispatch:        # allow manual trigger from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # required to commit translation files
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Fetch translations from Google Sheets
+        uses: el-j/google-sheet-translations@v2
+        with:
+          google-client-email: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          google-private-key: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          google-spreadsheet-id: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
+
+          # Comma-separated list of sheet tab names to fetch
+          sheet-titles: 'home,common,about'
+
+          # Push new local keys back to the spreadsheet before fetching
+          sync-local-changes: 'true'
+
+          # Output paths (these are the defaults — omit to use defaults)
+          translations-output-dir: 'translations'
+          locales-output-path: 'src/i18n/locales.ts'
+          data-json-path: 'src/lib/languageData.json'
+
+      - name: Commit updated translation files
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: sync translations [skip ci]'
+          file_pattern: |
+            translations/
+            src/i18n/locales.ts
+            src/lib/languageData.json

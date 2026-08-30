@@ -1,43 +1,51 @@
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
-import { mock } from 'jest-mock-extended';
-import type { GoogleSpreadsheet } from 'google-spreadsheet';
+import { mock } from 'vitest-mock-extended';
+import { GoogleSpreadsheet } from 'google-spreadsheet';
 import { updateSpreadsheetWithLocalChanges } from '../src/utils/spreadsheetUpdater';
+import { createAuthClient } from '../src/utils/auth';
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDataJsonNewer } from '../src/utils/isDataJsonNewer';
 import { readDataJson } from '../src/utils/readDataJson';
 import { findLocalChanges } from '../src/utils/dataConverter/findLocalChanges';
+import { createSpreadsheet } from '../src/utils/spreadsheetCreator';
 
 // Mock dependencies
-jest.mock('google-spreadsheet');
-jest.mock('node:fs');
-jest.mock('node:path');
-jest.mock('../src/utils/rateLimiter', () => ({
-  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
+vi.mock('google-spreadsheet');
+vi.mock('node:fs');
+vi.mock('node:path');
+vi.mock('../src/utils/rateLimiter', () => ({
+  withRetry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
-jest.mock('../src/utils/auth', () => ({
-  createAuthClient: jest.fn().mockReturnValue({})
+vi.mock('../src/utils/auth', () => ({
+  createAuthClient: vi.fn().mockReturnValue({})
 }));
-jest.mock('../src/utils/validateEnv', () => ({
-  validateEnv: jest.fn().mockReturnValue({
+vi.mock('../src/utils/validateEnv', () => ({
+  validateEnv: vi.fn().mockReturnValue({
     GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
   })
 }));
-jest.mock('../src/utils/isDataJsonNewer', () => ({
-  isDataJsonNewer: jest.fn().mockReturnValue(false)
+vi.mock('../src/utils/isDataJsonNewer', () => ({
+  isDataJsonNewer: vi.fn().mockReturnValue(false)
 }));
-jest.mock('../src/utils/readDataJson', () => ({
-  readDataJson: jest.fn().mockReturnValue(null)
+vi.mock('../src/utils/readDataJson', () => ({
+  readDataJson: vi.fn().mockReturnValue(null)
 }));
-jest.mock('../src/utils/dataConverter/convertToDataJsonFormat', () => ({
-  convertToDataJsonFormat: jest.fn().mockReturnValue([])
+vi.mock('../src/utils/dataConverter/convertToDataJsonFormat', () => ({
+  convertToDataJsonFormat: vi.fn().mockReturnValue([])
 }));
-jest.mock('../src/utils/dataConverter/findLocalChanges', () => ({
-  findLocalChanges: jest.fn().mockReturnValue({})
+vi.mock('../src/utils/dataConverter/findLocalChanges', () => ({
+  findLocalChanges: vi.fn().mockReturnValue({})
 }));
-jest.mock('../src/utils/spreadsheetUpdater', () => ({
-  updateSpreadsheetWithLocalChanges: jest.fn().mockResolvedValue(undefined)
+vi.mock('../src/utils/spreadsheetUpdater', () => ({
+  updateSpreadsheetWithLocalChanges: vi.fn().mockResolvedValue(undefined)
+}));
+vi.mock('../src/utils/spreadsheetCreator', () => ({
+  createSpreadsheet: vi.fn().mockResolvedValue({
+    spreadsheetId: 'created-sheet-id',
+    url: 'https://docs.google.com/spreadsheets/d/created-sheet-id/edit'
+  })
 }));
 
 describe('getSpreadSheetData', () => {
@@ -45,23 +53,23 @@ describe('getSpreadSheetData', () => {
   const mockDoc = mock<GoogleSpreadsheet>();
   // Define mock sheet with proper typings for Jest mock functions
   const mockSheet = {
-    getRows: jest.fn().mockResolvedValue([]),
-    addRows: jest.fn().mockResolvedValue([])
+    getRows: vi.fn().mockResolvedValue([]),
+    addRows: vi.fn().mockResolvedValue([])
   };
   // Define proper type for mock row to avoid TypeScript errors
   const mockRow = {
-    toObject: jest.fn()
+    toObject: vi.fn()
   };
   
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     process.env.GOOGLE_SPREADSHEET_ID = 'test-spreadsheet-id';
-    (mockDoc.loadInfo as jest.Mock) = jest.fn().mockResolvedValue(undefined);
+    (mockDoc.loadInfo as Mock) = vi.fn().mockResolvedValue(undefined);
     // Use type assertion to deal with readonly property
     (mockDoc as unknown as Record<string, unknown>).sheetsByTitle = { 'home': mockSheet };
     
     // Make sure path.join includes 'translations' in one of its calls
-    (path.join as jest.Mock).mockImplementation((...args) => {
+    (path.join as Mock).mockImplementation((...args) => {
       if (args.includes('translations')) {
         return '/mock/path/translations/en.json';
       }
@@ -71,28 +79,28 @@ describe('getSpreadSheetData', () => {
     mockRow.toObject.mockReturnValue({ 'key': 'welcome', 'en': 'Welcome', 'fr': 'Bienvenue' });
     
     // @ts-ignore - mock constructor
-    require('google-spreadsheet').GoogleSpreadsheet.mockImplementation(() => mockDoc);
+    vi.mocked(GoogleSpreadsheet).mockImplementation(class { constructor() { return mockDoc as any; } } as any);
     
     // Mock console methods
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     
     // Mock filesystem methods
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.statSync as jest.Mock).mockReturnValue({ mtime: new Date() });
-    (fs.readdirSync as jest.Mock).mockReturnValue(['en.json', 'fr.json']);
-    (fs.readFileSync as jest.Mock).mockReturnValue('{}');
-    (fs.writeFileSync as jest.Mock).mockReturnValue(undefined);
-    (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
+    (fs.existsSync as Mock).mockReturnValue(true);
+    (fs.statSync as Mock).mockReturnValue({ mtime: new Date() });
+    (fs.readdirSync as Mock).mockReturnValue(['en.json', 'fr.json']);
+    (fs.readFileSync as Mock).mockReturnValue('{}');
+    (fs.writeFileSync as Mock).mockReturnValue(undefined);
+    (fs.mkdirSync as Mock).mockReturnValue(undefined);
     
     // Mock path methods
-    (path.dirname as jest.Mock).mockReturnValue('/mock/path');
-    (path.join as jest.Mock).mockImplementation((...args) => args.join('/'));
+    (path.dirname as Mock).mockReturnValue('/mock/path');
+    (path.join as Mock).mockImplementation((...args) => args.join('/'));
   });
   
   afterEach(() => {
     delete process.env.GOOGLE_SPREADSHEET_ID;
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should fetch data from specified sheets', async () => {
@@ -104,7 +112,7 @@ describe('getSpreadSheetData', () => {
   
   test('should use default options when none provided', async () => {
     // Mock fs.existsSync for translations directory check
-    (fs.existsSync as jest.Mock).mockImplementation((path) => {
+    (fs.existsSync as Mock).mockImplementation((path) => {
       return path.includes('translations');
     });
     
@@ -157,7 +165,7 @@ describe('getSpreadSheetData', () => {
   });
 
   test('should create output directories if they do not exist', async () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
+    (fs.existsSync as Mock).mockReturnValue(false);
     
     await getSpreadSheetData(['home']);
     
@@ -168,8 +176,8 @@ describe('getSpreadSheetData', () => {
   test('should pass autoTranslate option to spreadsheetUpdater when local changes exist', async () => {
     // Mock the necessary values to trigger the spreadsheet update flow
     const mockLocalData = { en: { home: { welcome: 'Welcome' } } };
-    (readDataJson as jest.Mock).mockReturnValue(mockLocalData);
-    (isDataJsonNewer as jest.Mock).mockReturnValue(true);
+    (readDataJson as Mock).mockReturnValue(mockLocalData);
+    (isDataJsonNewer as Mock).mockReturnValue(true);
     
     const mockChanges = {
       en: {
@@ -178,7 +186,7 @@ describe('getSpreadSheetData', () => {
         }
       }
     };
-    (findLocalChanges as jest.Mock).mockReturnValue(mockChanges);
+    (findLocalChanges as Mock).mockReturnValue(mockChanges);
     
     // Call with autoTranslate = true
     await getSpreadSheetData(['home'], { autoTranslate: true });
@@ -187,16 +195,16 @@ describe('getSpreadSheetData', () => {
     expect(updateSpreadsheetWithLocalChanges).toHaveBeenCalled();
     
     // Verify the arguments individually
-    const mockFn = updateSpreadsheetWithLocalChanges as jest.Mock;
+    const mockFn = updateSpreadsheetWithLocalChanges as Mock;
     const firstCall = mockFn.mock.calls[0];
     expect(firstCall[1]).toEqual(mockChanges); // changes
     expect(firstCall[3]).toBe(true); // autoTranslate
     
     // Reset and test with autoTranslate = false (default)
-    jest.clearAllMocks();
-    (readDataJson as jest.Mock).mockReturnValue(mockLocalData);
-    (isDataJsonNewer as jest.Mock).mockReturnValue(true);
-    (findLocalChanges as jest.Mock).mockReturnValue(mockChanges);
+    vi.clearAllMocks();
+    (readDataJson as Mock).mockReturnValue(mockLocalData);
+    (isDataJsonNewer as Mock).mockReturnValue(true);
+    (findLocalChanges as Mock).mockReturnValue(mockChanges);
     
     await getSpreadSheetData(['home']);
     
@@ -204,9 +212,90 @@ describe('getSpreadSheetData', () => {
     expect(updateSpreadsheetWithLocalChanges).toHaveBeenCalled();
     
     // Verify the arguments individually for the second call
-    const secondCall = (updateSpreadsheetWithLocalChanges as jest.Mock).mock.calls[0];
+    const secondCall = (updateSpreadsheetWithLocalChanges as Mock).mock.calls[0];
     expect(secondCall[1]).toEqual(mockChanges); // changes
     expect(secondCall[3]).toBe(false); // autoTranslate (default)
+  });
+
+  test('should auto-create a spreadsheet and persist its ID when none is configured', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target === '/repo/.env');
+    (fs.readFileSync as Mock).mockReturnValue('EXISTING=1\n');
+
+    await getSpreadSheetData(['home']);
+
+    expect(createSpreadsheet).toHaveBeenCalledWith(
+      createAuthClient(),
+      expect.objectContaining({ title: 'google-sheet-translations' }),
+    );
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/repo/.env',
+      expect.stringContaining('GOOGLE_SPREADSHEET_ID=created-sheet-id'),
+      'utf8',
+    );
+  });
+
+  test('should create a new .env file when none exists during auto-create', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target !== '/repo/.env');
+
+    await getSpreadSheetData(['home']);
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/repo/.env',
+      'GOOGLE_SPREADSHEET_ID=created-sheet-id\n',
+      'utf8',
+    );
+  });
+
+  test('should warn when persisting the auto-created spreadsheet ID fails', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target === '/repo/.env');
+    (fs.readFileSync as Mock).mockReturnValue('EXISTING=1\n');
+    (fs.writeFileSync as Mock).mockImplementation((target: string) => {
+      if (target === '/repo/.env') {
+        throw new Error('permission denied');
+      }
+    });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await getSpreadSheetData(['home']);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Could not write .env'));
+  });
+
+  test('should replace an existing GOOGLE_SPREADSHEET_ID entry in .env', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    vi.spyOn(process, 'cwd').mockReturnValue('/repo');
+    (fs.existsSync as Mock).mockImplementation((target: string) => target === '/repo/.env');
+    (fs.readFileSync as Mock).mockReturnValue('GOOGLE_SPREADSHEET_ID=old-id\nEXISTING=1\n');
+
+    await getSpreadSheetData(['home']);
+
+    expect(fs.writeFileSync).toHaveBeenCalledWith(
+      '/repo/.env',
+      expect.stringContaining('GOOGLE_SPREADSHEET_ID=created-sheet-id'),
+      'utf8',
+    );
+  });
+
+  test('should throw when autoCreate is disabled and no spreadsheet ID exists', async () => {
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+
+    await expect(
+      getSpreadSheetData(['home'], { autoCreate: false }),
+    ).rejects.toThrow(/No spreadsheet ID provided/);
+  });
+
+  test('should throw a descriptive error when spreadsheet metadata cannot be loaded', async () => {
+    (mockDoc.loadInfo as Mock).mockRejectedValueOnce(new Error('boom'));
+
+    await expect(getSpreadSheetData(['home'])).rejects.toThrow(
+      'Failed to load spreadsheet "test-spreadsheet-id"',
+    );
   });
 });
 
@@ -214,37 +303,37 @@ describe('getSpreadSheetData', () => {
 // Public sheet path tests
 // ---------------------------------------------------------------------------
 
-jest.mock('../src/utils/publicSheetReader', () => ({
-  readPublicSheet: jest.fn(),
+vi.mock('../src/utils/publicSheetReader', () => ({
+  readPublicSheet: vi.fn(),
 }));
 
 import { readPublicSheet } from '../src/utils/publicSheetReader';
 
 describe('getSpreadSheetData (publicSheet mode)', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     // Reset fs / path mocks that are already mocked at module level above
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.statSync as jest.Mock).mockReturnValue({ mtime: new Date() });
-    (fs.readdirSync as jest.Mock).mockReturnValue([]);
-    (fs.readFileSync as jest.Mock).mockReturnValue('{}');
-    (fs.writeFileSync as jest.Mock).mockReturnValue(undefined);
-    (fs.mkdirSync as jest.Mock).mockReturnValue(undefined);
+    (fs.existsSync as Mock).mockReturnValue(true);
+    (fs.statSync as Mock).mockReturnValue({ mtime: new Date() });
+    (fs.readdirSync as Mock).mockReturnValue([]);
+    (fs.readFileSync as Mock).mockReturnValue('{}');
+    (fs.writeFileSync as Mock).mockReturnValue(undefined);
+    (fs.mkdirSync as Mock).mockReturnValue(undefined);
 
-    (path.join as jest.Mock).mockImplementation((...args: string[]) => args.join('/'));
-    (path.dirname as jest.Mock).mockReturnValue('/mock/path');
+    (path.join as Mock).mockImplementation((...args: string[]) => args.join('/'));
+    (path.dirname as Mock).mockReturnValue('/mock/path');
 
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('uses readPublicSheet instead of the authenticated path when publicSheet=true', async () => {
-    (readPublicSheet as jest.Mock).mockResolvedValue([
+    (readPublicSheet as Mock).mockResolvedValue([
       { key: 'welcome', en: 'Welcome', de: 'Willkommen' },
     ]);
 
@@ -255,12 +344,11 @@ describe('getSpreadSheetData (publicSheet mode)', () => {
 
     expect(readPublicSheet).toHaveBeenCalled();
     // createAuthClient / GoogleSpreadsheet should NOT be called
-    const { createAuthClient } = require('../src/utils/auth');
     expect(createAuthClient).not.toHaveBeenCalled();
   });
 
   test('uses spreadsheetId from options instead of env var', async () => {
-    (readPublicSheet as jest.Mock).mockResolvedValue([]);
+    (readPublicSheet as Mock).mockResolvedValue([]);
 
     await getSpreadSheetData(['home'], {
       spreadsheetId: 'OPTION_SHEET_ID',
@@ -271,7 +359,7 @@ describe('getSpreadSheetData (publicSheet mode)', () => {
   });
 
   test('warns and continues when a sheet cannot be fetched in public mode', async () => {
-    (readPublicSheet as jest.Mock).mockRejectedValue(new Error('Not public'));
+    (readPublicSheet as Mock).mockRejectedValue(new Error('Not public'));
 
     const result = await getSpreadSheetData(['home'], {
       spreadsheetId: 'PUBLIC_SHEET_ID',

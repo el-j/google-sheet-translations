@@ -1,105 +1,212 @@
-import { createAuthClient } from '../../src/utils/auth';
-import { JWT } from 'google-auth-library';
+import { createAuthClient, buildGoogleAuth, normalizePrivateKey } from '../../src/utils/auth';
+import { GoogleAuth } from 'google-auth-library';
 import { validateCredentials } from '../../src/utils/validateEnv';
 
 // Mock validateEnv to avoid actual environment checks
-jest.mock('../../src/utils/validateEnv', () => ({
-  validateEnv: jest.fn().mockReturnValue({
+vi.mock('../../src/utils/validateEnv', () => ({
+  validateEnv: vi.fn().mockReturnValue({
     GOOGLE_CLIENT_EMAIL: 'test@example.com',
     GOOGLE_PRIVATE_KEY: 'test-private-key',
     GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
   }),
-  validateCredentials: jest.fn().mockReturnValue({
+  validateCredentials: vi.fn().mockReturnValue({
     GOOGLE_CLIENT_EMAIL: 'test@example.com',
     GOOGLE_PRIVATE_KEY: 'test-private-key',
   })
 }));
 
-// Mock the JWT constructor
-jest.mock('google-auth-library', () => {
+// Mock GoogleAuth constructor
+vi.mock('google-auth-library', () => {
   return {
-    JWT: jest.fn().mockImplementation(() => ({
-      email: 'test@example.com',
-      key: 'test-private-key',
-      scopes: ['https://www.googleapis.com/auth/spreadsheets']
-    }))
+    GoogleAuth: vi.fn().mockImplementation(class {
+      constructor(private _opts: unknown) {}
+    }),
   };
 });
 
-const mockValidateCredentials = validateCredentials as jest.Mock;
-const MockJWT = JWT as unknown as jest.Mock;
+const mockValidateCredentials = validateCredentials as Mock;
+const MockGoogleAuth = GoogleAuth as unknown as Mock;
 
 describe('createAuthClient', () => {
+  const originalEnv = process.env;
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
+    process.env = { ...originalEnv };
+    delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
   });
 
-  test('should create a JWT auth client with correct parameters', () => {
-    mockValidateCredentials.mockReturnValue({
-      GOOGLE_CLIENT_EMAIL: 'test@example.com',
-      GOOGLE_PRIVATE_KEY: 'test-private-key',
-      GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
-    });
-    MockJWT.mockImplementation(() => ({
-      email: 'test@example.com',
-      key: 'test-private-key',
-      scopes: ['https://www.googleapis.com/auth/spreadsheets']
-    }));
+  afterEach(() => {
+    process.env = originalEnv;
+  });
 
-    const authClient = createAuthClient();
-    
-    // Check that JWT was called with the right parameters
-    expect(MockJWT).toHaveBeenCalledWith({
-      email: 'test@example.com',
-      key: 'test-private-key',
-      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+  describe('service-account key mode (classic)', () => {
+    test('should create a GoogleAuth client with service-account credentials', () => {
+      mockValidateCredentials.mockReturnValue({
+        GOOGLE_CLIENT_EMAIL: 'test@example.com',
+        GOOGLE_PRIVATE_KEY: 'test-private-key',
+      });
+
+      createAuthClient();
+
+      expect(MockGoogleAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          credentials: expect.objectContaining({
+            client_email: 'test@example.com',
+            private_key: 'test-private-key',
+          }),
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        })
+      );
     });
-    
-    // Check that we got back the expected object
-    expect(authClient).toEqual({
-      email: 'test@example.com',
-      key: 'test-private-key',
-      scopes: ['https://www.googleapis.com/auth/spreadsheets']
+
+    test('should normalize literal \\n sequences in GOOGLE_PRIVATE_KEY to real newlines', () => {
+      const keyWithEscapedNewlines =
+        '-----BEGIN RSA PRIVATE KEY-----\\nMIIEfake\\n-----END RSA PRIVATE KEY-----\\n';
+      const keyWithRealNewlines =
+        '-----BEGIN RSA PRIVATE KEY-----\nMIIEfake\n-----END RSA PRIVATE KEY-----\n';
+
+      mockValidateCredentials.mockReturnValue({
+        GOOGLE_CLIENT_EMAIL: 'ci@example.com',
+        GOOGLE_PRIVATE_KEY: keyWithEscapedNewlines,
+      });
+
+      createAuthClient();
+
+      expect(MockGoogleAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          credentials: expect.objectContaining({
+            private_key: keyWithRealNewlines,
+          }),
+        })
+      );
+    });
+
+    test('should leave already-unescaped newlines unchanged', () => {
+      const keyWithRealNewlines =
+        '-----BEGIN RSA PRIVATE KEY-----\nMIIEfake\n-----END RSA PRIVATE KEY-----\n';
+
+      mockValidateCredentials.mockReturnValue({
+        GOOGLE_CLIENT_EMAIL: 'local@example.com',
+        GOOGLE_PRIVATE_KEY: keyWithRealNewlines,
+      });
+
+      createAuthClient();
+
+      expect(MockGoogleAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          credentials: expect.objectContaining({
+            private_key: keyWithRealNewlines,
+          }),
+        })
+      );
     });
   });
 
-  test('should normalize literal \\n sequences in GOOGLE_PRIVATE_KEY to real newlines', () => {
-    // Simulate how GitHub Actions secrets store PEM keys: literal \n instead of newlines
-    const keyWithEscapedNewlines =
-      '-----BEGIN RSA PRIVATE KEY-----\\nMIIEfake\\n-----END RSA PRIVATE KEY-----\\n';
-    const keyWithRealNewlines =
-      '-----BEGIN RSA PRIVATE KEY-----\nMIIEfake\n-----END RSA PRIVATE KEY-----\n';
+  describe('Workload Identity Federation / ADC mode', () => {
+    test('should use ADC when GOOGLE_APPLICATION_CREDENTIALS is set', () => {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = '/path/to/credentials.json';
 
-    mockValidateCredentials.mockReturnValue({
-      GOOGLE_CLIENT_EMAIL: 'ci@example.com',
-      GOOGLE_PRIVATE_KEY: keyWithEscapedNewlines,
-      GOOGLE_SPREADSHEET_ID: 'some-id'
+      createAuthClient();
+
+      // GoogleAuth is constructed without explicit credentials (uses ADC file)
+      expect(MockGoogleAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+        })
+      );
+      expect(MockGoogleAuth).toHaveBeenCalledWith(
+        expect.not.objectContaining({ credentials: expect.anything() })
+      );
     });
-    MockJWT.mockImplementation((opts: { key: string }) => ({ key: opts.key }));
 
-    createAuthClient();
+    test('should NOT call validateCredentials when GOOGLE_APPLICATION_CREDENTIALS is set', () => {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = '/path/to/credentials.json';
 
-    expect(MockJWT).toHaveBeenCalledWith(
-      expect.objectContaining({ key: keyWithRealNewlines })
+      createAuthClient();
+
+      expect(mockValidateCredentials).not.toHaveBeenCalled();
+    });
+
+    test('should still call validateCredentials when GOOGLE_APPLICATION_CREDENTIALS is absent', () => {
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+
+      createAuthClient();
+
+      expect(mockValidateCredentials).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+describe('buildGoogleAuth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('returns GoogleAuth with credentials when provided', () => {
+    buildGoogleAuth(['https://www.googleapis.com/auth/spreadsheets'], {
+      client_email: 'sa@project.iam.gserviceaccount.com',
+      private_key: '-----BEGIN PRIVATE KEY-----\nfake\n-----END PRIVATE KEY-----\n',
+    });
+
+    expect(MockGoogleAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        credentials: expect.objectContaining({ client_email: 'sa@project.iam.gserviceaccount.com' }),
+        scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+      })
     );
   });
 
-  test('should leave already-unescaped newlines unchanged', () => {
-    // Simulate a .env file that already has real newlines in the key
-    const keyWithRealNewlines =
-      '-----BEGIN RSA PRIVATE KEY-----\nMIIEfake\n-----END RSA PRIVATE KEY-----\n';
+  test('returns GoogleAuth without credentials when none provided (ADC/WIF)', () => {
+    buildGoogleAuth(['https://www.googleapis.com/auth/drive.readonly']);
 
-    mockValidateCredentials.mockReturnValue({
-      GOOGLE_CLIENT_EMAIL: 'local@example.com',
-      GOOGLE_PRIVATE_KEY: keyWithRealNewlines,
-      GOOGLE_SPREADSHEET_ID: 'some-id'
-    });
-    MockJWT.mockImplementation((opts: { key: string }) => ({ key: opts.key }));
-
-    createAuthClient();
-
-    expect(MockJWT).toHaveBeenCalledWith(
-      expect.objectContaining({ key: keyWithRealNewlines })
+    expect(MockGoogleAuth).toHaveBeenCalledWith(
+      expect.objectContaining({
+        scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+      })
     );
+    expect(MockGoogleAuth).toHaveBeenCalledWith(
+      expect.not.objectContaining({ credentials: expect.anything() })
+    );
+  });
+});
+
+describe('normalizePrivateKey', () => {
+  const PEM_REAL_NEWLINES =
+    '-----BEGIN PRIVATE KEY-----\nMIIEfake\n-----END PRIVATE KEY-----\n';
+  const PEM_ESCAPED_NEWLINES =
+    '-----BEGIN PRIVATE KEY-----\\nMIIEfake\\n-----END PRIVATE KEY-----\\n';
+
+  test('leaves a key with real newlines unchanged', () => {
+    expect(normalizePrivateKey(PEM_REAL_NEWLINES)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('converts literal \\n sequences to real newlines', () => {
+    expect(normalizePrivateKey(PEM_ESCAPED_NEWLINES)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('strips surrounding double quotes', () => {
+    expect(normalizePrivateKey(`"${PEM_REAL_NEWLINES}"`)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('strips surrounding single quotes', () => {
+    expect(normalizePrivateKey(`'${PEM_REAL_NEWLINES}'`)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('strips quotes AND converts escaped newlines (both issues at once)', () => {
+    expect(normalizePrivateKey(`"${PEM_ESCAPED_NEWLINES}"`)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('normalizes Windows-style CRLF line endings', () => {
+    const crlfKey = '-----BEGIN PRIVATE KEY-----\r\nMIIEfake\r\n-----END PRIVATE KEY-----\r\n';
+    expect(normalizePrivateKey(crlfKey)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('trims leading and trailing whitespace outside surrounding quotes', () => {
+    expect(normalizePrivateKey(`  "${PEM_REAL_NEWLINES}"  `)).toBe(PEM_REAL_NEWLINES);
+  });
+
+  test('handles a key that is already perfectly formatted', () => {
+    expect(normalizePrivateKey(PEM_REAL_NEWLINES)).toBe(PEM_REAL_NEWLINES);
   });
 });

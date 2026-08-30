@@ -2,8 +2,8 @@ import { readPublicSheet } from '../../src/utils/publicSheetReader';
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
 
-jest.mock('node:https');
-jest.mock('node:http');
+vi.mock('node:https');
+vi.mock('node:http');
 
 interface FakeResponse extends EventEmitter {
   statusCode?: number;
@@ -18,7 +18,7 @@ function buildFakeHttp(statusCode: number, body: string, headers: Record<string,
   });
 
   // `req` needs an `end()` method because fetchUrl calls req.end()
-  const req = Object.assign(new EventEmitter(), { end: jest.fn() });
+  const req = Object.assign(new EventEmitter(), { end: vi.fn() });
 
   const trigger = (cb: (r: FakeResponse) => void) => {
     process.nextTick(() => {
@@ -41,7 +41,7 @@ function gvizWrap(payload: object): string {
 
 describe('readPublicSheet', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('uses headers=1 in the gviz URL so column labels are always populated', async () => {
@@ -57,7 +57,7 @@ describe('readPublicSheet', () => {
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
     let capturedUrl = '';
-    (https.get as jest.Mock).mockImplementation((url: string, cb: (r: unknown) => void) => {
+    (https.get as Mock).mockImplementation((url: string, cb: (r: unknown) => void) => {
       capturedUrl = url;
       return trigger(cb);
     });
@@ -83,7 +83,7 @@ describe('readPublicSheet', () => {
       },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as jest.Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
       trigger(cb),
     );
 
@@ -100,12 +100,55 @@ describe('readPublicSheet', () => {
       table: { cols: [{ id: 'A', label: 'key', type: 'string' }], rows: [] },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as jest.Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
       trigger(cb),
     );
 
     const rows = await readPublicSheet('SPREADSHEET_ID', 'empty_sheet');
     expect(rows).toEqual([]);
+  });
+
+  test('uses column ids when labels are missing', async () => {
+    const payload = {
+      status: 'ok',
+      table: {
+        cols: [
+          { id: 'A', label: '', type: 'string' },
+          { id: 'B', label: '', type: 'string' },
+        ],
+        rows: [{ c: [{ v: 'hello' }, { v: 'Bonjour' }] }],
+      },
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
+
+    expect(rows[0]).toEqual({ A: 'hello', B: 'Bonjour' });
+  });
+
+  test('skips rows that are missing the c array', async () => {
+    const payload = {
+      status: 'ok',
+      table: {
+        cols: [
+          { id: 'A', label: 'key', type: 'string' },
+          { id: 'B', label: 'en', type: 'string' },
+        ],
+        rows: [{}, { c: [{ v: 'hello' }, { v: 'Hello' }] }],
+      },
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toEqual({ key: 'hello', en: 'Hello' });
   });
 
   test('handles null cells by mapping them to empty string', async () => {
@@ -120,7 +163,7 @@ describe('readPublicSheet', () => {
       },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as jest.Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
       trigger(cb),
     );
 
@@ -135,16 +178,29 @@ describe('readPublicSheet', () => {
       table: null,
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as jest.Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
       trigger(cb),
     );
 
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow('Access denied');
   });
 
+  test('returns empty array when the parsed gviz payload has no table', async () => {
+    const payload = {
+      status: 'ok',
+      table: null,
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    await expect(readPublicSheet('SPREADSHEET_ID', 'home')).resolves.toEqual([]);
+  });
+
   test('throws when the response body is not a valid gviz wrapper', async () => {
     const { trigger } = buildFakeHttp(200, '<html>Login required</html>');
-    (https.get as jest.Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
       trigger(cb),
     );
 
@@ -153,9 +209,37 @@ describe('readPublicSheet', () => {
     );
   });
 
+  test('throws when the gviz wrapper contains invalid JSON', async () => {
+    const { trigger } = buildFakeHttp(
+      200,
+      '/*O_o*/\ngoogle.visualization.Query.setResponse({not-valid-json});',
+    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow(
+      /Failed to parse response/,
+    );
+  });
+
+  test('uses Unknown error when the gviz error payload has no messages', async () => {
+    const payload = {
+      status: 'error',
+      errors: [],
+      table: null,
+    };
+    const { trigger } = buildFakeHttp(200, gvizWrap(payload));
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+      trigger(cb),
+    );
+
+    await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow('Unknown error');
+  });
+
   test('throws when the HTTP request itself fails', async () => {
-    const req = Object.assign(new EventEmitter(), { end: jest.fn() });
-    (https.get as jest.Mock).mockImplementation(() => {
+    const req = Object.assign(new EventEmitter(), { end: vi.fn() });
+    (https.get as Mock).mockImplementation(() => {
       process.nextTick(() => req.emit('error', new Error('ECONNREFUSED')));
       return req;
     });
@@ -167,7 +251,7 @@ describe('readPublicSheet', () => {
 
   test('throws on HTTP 4xx responses', async () => {
     const { trigger } = buildFakeHttp(403, 'Forbidden');
-    (https.get as jest.Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
       trigger(cb),
     );
 
@@ -179,7 +263,7 @@ describe('readPublicSheet', () => {
       statusCode: 302,
       headers: { location: 'https://docs.google.com/spreadsheets/redirect' },
     });
-    const redirectReq = Object.assign(new EventEmitter(), { end: jest.fn() });
+    const redirectReq = Object.assign(new EventEmitter(), { end: vi.fn() });
 
     const payload = {
       status: 'ok',
@@ -191,7 +275,7 @@ describe('readPublicSheet', () => {
     const { trigger: finalTrigger } = buildFakeHttp(200, gvizWrap(payload));
 
     let callCount = 0;
-    (https.get as jest.Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => {
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => {
       callCount++;
       if (callCount === 1) {
         process.nextTick(() => cb(redirectRes));

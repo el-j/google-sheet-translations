@@ -6,8 +6,27 @@ import type { SpreadsheetOptions } from './utils/configurationHandler';
 
 export async function run(): Promise<void> {
 	try {
-		process.env.GOOGLE_CLIENT_EMAIL = core.getInput('google-client-email', { required: true });
-		process.env.GOOGLE_PRIVATE_KEY = core.getInput('google-private-key', { required: true });
+		// ── Authentication setup ────────────────────────────────────────────────
+		// WIF mode: GOOGLE_APPLICATION_CREDENTIALS is set by google-github-actions/auth
+		// Classic key mode: google-client-email and google-private-key inputs are used
+		const clientEmail = core.getInput('google-client-email');
+		const privateKey = core.getInput('google-private-key');
+
+		if (clientEmail) {
+			process.env.GOOGLE_CLIENT_EMAIL = clientEmail;
+		}
+		if (privateKey) {
+			process.env.GOOGLE_PRIVATE_KEY = privateKey;
+		}
+
+		// Validate that at least one auth mode is configured
+		if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
+			throw new Error(
+				'Authentication required: provide either\n' +
+				'  (A) google-client-email + google-private-key inputs (classic service-account key), or\n' +
+				'  (B) a google-github-actions/auth step before this action (Workload Identity Federation).',
+			);
+		}
 
 		const spreadsheetIdInput = core.getInput('google-spreadsheet-id');
 		if (spreadsheetIdInput) {

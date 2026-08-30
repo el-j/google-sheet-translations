@@ -10,4 +10,76 @@ Every commit to `main` that contains a releasable change type automatically:
 
 > 💡 **Tip:** Run `npm run changelog:preview` locally to see what the next release entry will look like before pushing commits.
 
+---
+
+## 🚀 What's new in v2.2.0
+
+v2.2.0 is the **Google Drive release** — the biggest feature drop since the
+initial publish. The package now works as a full **headless CMS bridge**:
+point it at a Drive folder and it handles everything.
+
+### Google Drive Folder Management
+
+A single `manageDriveTranslations()` call now:
+
+- **Auto-discovers** every Google Spreadsheet in a Drive folder (recursive, with name-filter support)
+- **Fetches & deep-merges** translations from all discovered spreadsheets into one `TranslationData` object
+- **Downloads image assets** from the same Drive folder with incremental sync
+
+```typescript
+import { manageDriveTranslations } from '@el-j/google-sheet-translations';
+
+const result = await manageDriveTranslations({
+  driveFolderId: process.env.GOOGLE_DRIVE_FOLDER_ID,
+  scanForSpreadsheets: true,
+  syncImages: true,
+  imageOutputPath: './public/remote-images',
+  translationOptions: { translationsOutputDir: './src/translations' },
+});
+
+console.log(result.imageSync?.downloaded.length, 'images downloaded');
+```
+
+### Multi-spreadsheet support
+
+```typescript
+import { getMultipleSpreadSheetsData } from '@el-j/google-sheet-translations';
+
+const translations = await getMultipleSpreadSheetsData(['home', 'blog'], {
+  spreadsheetIds: ['1abc…_main', '1def…_blog', '1ghi…_shop'],
+  mergeStrategy: 'later-wins',
+});
+```
+
+### Built-in image sync (incremental)
+
+`syncDriveImages()` replaces ad-hoc `rclone` / `gsutil` scripts:
+
+- Incremental sync — compares Drive `modifiedTime` vs local `mtime`, skips unchanged files
+- Concurrency control, subfolder preservation, optional stale-file cleanup
+- Extension normalisation (`jpeg` → `jpg`, lowercase)
+
+### GitHub Action — all modes in one
+
+The existing action now automatically routes to Drive mode when
+`drive-folder-id` or `spreadsheet-ids` is set:
+
+```yaml
+- uses: el-j/google-sheet-translations@v2
+  with:
+    google-client-email: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+    google-private-key: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+    sheet-titles: 'home,common'
+    drive-folder-id: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+    sync-images: 'true'
+    image-output-path: './public/remote-images'
+```
+
+See the [GitHub Actions guide](/guide/github-actions) and the
+[Drive Folder Management guide](/guide/drive-folder) for full details.
+
+---
+
+## Full history
+
 <!--@include: ../CHANGELOG.md-->

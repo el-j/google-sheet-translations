@@ -1,22 +1,22 @@
 import { getMultipleSpreadSheetsData } from '../src/getMultipleSpreadSheetsData';
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
 
-jest.mock('../src/getSpreadSheetData', () => ({
-	getSpreadSheetData: jest.fn(),
-	default: jest.fn(),
+vi.mock('../src/getSpreadSheetData', () => ({
+	getSpreadSheetData: vi.fn(),
+	default: vi.fn(),
 }));
 
-const mockGetSpreadSheetData = getSpreadSheetData as jest.MockedFunction<typeof getSpreadSheetData>;
+const mockGetSpreadSheetData = getSpreadSheetData as MockedFunction<typeof getSpreadSheetData>;
 
 describe('getMultipleSpreadSheetsData', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(console, 'log').mockImplementation(() => {});
-		jest.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.clearAllMocks();
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	test('falls back to single spreadsheet when no spreadsheetIds provided', async () => {

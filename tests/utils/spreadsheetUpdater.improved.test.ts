@@ -2,16 +2,16 @@ import { updateSpreadsheetWithLocalChanges } from '../../src/utils/spreadsheetUp
 import type { TranslationData } from '../../src/types';
 
 // Mock dependencies
-jest.mock('../../src/utils/rateLimiter', () => ({
-  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
+vi.mock('../../src/utils/rateLimiter', () => ({
+  withRetry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 
 describe('spreadsheetUpdater - improved auto-translate formula', () => {
   const mockDoc = {
     sheetsByTitle: {
       'test': {
-        getRows: jest.fn(),
-        addRows: jest.fn().mockResolvedValue(undefined)
+        getRows: vi.fn(),
+        addRows: vi.fn().mockResolvedValue(undefined)
       }
     }
   };
@@ -23,7 +23,7 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
   ];
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockDoc.sheetsByTitle.test.getRows.mockResolvedValue(mockRows);
   });
 

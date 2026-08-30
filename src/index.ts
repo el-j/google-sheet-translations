@@ -13,7 +13,7 @@ export type { SpreadsheetOptions } from './utils/configurationHandler';
 export { wait } from './utils/wait';
 export { withRetry } from './utils/rateLimiter';
 export { validateEnv } from './utils/validateEnv';
-export { createAuthClient } from './utils/auth';
+export { createAuthClient, buildGoogleAuth, normalizePrivateKey } from './utils/auth';
 export { convertToDataJsonFormat } from './utils/dataConverter/convertToDataJsonFormat';
 export { convertFromDataJsonFormat } from './utils/dataConverter/convertFromDataJsonFormat';
 export { findLocalChanges } from './utils/dataConverter/findLocalChanges';
@@ -87,8 +87,24 @@ export { manageDriveTranslations } from './utils/getDriveTranslations';
 export type { GoogleDriveManagerOptions, GoogleDriveManagerResult } from './utils/getDriveTranslations';
 
 // Drive project manifest (index file for multi-spreadsheet projects)
-export { buildManifest, writeManifest } from './utils/driveProjectIndex';
-export type { DriveProjectManifest, SpreadsheetManifestEntry, BuildManifestOptions } from './utils/driveProjectIndex';
+export { buildManifest, writeManifest, readManifest } from './utils/driveProjectIndex';
+export type { DriveProjectManifest, SpreadsheetManifestEntry, BuildManifestOptions, DocManifestEntry } from './utils/driveProjectIndex';
+
+// Drive Docs scanner (discover Google Docs in a Drive folder)
+export { scanDriveFolderForDocs, inferLocaleFromDocName } from './utils/driveDocScanner';
+export type { DriveDocFile, ScanDriveFolderForDocsOptions } from './utils/driveDocScanner';
+
+// Doc content parser (markdown → translation keys)
+export { parseDocContent, slugifyKey } from './utils/docParser';
+export type { ParsedDocEntry, DocKeyStrategy, ParseDocOptions } from './utils/docParser';
+
+// Doc ingester (one-way Doc → Spreadsheet pipeline)
+export { ingestDoc, exportDoc, entriesToSeedKeys, entriesToTranslationData } from './utils/docIngester';
+export type { DocIngesterOptions, DocIngestResult, DocUpdateMode } from './utils/docIngester';
+
+// WIF / Google Cloud setup helpers (programmatic API for the gst-setup-wif CLI)
+export { setupWIF, grantDrivePermissions, GcpApiError } from './setup/wifSetup';
+export type { WifSetupOptions, WifSetupResult, GrantDrivePermissionsOptions } from './setup/wifSetup';
 
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';

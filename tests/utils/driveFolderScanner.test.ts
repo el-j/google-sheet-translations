@@ -1,14 +1,14 @@
 import { scanDriveFolderForSpreadsheets } from '../../src/utils/driveFolderScanner';
 
-jest.mock('google-auth-library', () => ({
-  GoogleAuth: jest.fn().mockImplementation(() => ({
-    getClient: jest.fn().mockResolvedValue({
-      getAccessToken: jest.fn().mockResolvedValue({ token: 'mock-token' }),
-    }),
-  })),
+vi.mock('google-auth-library', () => ({
+  GoogleAuth: vi.fn().mockImplementation(class {
+    getClient = vi.fn().mockResolvedValue({
+      getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
+    });
+  }),
 }));
 
-const mockFetch = jest.fn();
+const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 const SPREADSHEET_MIME = 'application/vnd.google-apps.spreadsheet';
@@ -29,7 +29,7 @@ function mockOkResponse(files: object[], nextPageToken?: string) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 describe('scanDriveFolderForSpreadsheets', () => {

@@ -1,0 +1,70 @@
+# Drive Folder Sync (translations + images)
+#
+# Full headless CMS pipeline:
+#   1. Scans a Google Drive folder for every translation spreadsheet
+#   2. Fetches and merges translations from all of them
+#   3. Downloads image assets from the same Drive folder
+#   4. Commits everything back to the repository
+#
+# Required secrets:
+#   GOOGLE_CLIENT_EMAIL      – service account client_email
+#   GOOGLE_PRIVATE_KEY       – service account private_key
+#   GOOGLE_DRIVE_FOLDER_ID   – root Drive folder ID
+#
+# Prerequisites:
+#   • Google Sheets API enabled on your Cloud project
+#   • Google Drive API enabled on your Cloud project      ← extra step vs basic
+#   • Drive folder shared with the service account (Viewer)
+#
+# See: https://el-j.github.io/google-sheet-translations/guide/service-account-setup#part-2--enabling-the-drive-api-for-folder--image-usage
+
+name: CMS Sync (Drive translations + images)
+
+on:
+  schedule:
+    - cron: '0 5 * * *'   # daily at 05:00 UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Sync translations and images from Drive
+        id: cms
+        uses: el-j/google-sheet-translations@v2
+        with:
+          google-client-email: ${{ secrets.GOOGLE_CLIENT_EMAIL }}
+          google-private-key: ${{ secrets.GOOGLE_PRIVATE_KEY }}
+          # No google-spreadsheet-id — the Drive folder is the source of truth
+
+          # Sheet tab names to fetch from each discovered spreadsheet
+          sheet-titles: 'home,common,about,blog'
+
+          # ── Drive folder ─────────────────────────────────────────────────
+          drive-folder-id: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          scan-for-spreadsheets: 'true'   # auto-discover all spreadsheets
+
+          # ── Image sync ───────────────────────────────────────────────────
+          sync-images: 'true'
+          image-output-path: './public/remote-images'
+
+      - name: Show sync summary
+        run: |
+          echo "✅ Translations written to: ${{ steps.cms.outputs.translations-dir }}"
+          echo "✅ Locales file:            ${{ steps.cms.outputs.locales-file }}"
+
+      - name: Commit all synced assets
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore: cms sync — translations + images [skip ci]'
+          file_pattern: |
+            translations/
+            src/i18n/locales.ts
+            src/lib/languageData.json
+            public/remote-images/

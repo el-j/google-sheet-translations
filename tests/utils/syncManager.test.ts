@@ -1,33 +1,33 @@
 import { handleBidirectionalSync } from '../../src/utils/syncManager';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
 
-jest.mock('../../src/utils/readDataJson');
-jest.mock('../../src/utils/isDataJsonNewer');
-jest.mock('../../src/utils/dataConverter/findLocalChanges');
-jest.mock('../../src/utils/spreadsheetUpdater');
+vi.mock('../../src/utils/readDataJson');
+vi.mock('../../src/utils/isDataJsonNewer');
+vi.mock('../../src/utils/dataConverter/findLocalChanges');
+vi.mock('../../src/utils/spreadsheetUpdater');
 
 import { readDataJson } from '../../src/utils/readDataJson';
 import { isDataJsonNewer } from '../../src/utils/isDataJsonNewer';
 import { findLocalChanges } from '../../src/utils/dataConverter/findLocalChanges';
 import { updateSpreadsheetWithLocalChanges } from '../../src/utils/spreadsheetUpdater';
 
-const mockReadDataJson = readDataJson as jest.MockedFunction<typeof readDataJson>;
-const mockIsDataJsonNewer = isDataJsonNewer as jest.MockedFunction<typeof isDataJsonNewer>;
-const mockFindLocalChanges = findLocalChanges as jest.MockedFunction<typeof findLocalChanges>;
-const mockUpdateSpreadsheet = updateSpreadsheetWithLocalChanges as jest.MockedFunction<typeof updateSpreadsheetWithLocalChanges>;
+const mockReadDataJson = readDataJson as MockedFunction<typeof readDataJson>;
+const mockIsDataJsonNewer = isDataJsonNewer as MockedFunction<typeof isDataJsonNewer>;
+const mockFindLocalChanges = findLocalChanges as MockedFunction<typeof findLocalChanges>;
+const mockUpdateSpreadsheet = updateSpreadsheetWithLocalChanges as MockedFunction<typeof updateSpreadsheetWithLocalChanges>;
 
 describe('handleBidirectionalSync', () => {
 	const mockDoc = mock<GoogleSpreadsheet>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(console, 'log').mockImplementation(() => {});
-		jest.spyOn(console, 'warn').mockImplementation(() => {});
+		vi.clearAllMocks();
+		vi.spyOn(console, 'log').mockImplementation(() => {});
+		vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	test('should return { shouldRefresh: false, hasChanges: false } and not call updateSpreadsheetWithLocalChanges when localData and spreadsheetData have the same keys', async () => {

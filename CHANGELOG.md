@@ -1,3 +1,30 @@
+## [2.2.0-beta.6](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.5...v2.2.0-beta.6) (2026-08-29)
+
+### 🐛 Bug Fixes
+
+* **ci:** pin conventionalcommits preset to ^9.3.1 for semantic-release and update github actions to v7 ([cb34645](https://github.com/el-j/google-sheet-translations/commit/cb3464573e2a9e79916d401f6ad26e4e5ec6c9c6))
+* **deps:** update all dependencies to latest ([4b9f7cd](https://github.com/el-j/google-sheet-translations/commit/4b9f7cdae5a69807237af3343dbfd85a158b30ee))
+* **tests:** consolidate hoisted mocks and imports in getDriveTranslations test ([030e665](https://github.com/el-j/google-sheet-translations/commit/030e66506e5823af2e820157377f670111fad5a3))
+
+## [2.2.0-beta.5](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.4...v2.2.0-beta.5) (2026-06-11)
+
+### 🚀 Features
+
+* add `gst-setup-wif` CLI to automate Workload Identity Federation setup ([#68](https://github.com/el-j/google-sheet-translations/issues/68)) ([1acc5a5](https://github.com/el-j/google-sheet-translations/commit/1acc5a587de0e89dfd98556c1ece4aac5a1512f3))
+* **tests:** enhance test coverage for spreadsheet and Drive functionalities + fix CodeQL URL host validation ([#79](https://github.com/el-j/google-sheet-translations/issues/79)) ([fab276a](https://github.com/el-j/google-sheet-translations/commit/fab276ac729389e8c8675a6e8f7c7b4fbe58cdba))
+
+## [2.2.0-beta.4](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.3...v2.2.0-beta.4) (2026-04-03)
+
+### 🚀 Features
+
+* one-way Google Docs → Spreadsheet ingestion pipeline ([#58](https://github.com/el-j/google-sheet-translations/issues/58)) ([1d70af3](https://github.com/el-j/google-sheet-translations/commit/1d70af32504cf1dcfbfd4e370c28ac322289ca93))
+
+## [2.2.0-beta.3](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.2...v2.2.0-beta.3) (2026-04-03)
+
+### 🐛 Bug Fixes
+
+* regenerate package-lock.json with lockfileVersion 2 to fix npm ci on Node 22 ([#65](https://github.com/el-j/google-sheet-translations/issues/65)) ([e902f04](https://github.com/el-j/google-sheet-translations/commit/e902f04bd8a049e6267aa0041afc852a6740da2e))
+
 ## [2.2.0-beta.2](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.1...v2.2.0-beta.2) (2026-03-29)
 
 ### 🚀 Features

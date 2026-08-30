@@ -1,17 +1,18 @@
 import { walkDirectory, validateImageDirectory, DEFAULT_IMAGE_EXTENSIONS } from '../../src/utils/localImageUtils';
 import type { ImageDirectoryValidationOptions } from '../../src/utils/localImageUtils';
+import * as nodeFs from 'node:fs';
 
 // ---------------------------------------------------------------------------
 // Shared mock helpers
 // ---------------------------------------------------------------------------
 
-jest.mock('node:fs', () => ({
+vi.mock('node:fs', () => ({
   promises: {
-    readdir: jest.fn(),
+    readdir: vi.fn(),
   },
 }));
 
-const { promises: fsp } = require('node:fs');
+const fsp = (nodeFs as any).promises as { readdir: ReturnType<typeof vi.fn> };
 
 function makeDirent(name: string, isDir: boolean) {
   return {
@@ -22,7 +23,7 @@ function makeDirent(name: string, isDir: boolean) {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks();
+  vi.clearAllMocks();
 });
 
 // ---------------------------------------------------------------------------

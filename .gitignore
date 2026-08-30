@@ -6,6 +6,8 @@ yarn-error.log*
 
 # Distribution directories
 dist/
+dist-cli/
+dist-action/
 lib/
 build/
 

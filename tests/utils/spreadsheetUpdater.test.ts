@@ -1,24 +1,24 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { updateSpreadsheetWithLocalChanges } from '../../src/utils/spreadsheetUpdater';
 import type { GoogleSpreadsheet } from 'google-spreadsheet';
 import type { TranslationData } from '../../src/types';
 
 // Mock the rateLimiter to speed up tests
-jest.mock('../../src/utils/rateLimiter', () => ({
-  withRetry: jest.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
+vi.mock('../../src/utils/rateLimiter', () => ({
+  withRetry: vi.fn().mockImplementation((fn: () => Promise<unknown>) => fn()),
 }));
 
 describe('updateSpreadsheetWithLocalChanges', () => {
   // Create mock objects
   const mockSheet = {
-    getRows: jest.fn(),
-    addRows: jest.fn()
+    getRows: vi.fn(),
+    addRows: vi.fn()
   };
   
   const mockRow = {
-    toObject: jest.fn(),
-    set: jest.fn(),
-    save: jest.fn()
+    toObject: vi.fn(),
+    set: vi.fn(),
+    save: vi.fn()
   };
 
   // Create mock document
@@ -26,7 +26,7 @@ describe('updateSpreadsheetWithLocalChanges', () => {
   // Will set sheetsByTitle in beforeEach
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     // Use type assertion to handle readonly property
     (mockDoc as any).sheetsByTitle = { 'home': mockSheet as any };
     
@@ -37,15 +37,15 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     mockSheet.addRows.mockResolvedValue([]);
     
     // Spy on console.log and console.warn
-    jest.spyOn(console, 'log').mockImplementation(() => {});
-    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
     
     // Log mock row object to help debug
     console.log('Mock row object in beforeEach:', mockRow.toObject());
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   test('should do nothing when changes object is empty', async () => {
@@ -112,6 +112,39 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(mockSheet.addRows).not.toHaveBeenCalled();
   });
 
+  test('should wait after saving an existing row when throttling is enabled', async () => {
+    vi.useFakeTimers();
+    mockRow.toObject.mockReturnValue({ 'key': 'welcome', 'en': 'Old Welcome' });
+
+    const promise = updateSpreadsheetWithLocalChanges(
+      mockDoc,
+      { en: { home: { welcome: 'New Welcome' } } },
+      1,
+    );
+
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+
+    expect(mockRow.save).toHaveBeenCalled();
+  });
+  test('should log an error when saving an existing row fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockRow.toObject.mockReturnValue({ 'key': 'welcome', 'en': 'Old Welcome' });
+    mockRow.save.mockRejectedValueOnce(new Error('save failed'));
+
+    await updateSpreadsheetWithLocalChanges(
+      mockDoc,
+      { en: { home: { welcome: 'New Welcome' } } },
+      0,
+    );
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to save row for key "welcome"'),
+      expect.any(Error),
+    );
+  });
+
   test('should add a new key when it does not exist', async () => {
     // Set up the mock to simulate that the key doesn't exist
     mockRow.toObject.mockReturnValue({ 'key': 'existing_key', 'en': 'Existing Value' });
@@ -135,8 +168,8 @@ describe('updateSpreadsheetWithLocalChanges', () => {
   test('should handle multiple locales and keys', async () => {
     // Set up the mock to simulate some existing keys
     const rows = [
-      { toObject: jest.fn().mockReturnValue({ 'key': 'welcome', 'en': 'Welcome', 'fr': 'Bienvenue' }), set: jest.fn(), save: jest.fn() },
-      { toObject: jest.fn().mockReturnValue({ 'key': 'goodbye', 'en': 'Goodbye', 'fr': 'Au revoir' }), set: jest.fn(), save: jest.fn() }
+      { toObject: vi.fn().mockReturnValue({ 'key': 'welcome', 'en': 'Welcome', 'fr': 'Bienvenue' }), set: vi.fn(), save: vi.fn() },
+      { toObject: vi.fn().mockReturnValue({ 'key': 'goodbye', 'en': 'Goodbye', 'fr': 'Au revoir' }), set: vi.fn(), save: vi.fn() }
     ];
     mockSheet.getRows.mockResolvedValueOnce(rows);
     
@@ -174,8 +207,8 @@ describe('updateSpreadsheetWithLocalChanges', () => {
   test('should process multiple sheets', async () => {
     // Add another mock sheet
     const mockAboutSheet = {
-      getRows: jest.fn().mockResolvedValue([mockRow]),
-      addRows: jest.fn()
+      getRows: vi.fn().mockResolvedValue([mockRow]),
+      addRows: vi.fn()
     };
     // Use type assertion to deal with readonly property
     (mockDoc as any).sheetsByTitle = { 
@@ -433,10 +466,10 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     // Simulates the scenario where 'ui' sheet does not yet exist in the spreadsheet
     // but localeMapping is available from the previously processed 'i18n' sheet.
     const mockNewSheet = {
-      getRows: jest.fn().mockResolvedValue([]),  // newly created — no data rows
-      addRows: jest.fn().mockResolvedValue([]),
+      getRows: vi.fn().mockResolvedValue([]),  // newly created — no data rows
+      addRows: vi.fn().mockResolvedValue([]),
     };
-    (mockDoc as any).addSheet = jest.fn().mockResolvedValue(mockNewSheet);
+    (mockDoc as any).addSheet = vi.fn().mockResolvedValue(mockNewSheet);
 
     const changes: TranslationData = {
       'en-us': { 'ui': { 'nav_guide': 'Guide', 'nav_api': 'API' } },
@@ -469,6 +502,21 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
     expect(console.warn).toHaveBeenCalledWith(
       expect.stringContaining('not found in the document')
+    );
+  });
+
+  test('should warn and skip when addSheet unexpectedly returns undefined', async () => {
+    (mockDoc as any).sheetsByTitle = {};
+    (mockDoc as any).addSheet = vi.fn().mockResolvedValue(undefined);
+
+    const changes: TranslationData = {
+      en: { missing: { key1: 'Value' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, { en: 'en' });
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('could not be found or created, skipping'),
     );
   });
 
@@ -516,8 +564,8 @@ describe('updateSpreadsheetWithLocalChanges', () => {
   test('should ONLY skip i18n sheet, not other sheets with similar names', async () => {
     // Sheets named e.g. "i18nExtras" or "myI18n" should not be skipped
     const mockOtherSheet = {
-      getRows: jest.fn().mockResolvedValue([]),
-      addRows: jest.fn().mockResolvedValue([]),
+      getRows: vi.fn().mockResolvedValue([]),
+      addRows: vi.fn().mockResolvedValue([]),
     };
     (mockDoc as any).sheetsByTitle = {
       'home': mockSheet as any,
@@ -570,7 +618,7 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
     expect(mockRow.set).toHaveBeenCalledWith('en', 'Home Updated');
     // 'fr' already has a value and override=false → must NOT be overwritten with a formula
-    const frCalls = (mockRow.set as jest.Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
+    const frCalls = (mockRow.set as Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
     expect(frCalls).toHaveLength(0);
     // 'de' is empty → should get a formula
     expect(mockRow.set).toHaveBeenCalledWith('de', expect.stringMatching(/^=GOOGLETRANSLATE\(INDIRECT\(/));
@@ -604,7 +652,7 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
     expect(mockRow.set).toHaveBeenCalledWith('en', 'Click me now');
     // autoTranslate=false → other columns must not be touched
-    const otherCalls = (mockRow.set as jest.Mock).mock.calls.filter(([h]: [string]) => h !== 'en');
+    const otherCalls = (mockRow.set as Mock).mock.calls.filter(([h]: [string]) => h !== 'en');
     expect(otherCalls).toHaveLength(0);
   });
 
@@ -612,7 +660,7 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     // Both 'en' and 'fr' are being pushed for the same existing key.
     // When processing 'en', the auto-translate logic must NOT add a formula for 'fr'
     // because 'fr' will be set to an actual value in the same batch.
-    const rowEn = { toObject: jest.fn(), set: jest.fn(), save: jest.fn() };
+    const rowEn = { toObject: vi.fn(), set: vi.fn(), save: vi.fn() };
     rowEn.toObject.mockReturnValue({ key: 'title', en: 'Old', fr: '' });
     rowEn.save.mockResolvedValue(undefined);
 
@@ -627,7 +675,7 @@ describe('updateSpreadsheetWithLocalChanges', () => {
 
     // 'fr' should have been set with the actual value (from the 'fr' locale iteration),
     // not a GOOGLETRANSLATE formula (which would have come from the 'en' locale iteration).
-    const frCalls = (rowEn.set as jest.Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
+    const frCalls = (rowEn.set as Mock).mock.calls.filter(([h]: [string]) => h === 'fr');
     // All 'fr' calls must be actual string values, not GOOGLETRANSLATE formulas
     frCalls.forEach(([, val]: [string, string]) => {
       expect(val).not.toMatch(/^=GOOGLETRANSLATE/);
@@ -748,5 +796,76 @@ describe('updateSpreadsheetWithLocalChanges', () => {
     expect(formula).toContain('="zh-"');
     // The guard ensures zh-TW → "zh-tw" (full) rather than just "zh"
     expect(formula).toContain('LOWER(');
+  });
+
+  test('should skip formula fill when source header cannot be found in headerRow', async () => {
+    mockRow.toObject.mockReturnValue({
+      key: 'existing',
+      en: 'Existing',
+      de: '',
+    });
+
+    const changes: TranslationData = {
+      // This locale maps to a header that does not exist in the current sheet headers,
+      // which drives sourceHeaderIndex to -1 and should safely continue.
+      'en-us': { home: { new_key: 'Hello' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(
+      mockDoc,
+      changes,
+      0,
+      true,
+      { 'en-us': 'en-US', de: 'de' },
+    );
+
+    const addedRows = mockSheet.addRows.mock.calls[0][0] as Array<Record<string, string>>;
+    const addedRow = addedRows[0];
+    expect(addedRow['en-US']).toBe('Hello');
+    expect(addedRow.de).toBeUndefined();
+  });
+
+  test('should warn and continue when new key map lookup unexpectedly returns undefined', async () => {
+    mockRow.toObject.mockReturnValue({ key: 'existing', en: 'Existing' });
+
+    const originalGet = Map.prototype.get;
+    const getSpy = vi.spyOn(Map.prototype, 'get').mockImplementation(function (this: Map<unknown, unknown>, key: unknown) {
+      if (key === 'new_key') {
+        return undefined;
+      }
+      return originalGet.call(this, key);
+    });
+
+    const changes: TranslationData = {
+      en: { home: { new_key: 'Value' } },
+    };
+
+    await updateSpreadsheetWithLocalChanges(mockDoc, changes, 0, false, { en: 'en' });
+
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('not found in newKeys map'),
+    );
+
+    getSpy.mockRestore();
+  });
+
+  test('should throttle between addRows chunks when waitSeconds is positive', async () => {
+    vi.useFakeTimers();
+    mockRow.toObject.mockReturnValue({ key: 'existing', en: 'Existing' });
+
+    const keys: Record<string, string> = {};
+    for (let i = 0; i < 6; i += 1) {
+      keys[`new_key_${i}`] = `Value ${i}`;
+    }
+    const changes: TranslationData = {
+      en: { home: keys },
+    };
+
+    const promise = updateSpreadsheetWithLocalChanges(mockDoc, changes, 1, false);
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+
+    expect(mockSheet.addRows).toHaveBeenCalledTimes(2);
   });
 });

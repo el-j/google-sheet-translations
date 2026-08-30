@@ -119,7 +119,7 @@ describe('convertFromDataJsonFormat', () => {
   });
 
   test('should skip entry and warn when sheet value is not an object', () => {
-    const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
 
     const dataJson = [{ 'mySheet': 'invalid-string-instead-of-object' }] as unknown as Record<string, unknown>[];
     const result = convertFromDataJsonFormat(dataJson);
@@ -127,5 +127,23 @@ describe('convertFromDataJsonFormat', () => {
     expect(result).toEqual({});
     expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('mySheet'));
     consoleSpy.mockRestore();
+  });
+
+  test('should skip locale entries when localeData is null', () => {
+    const dataJson = [
+      {
+        home: {
+          en: null,
+          fr: {
+            welcome: 'Bienvenue',
+          },
+        },
+      },
+    ] as unknown as Record<string, unknown>[];
+
+    const result = convertFromDataJsonFormat(dataJson);
+
+    expect(result.en).toEqual({ home: {} });
+    expect(result.fr?.home?.welcome).toBe('Bienvenue');
   });
 });

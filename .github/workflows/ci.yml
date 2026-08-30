@@ -18,15 +18,15 @@ jobs:
       contents: read
     strategy:
       matrix:
-        node-version: [20, 22, 24]
+        node-version: [22, 24]
       fail-fast: false
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
@@ -42,6 +42,18 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Build action bundle
+        if: matrix.node-version == '22'
+        run: npm run build:action
+
+      - name: Check action bundle is up-to-date
+        if: matrix.node-version == '22'
+        run: |
+          if ! git diff --exit-code dist-action/; then
+            echo "::error::dist-action/ is out of date. Run 'npm run build:action' locally and commit the result."
+            exit 1
+          fi
 
       - name: Test
         run: npm test

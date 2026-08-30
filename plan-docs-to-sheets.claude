@@ -1,0 +1,50 @@
+Objective:
+- Add Google Docs ingestion (from Drive folders) to create/update spreadsheets as base language sources. Docs are one-way inputs (never synced back), used once unless doc mtime is newer than the derived spreadsheet; updates only apply to base-language content + new keys.
+
+Constraints / guardrails:
+- Respect existing folder scanning and flatten/per-spreadsheet modes.
+- Derive locale from filename ([project]_[lang]) with localeNormalizer validation; require explicit sourceLocale fallback.
+- Keys/variables must be deterministic and meaningful from doc content; avoid churn across re-ingests.
+- Spreadsheet remains source of truth after creation; Doc only used as feeder/refresh when doc mtime > sheet mtime and update is safe.
+- Auto-translate behavior stays in sheets (GOOGLETRANSLATE); Docs not used for translation automation.
+
+Proposed plan (phased):
+- Discovery & config
+  - Add options: scanForDocs (default false), docNameFilter (RegExp), docLanguageFromName (bool), docSourceLocale (fallback), docExportMime (markdown preferred), docIds (explicit), docKeyStrategy (heading|marker|numbered), docUpdateMode (create-only|refresh-if-newer).
+  - Extend driveFolderScanner to pick up Docs MIME with folderPath, modifiedTime, inferred locale.
+  - Extend manifest to record docs (id, name, folderPath, modifiedTime, sourceLocale, exportFormat, generatedFromDoc: true).
+- Fetch & parse
+  - Implement doc exporter via Drive API export (markdown/text); enforce concurrency limits and respectful backoff.
+  - Implement doc parser → TranslationData shape:
+    - Key derivation: prefer explicit markers [[key:path.to.string]], else slugified headings + stable ordinal fallback.
+    - Capture base locale from doc naming or config; ignore other locales in doc (single-locale source).
+    - Preserve structure deterministically to avoid key churn.
+- Integrate with sheet pipeline
+  - Convert parsed doc to languageData.json-compatible structure.
+  - For create: generate new spreadsheet via existing spreadsheetCreator with doc-derived base locale and keys.
+  - For refresh: if doc modifiedTime > spreadsheet modifiedTime and docUpdateMode allows, update base-language sheet content and add new keys; do not touch non-base locales except to re-seed missing cells via autoTranslate rules.
+  - Ensure one-way flow: never write back to Docs; mark manifest with lastDocIngest timestamp.
+- Sync & collision policy
+  - Collision: spreadsheet wins for existing keys unless doc is newer AND docUpdateMode=refresh; log skips.
+  - New keys from doc always added; base-language values overwritten only when doc is newer.
+  - Respect cleanPush only for initial create; avoid wiping user edits in other locales.
+- Testing
+  - driveFolderScanner: docs MIME discovery, locale inference, filters, recursion.
+  - doc parser: markers vs headings, stable key generation, whitespace/format edge cases.
+  - doc export: mocks of Drive export; concurrency/backoff.
+  - integration: doc → spreadsheet create; doc newer → refresh base values + new keys; doc older → no-op.
+  - manifest: includes docs metadata and generatedFromDoc flag.
+- Types & safety
+  - Add doc types to public API (discriminated union for manifest entries).
+  - Strong types for config and parser output; guard invalid locales.
+  - Graceful error handling: skip failing docs, continue others; structured warnings.
+- Documentation
+  - Usage guide: naming convention, one-way nature, update rules, options, limitations (no doc back-sync, translation still in sheets).
+  - Examples for filename-based locale inference and marker-based keys.
+
+Acceptance criteria:
+- Docs in Drive folders can be discovered (opt-in), exported, parsed into deterministic keys, and used to create a spreadsheet with base locale set from doc.
+- When a source doc is modified later, a refresh updates base-language values and adds new keys if doc mtime is newer; non-base locales remain intact except missing cells can still auto-translate.
+- Manifest records docs and ingest metadata; docs are never treated as writable targets.
+- Tests cover discovery, parsing, create+refresh flows, collision policy, and manifest updates.
+- No regressions to existing spreadsheet/image flows; type-safe public API extensions.

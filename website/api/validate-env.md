@@ -14,12 +14,14 @@ function validateEnv(): GoogleEnvVars
 
 ## Throws
 
-`Error` if any required variable is missing or empty:
+`Error` if `GOOGLE_SPREADSHEET_ID` is missing, or if neither service-account key
+credentials nor `GOOGLE_APPLICATION_CREDENTIALS` (WIF/ADC) are set:
 
 ```
-Missing required environment variables: GOOGLE_PRIVATE_KEY, GOOGLE_SPREADSHEET_ID
+Missing required environment variables: GOOGLE_PRIVATE_KEY
 
 Make sure these are set in your .env file or environment.
+Alternatively, set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation.
 ```
 
 ## Example
@@ -32,7 +34,24 @@ const { GOOGLE_SPREADSHEET_ID } = validateEnv();
 console.log('Using spreadsheet:', GOOGLE_SPREADSHEET_ID);
 ```
 
-## Required env vars
+## Authentication modes
+
+### Mode 1 — Workload Identity Federation / ADC
+
+When `GOOGLE_APPLICATION_CREDENTIALS` is set (e.g. written automatically by
+`google-github-actions/auth`), only `GOOGLE_SPREADSHEET_ID` is required.
+`GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY` are **not** checked.
+
+```yaml
+# GitHub Actions with WIF — only GOOGLE_SPREADSHEET_ID needed
+env:
+  GOOGLE_SPREADSHEET_ID: ${{ vars.GOOGLE_SPREADSHEET_ID }}
+  # GOOGLE_APPLICATION_CREDENTIALS set automatically by google-github-actions/auth
+```
+
+### Mode 2 — Service account key (classic)
+
+When `GOOGLE_APPLICATION_CREDENTIALS` is **not** set, all three variables are required:
 
 | Variable | Description |
 |----------|-------------|

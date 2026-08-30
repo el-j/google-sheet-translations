@@ -64,8 +64,20 @@ A special `i18n` sheet (if it exists) is always included automatically.
 Only required for private spreadsheets or when you need write access
 (bidirectional sync, auto-translate).
 
+For the full step-by-step walkthrough — including enabling the Drive API for
+folder and image usage — see the dedicated
+[Service Account Setup guide →](/guide/service-account-setup)
+
+Quick summary:
+
 1. Go to [console.cloud.google.com](https://console.cloud.google.com)
 2. Create a project → enable the **Google Sheets API**
 3. Create a **Service Account** → generate a JSON key
 4. Extract `client_email` and `private_key` from the JSON key
 5. Share your spreadsheet with the service account email (Viewer for pull-only, Editor for sync/push)
+6. For Drive folder usage: also enable the **Google Drive API** and share the Drive folder
+
+**Credential options — choose one:**
+
+- **Download a JSON key** (classic): generate a key for the service account, extract `client_email` and `private_key`, and store them as `GOOGLE_CLIENT_EMAIL` and `GOOGLE_PRIVATE_KEY` env vars.
+- **Workload Identity Federation** (recommended for GitHub Actions): no key download needed — configure a WIF pool/provider and use `google-github-actions/auth` in your workflow. See the [GitHub Actions guide](/guide/github-actions).
