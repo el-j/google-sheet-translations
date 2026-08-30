@@ -15,6 +15,8 @@
         { "type": "docs", "release": false },
         { "type": "style", "release": false },
         { "type": "refactor", "release": "patch" },
+        { "type": "release", "release": "minor" },
+        { "type": "sync", "release": "patch" },
         { "type": "test", "release": false },
         { "type": "build", "release": false },
         { "type": "ci", "release": false },
@@ -31,6 +33,7 @@
           { "type": "perf", "section": "⚡ Performance" },
           { "type": "revert", "section": "⏪ Reverts" },
           { "type": "refactor", "section": "♻️ Refactoring" },
+          { "type": "release", "section": "🚀 Releases" },
           { "type": "docs", "section": "📝 Documentation", "hidden": false },
           { "type": "style", "section": "🎨 Styles", "hidden": true },
           { "type": "test", "section": "🧪 Tests", "hidden": true },
@@ -52,7 +55,7 @@
     }],
     ["@semantic-release/git", {
       "assets": ["CHANGELOG.md", "package.json", "package-lock.json", "dist-action/index.mjs"],
-      "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
     }]
   ]
 }

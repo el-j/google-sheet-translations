@@ -6,6 +6,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -15,7 +16,7 @@ on:
       - next
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -25,8 +26,9 @@ jobs:
     name: Semantic Release
     runs-on: ubuntu-latest
     if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
 
     permissions:
       contents: write       # create tags + commits
@@ -38,11 +40,12 @@ jobs:
       - name: Checkout (full history required by semantic-release)
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_branch }}
+          ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           fetch-depth: 0
           persist-credentials: false
 
       - name: Reset to tested commit
+        if: github.event_name == 'workflow_run'
         run: git checkout --force ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup Node.js
