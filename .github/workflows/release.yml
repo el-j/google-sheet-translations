@@ -36,7 +36,7 @@ jobs:
 
     steps:
       - name: Checkout (full history required by semantic-release)
-        uses: actions/checkout@v7
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
@@ -91,3 +91,21 @@ jobs:
           # Force-create the major-version tag and push it
           git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}"
           git push origin "v${MAJOR}" --force
+
+      # When a stable release is created on main, merge the release commit
+      # (package.json + CHANGELOG.md) back into develop so develop and main
+      # never diverge and stay 100% conflict-free.
+      - name: Sync main release commit back to develop
+        if: steps.release.outcome == 'success' && github.event.workflow_run.head_branch == 'main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+
+          git fetch origin develop
+          git checkout develop
+          git merge main -m "chore(sync): back-merge release v${VERSION} into develop [skip ci]"
+          git push origin develop || echo "Skipping push if develop is already up to date"

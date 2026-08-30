@@ -1,6 +1,6 @@
 {
   "name": "@el-j/google-sheet-translations",
-  "version": "2.2.0-beta.6",
+  "version": "2.2.0-beta.7",
   "description": "A package to manage translations stored in Google Spreadsheets",
   "main": "dist/index.js",
   "module": "dist/esm/index.js",
@@ -27,7 +27,7 @@
   ],
   "scripts": {
     "build:action": "rimraf dist-action && esbuild src/action-entrypoint.ts --bundle --platform=node --format=esm --outfile=dist-action/index.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --log-level=info && node -e \"const fs=require('fs');const path='dist-action/index.mjs';const search='const url = (opts.url || \\\"\\\").toString();\\n          if (!url.includes(\\\"googleapis.com\\\") && !url.includes(\\\"google.com\\\")) {';const replacement='const url = (opts.url || \\\"\\\").toString();\\n          let isGoogleHost = false;\\n          try {\\n            const parsedUrl = new URL(url);\\n            const hostname = (parsedUrl.hostname || \\\"\\\").toLowerCase();\\n            isGoogleHost = hostname === \\\"googleapis.com\\\" || hostname.endsWith(\\\".googleapis.com\\\") || hostname === \\\"google.com\\\" || hostname.endsWith(\\\".google.com\\\");\\n          } catch {\\n            isGoogleHost = false;\\n          }\\n          if (!isGoogleHost) {';const data=fs.readFileSync(path,'utf8');if(!data.includes(search)){throw new Error('Expected host-check snippet not found in dist-action bundle');}fs.writeFileSync(path,data.replace(search,replacement));\"",
-    "build:cli": "rimraf dist-cli && esbuild src/setup/cli.ts --bundle --platform=node --format=esm --outfile=dist-cli/setup-wif.mjs --banner:js=\"#!/usr/bin/env node\" --log-level=info",
+    "build:cli": "rimraf dist-cli && esbuild src/setup/cli.ts --bundle --platform=node --format=esm --outfile=dist-cli/setup-wif.mjs --banner:js=\"#!/usr/bin/env node\nimport{createRequire}from'module';const require=createRequire(import.meta.url);\" --log-level=info",
     "build:types": "tsc --emitDeclarationOnly",
     "build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.js --platform=node --packages=external",
     "build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=dist/esm/index.js --platform=node --packages=external && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",

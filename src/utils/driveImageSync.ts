@@ -21,6 +21,12 @@ export interface DriveImageSyncOptions {
    * Useful for patterns like `/^projects\//` or `/icons$/`.
    */
   folderPattern?: RegExp;
+  /**
+   * Optional regular expression to filter file names. Only files whose name
+   * matches this pattern will be downloaded.
+   * Example: `/^icon-/` or `/\.(png|svg)$/i`.
+   */
+  nameFilter?: RegExp;
   /** Google service account credentials (falls back to env vars) */
   credentials?: GoogleEnvVars;
   /** If true, delete local files that no longer exist in Drive (default: false) */
@@ -132,6 +138,8 @@ async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
   return tokenResponse.token as string;
 }
 
+import { withRetry } from './rateLimiter';
+
 async function listFilesInFolder(
   folderId: string,
   token: string,
@@ -152,9 +160,13 @@ async function listFilesInFolder(
     });
     if (pageToken) params.set('pageToken', pageToken);
 
-    const response = await fetch(`${DRIVE_FILES_URL}?${params.toString()}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const response = await withRetry(
+      () =>
+        fetch(`${DRIVE_FILES_URL}?${params.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      `listDriveFiles(${folderId})`
+    );
 
     if (!response.ok) {
       const text = await response.text();
@@ -177,7 +189,8 @@ async function collectFiles(
   allowedMimeTypes: string[],
   recursive: boolean,
   folderPattern?: RegExp,
-  normalizeExts = true
+  normalizeExts = true,
+  nameFilter?: RegExp
 ): Promise<FileEntry[]> {
   console.log(`[driveImageSync] Scanning folder: ${folderId} (path: "${folderRelPath}")`);
 
@@ -197,10 +210,12 @@ async function collectFiles(
         allowedMimeTypes,
         recursive,
         folderPattern,
-        normalizeExts
+        normalizeExts,
+        nameFilter
       );
       entries.push(...subEntries);
     } else if (allowedMimeTypes.includes(item.mimeType)) {
+      if (nameFilter && !nameFilter.test(item.name)) continue;
       const localName = normalizeExts ? normalizeExtension(item.name) : item.name;
       const localPath = folderRelPath
         ? join(outputPath, folderRelPath, localName)
@@ -220,7 +235,10 @@ async function collectFiles(
 
 async function downloadFile(fileId: string, localPath: string, token: string): Promise<void> {
   const url = `${DRIVE_FILES_URL}/${fileId}?alt=media`;
-  const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const response = await withRetry(
+    () => fetch(url, { headers: { Authorization: `Bearer ${token}` } }),
+    `downloadDriveFile(${fileId})`
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to download ${fileId}: ${response.status}`);
@@ -280,6 +298,7 @@ export async function syncDriveImages(
     mimeTypes = DEFAULT_IMAGE_MIME_TYPES,
     recursive = true,
     folderPattern,
+    nameFilter,
     credentials,
     cleanSync = false,
     concurrency = 3,
@@ -299,7 +318,8 @@ export async function syncDriveImages(
     mimeTypes,
     recursive,
     folderPattern,
-    normalizeExtensions
+    normalizeExtensions,
+    nameFilter
   );
 
   const downloaded: string[] = [];

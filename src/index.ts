@@ -17,7 +17,7 @@ export { createAuthClient, buildGoogleAuth, normalizePrivateKey } from './utils/
 export { convertToDataJsonFormat } from './utils/dataConverter/convertToDataJsonFormat';
 export { convertFromDataJsonFormat } from './utils/dataConverter/convertFromDataJsonFormat';
 export { findLocalChanges } from './utils/dataConverter/findLocalChanges';
-export { updateSpreadsheetWithLocalChanges } from './utils/spreadsheetUpdater';
+export { updateSpreadsheetWithLocalChanges, columnIndexToLetter } from './utils/spreadsheetUpdater';
 
 // Public (unauthenticated) sheet reader
 export { readPublicSheet } from './utils/publicSheetReader';
@@ -83,7 +83,7 @@ export type {
 } from './utils/localImageUtils';
 
 // Drive translations orchestrator (headless CMS bridge)
-export { manageDriveTranslations } from './utils/getDriveTranslations';
+export { manageDriveTranslations, sanitizeFolderName, moveSpreadsheetToFolder } from './utils/getDriveTranslations';
 export type { GoogleDriveManagerOptions, GoogleDriveManagerResult } from './utils/getDriveTranslations';
 
 // Drive project manifest (index file for multi-spreadsheet projects)

@@ -5,8 +5,8 @@ import type { DriveDocFile } from '../../src/utils/driveDocScanner';
 // ── Mock dependencies ─────────────────────────────────────────────────────────
 
 vi.mock('google-auth-library', () => ({
-  GoogleAuth: vi.fn().mockImplementation(class {
-    getClient = vi.fn().mockResolvedValue({
+  GoogleAuth: vi.fn().mockImplementation(function (this: any) {
+    this.getClient = vi.fn().mockResolvedValue({
       getAccessToken: vi.fn().mockResolvedValue({ token: 'mock-token' }),
     });
   }),
@@ -24,8 +24,8 @@ vi.mock('../../src/utils/spreadsheetUpdater', () => ({
 
 const mockLoadInfo = vi.fn();
 vi.mock('google-spreadsheet', () => ({
-  GoogleSpreadsheet: vi.fn().mockImplementation(class {
-    loadInfo = mockLoadInfo;
+  GoogleSpreadsheet: vi.fn().mockImplementation(function (this: any) {
+    this.loadInfo = mockLoadInfo;
   }),
 }));
 
@@ -356,5 +356,28 @@ describe('ingestDoc', () => {
     });
 
     expect(result.entry.linkedSpreadsheetId).toBe('existing-sheet-id');
+  });
+
+  it('handles doc names that strip to empty string and all-punctuation doc names', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, text: async () => DOC_CONTENT });
+    mockCreateSpreadsheet.mockResolvedValueOnce({ id: 'new-sheet-id' });
+
+    const docFileWithPunctuation: DriveDocFile = {
+      id: 'doc-punct',
+      name: '!!!_en',
+      folderPath: '',
+      mimeType: 'application/vnd.google-apps.document',
+      sourceLocale: 'en',
+    };
+
+    const result = await ingestDoc(docFileWithPunctuation, { credentials: CREDENTIALS });
+    expect(result.action).toBe('created');
+    expect(mockCreateSpreadsheet).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        title: '!!!',
+        sourceLocale: 'en',
+      })
+    );
   });
 });

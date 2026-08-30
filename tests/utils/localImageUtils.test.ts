@@ -266,4 +266,25 @@ describe('validateImageDirectory', () => {
     expect(result.errors[0]).toMatch(/\+5 more/);
     expect(result.rootFiles).toHaveLength(10);
   });
+
+  it('handles non-Error exceptions when reading directory', async () => {
+    fsp.readdir.mockRejectedValueOnce('Custom string error');
+
+    const result = await validateImageDirectory(opts());
+    expect(result.valid).toBe(false);
+    expect(result.errors[0]).toContain('Custom string error');
+  });
+
+  it('ignores dirents that are neither files nor directories (e.g. symlinks/sockets)', async () => {
+    const symlinkDirent = {
+      name: 'symlink.png',
+      isDirectory: () => false,
+      isFile: () => false,
+    };
+    fsp.readdir.mockResolvedValueOnce([symlinkDirent, makeDirent('sub', true)]);
+
+    const result = await validateImageDirectory(opts());
+    expect(result.valid).toBe(true);
+    expect(result.rootFiles).toHaveLength(0);
+  });
 });
