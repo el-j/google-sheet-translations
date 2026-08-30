@@ -44,9 +44,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Reset to tested commit
-        if: github.event_name == 'workflow_run'
-        run: git checkout --force ${{ github.event.workflow_run.head_sha }}
+      - name: Set current branch for semantic-release
+        run: |
+          TARGET_BRANCH="${{ github.event.workflow_run.head_branch || github.ref_name }}"
+          echo "Checking out target branch: $TARGET_BRANCH"
+          git checkout -B "$TARGET_BRANCH"
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
