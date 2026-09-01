@@ -1,6 +1,14 @@
 import * as core from '@actions/core';
 import { getSpreadSheetData } from '../src/getSpreadSheetData';
 import { manageDriveTranslations } from '../src/utils/getDriveTranslations';
+import {
+	assertValidProviderRuntimeConfig,
+	createProvidersFromRuntimeConfig,
+	requiresGoogleAuthForRuntimeConfig,
+	runProviderPipeline,
+} from '../src/providers';
+import { writeLanguageDataFile, writeLocalesFile, writeTranslationFiles } from '../src/utils/fileWriter';
+import { readDataJson } from '../src/utils/readDataJson';
 
 vi.mock('@actions/core', () => ({
 	getInput: vi.fn(),
@@ -17,6 +25,28 @@ vi.mock('../src/getSpreadSheetData', () => ({
 vi.mock('../src/utils/getDriveTranslations', () => ({
 	manageDriveTranslations: vi.fn().mockResolvedValue({ translations: {} }),
 }));
+vi.mock('../src/providers', () => ({
+	assertValidProviderRuntimeConfig: vi.fn().mockImplementation((config) => config),
+	createProvidersFromRuntimeConfig: vi.fn().mockReturnValue({
+		inputProvider: { providerId: 'cryptpad-csv' },
+	}),
+	requiresGoogleAuthForRuntimeConfig: vi.fn().mockReturnValue(false),
+	runProviderPipeline: vi.fn().mockResolvedValue({
+		translations: { en: { home: { welcome: 'Welcome' } } },
+		locales: ['en'],
+		localeMapping: { en: 'en' },
+		originalLocaleMapping: { en: 'en' },
+		inputTableCount: 1,
+	}),
+}));
+vi.mock('../src/utils/fileWriter', () => ({
+	writeTranslationFiles: vi.fn(),
+	writeLocalesFile: vi.fn(),
+	writeLanguageDataFile: vi.fn(),
+}));
+vi.mock('../src/utils/readDataJson', () => ({
+	readDataJson: vi.fn().mockReturnValue(null),
+}));
 
 // Import run after mocks are set up so the bottom-level call uses mocked deps
 import { run } from '../src/action-entrypoint';
@@ -27,6 +57,14 @@ const mockSetFailed = vi.mocked(core.setFailed);
 const mockInfo = vi.mocked(core.info);
 const mockGetSpreadSheetData = vi.mocked(getSpreadSheetData);
 const mockManageDriveTranslations = vi.mocked(manageDriveTranslations);
+const mockAssertValidProviderRuntimeConfig = vi.mocked(assertValidProviderRuntimeConfig);
+const mockCreateProvidersFromRuntimeConfig = vi.mocked(createProvidersFromRuntimeConfig);
+const mockRequiresGoogleAuthForRuntimeConfig = vi.mocked(requiresGoogleAuthForRuntimeConfig);
+const mockRunProviderPipeline = vi.mocked(runProviderPipeline);
+const mockWriteTranslationFiles = vi.mocked(writeTranslationFiles);
+const mockWriteLocalesFile = vi.mocked(writeLocalesFile);
+const mockWriteLanguageDataFile = vi.mocked(writeLanguageDataFile);
+const mockReadDataJson = vi.mocked(readDataJson);
 
 /** Default set of valid action inputs */
 function makeInputs(overrides: Record<string, string> = {}): Record<string, string> {
@@ -54,6 +92,8 @@ beforeEach(() => {
 	process.env.GITHUB_WORKSPACE = '/workspace';
 	mockGetSpreadSheetData.mockResolvedValue({});
 	mockManageDriveTranslations.mockResolvedValue({ translations: {} } as Awaited<ReturnType<typeof manageDriveTranslations>>);
+	mockRequiresGoogleAuthForRuntimeConfig.mockReturnValue(false);
+	mockReadDataJson.mockReturnValue(null);
 });
 
 describe('action-entrypoint', () => {
@@ -175,6 +215,24 @@ describe('action-entrypoint', () => {
 			);
 		});
 
+		it('calls core.setFailed in provider mode when selected providers require Google auth but creds are missing', async () => {
+			delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+			mockRequiresGoogleAuthForRuntimeConfig.mockReturnValue(true);
+			const providerConfig = JSON.stringify({ input: { provider: 'google-sheets' } });
+			const inputs = makeInputs({
+				'google-client-email': '',
+				'google-private-key': '',
+				'provider-config': providerConfig,
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				expect.stringContaining('Authentication required for selected provider configuration'),
+			);
+		});
+
 		it('calls core.setFailed when manageDriveTranslations throws', async () => {
 			const inputs = makeInputs({ 'drive-folder-id': 'folder-123' });
 			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
@@ -183,6 +241,63 @@ describe('action-entrypoint', () => {
 			await run();
 
 			expect(mockSetFailed).toHaveBeenCalledWith('Drive sync failed');
+		});
+	});
+
+	describe('provider mode', () => {
+		it('uses provider pipeline when provider-config input is set', async () => {
+			const providerConfig = JSON.stringify({
+				input: { provider: 'cryptpad-csv', options: { sources: [] } },
+			});
+			const inputs = makeInputs({
+				'provider-config': providerConfig,
+				'google-client-email': '',
+				'google-private-key': '',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockAssertValidProviderRuntimeConfig).toHaveBeenCalled();
+			expect(mockCreateProvidersFromRuntimeConfig).toHaveBeenCalled();
+			expect(mockRunProviderPipeline).toHaveBeenCalled();
+			expect(mockWriteTranslationFiles).toHaveBeenCalled();
+			expect(mockWriteLocalesFile).toHaveBeenCalled();
+			expect(mockWriteLanguageDataFile).toHaveBeenCalled();
+			expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
+		});
+
+		it('allows no-auth provider mode when Google auth is not required', async () => {
+			delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+			mockRequiresGoogleAuthForRuntimeConfig.mockReturnValue(false);
+			const providerConfig = JSON.stringify({ input: { provider: 'cryptpad-csv', options: { sources: [] } } });
+			const inputs = makeInputs({
+				'google-client-email': '',
+				'google-private-key': '',
+				'provider-config': providerConfig,
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).not.toHaveBeenCalled();
+			expect(mockRunProviderPipeline).toHaveBeenCalled();
+		});
+
+		it('fails when both provider-config and provider-config-path are set', async () => {
+			const inputs = makeInputs({
+				'provider-config': '{"input":{"provider":"cryptpad-csv","options":{"sources":[]}}}',
+				'provider-config-path': 'provider.config.json',
+				'google-client-email': '',
+				'google-private-key': '',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockSetFailed).toHaveBeenCalledWith(
+				'Use either provider-config or provider-config-path, not both.',
+			);
 		});
 	});
 

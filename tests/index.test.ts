@@ -121,6 +121,8 @@ describe('Package exports', () => {
       'validateProviderRuntimeConfig',
       'assertValidProviderRuntimeConfig',
       'mapLegacyGoogleOptionsToProviderConfig',
+      'createProvidersFromRuntimeConfig',
+      'requiresGoogleAuthForRuntimeConfig',
     ];
 
     expectedKeys.forEach(key => {

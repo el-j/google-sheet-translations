@@ -71,3 +71,10 @@ export type {
   ProviderConfigValidationResult,
   LegacyConfigMappingResult,
 } from './config';
+
+export {
+  createProvidersFromRuntimeConfig,
+  requiresGoogleAuthForRuntimeConfig,
+} from './runtime';
+
+export type { ProviderRuntimeSelection } from './runtime';

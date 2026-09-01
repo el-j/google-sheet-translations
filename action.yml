@@ -144,6 +144,19 @@ inputs:
     description: 'Local directory to download Drive images into'
     required: false
     default: './public/remote-images'
+  provider-config:
+    description: >
+      JSON string for v3 provider runtime config. Example:
+      {"input":{"provider":"cryptpad-csv","options":{"sources":[{"tableName":"home","url":"https://cryptpad.fr/..."}]}}}
+      Mutually exclusive with provider-config-path.
+    required: false
+    default: ''
+  provider-config-path:
+    description: >
+      Path (relative to repository root) to a JSON file containing v3 provider
+      runtime config. Mutually exclusive with provider-config.
+    required: false
+    default: ''
 
 outputs:
   translations-dir:

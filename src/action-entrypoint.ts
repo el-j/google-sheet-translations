@@ -1,8 +1,17 @@
 import * as core from '@actions/core';
+import fs from 'node:fs';
 import path from 'node:path';
 import { getSpreadSheetData } from './getSpreadSheetData';
 import { manageDriveTranslations } from './utils/getDriveTranslations';
 import type { SpreadsheetOptions } from './utils/configurationHandler';
+import {
+	assertValidProviderRuntimeConfig,
+	createProvidersFromRuntimeConfig,
+	requiresGoogleAuthForRuntimeConfig,
+	runProviderPipeline,
+} from './providers';
+import { writeLanguageDataFile, writeLocalesFile, writeTranslationFiles } from './utils/fileWriter';
+import { readDataJson } from './utils/readDataJson';
 
 /**
  * Main GitHub Action entrypoint.
@@ -16,6 +25,8 @@ import type { SpreadsheetOptions } from './utils/configurationHandler';
  */
 export async function run(): Promise<void> {
 	try {
+		const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
+
 		// ── Authentication setup ────────────────────────────────────────────────
 		// WIF mode: GOOGLE_APPLICATION_CREDENTIALS is set by google-github-actions/auth
 		// Classic key mode: google-client-email and google-private-key inputs are used
@@ -29,15 +40,6 @@ export async function run(): Promise<void> {
 			process.env.GOOGLE_PRIVATE_KEY = privateKey;
 		}
 
-		// Validate that at least one auth mode is configured
-		if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
-			throw new Error(
-				'Authentication required: provide either\n' +
-				'  (A) google-client-email + google-private-key inputs (classic service-account key), or\n' +
-				'  (B) a google-github-actions/auth step before this action (Workload Identity Federation).',
-			);
-		}
-
 		const spreadsheetIdInput = core.getInput('google-spreadsheet-id');
 		if (spreadsheetIdInput) {
 			process.env.GOOGLE_SPREADSHEET_ID = spreadsheetIdInput;
@@ -49,10 +51,15 @@ export async function run(): Promise<void> {
 			.map((s) => s.trim())
 			.filter(Boolean);
 
-		const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
 		const translationsOutputDir = core.getInput('translations-output-dir') || 'translations';
 		const localesOutputPath = core.getInput('locales-output-path') || 'src/i18n/locales.ts';
 		const dataJsonPath = core.getInput('data-json-path') || 'src/lib/languageData.json';
+		const providerConfigInput = core.getInput('provider-config')?.trim();
+		const providerConfigPathInput = core.getInput('provider-config-path')?.trim();
+
+		if (providerConfigInput && providerConfigPathInput) {
+			throw new Error('Use either provider-config or provider-config-path, not both.');
+		}
 
 		const rowLimitInput = core.getInput('row-limit') || '100';
 		const waitSecondsInput = core.getInput('wait-seconds') || '1';
@@ -97,28 +104,90 @@ export async function run(): Promise<void> {
 			: undefined;
 		const syncImages = core.getInput('sync-images') === 'true';
 		const imageOutputPath = core.getInput('image-output-path') || './public/remote-images';
+		const absTranslationsOutputDir = path.resolve(workspaceDir, translationsOutputDir);
+		const absLocalesOutputPath = path.resolve(workspaceDir, localesOutputPath);
+		const absDataJsonPath = path.resolve(workspaceDir, dataJsonPath);
 
 		let localeCount: number;
+		if (providerConfigInput || providerConfigPathInput) {
+			const rawConfig = providerConfigInput
+				? providerConfigInput
+				: fs.readFileSync(path.resolve(workspaceDir, providerConfigPathInput), 'utf8');
+			const providerConfig = assertValidProviderRuntimeConfig(JSON.parse(rawConfig));
 
-		if (driveFolderId || (spreadsheetIds && spreadsheetIds.length > 0)) {
-			const driveResult = await manageDriveTranslations({
-				driveFolderId,
-				scanForSpreadsheets,
-				spreadsheetIds,
-				syncImages,
-				imageOutputPath: syncImages ? imageOutputPath : undefined,
-				docTitles: sheetTitles,
-				translationOptions: options,
+			if (
+				requiresGoogleAuthForRuntimeConfig(providerConfig) &&
+				!process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+				(!clientEmail || !privateKey)
+			) {
+				throw new Error(
+					'Authentication required for selected provider configuration: provide either\n' +
+					'  (A) google-client-email + google-private-key inputs (classic service-account key), or\n' +
+					'  (B) a google-github-actions/auth step before this action (Workload Identity Federation).',
+				);
+			}
+
+			const providers = createProvidersFromRuntimeConfig(providerConfig);
+			const localDataForSync = readDataJson(absDataJsonPath) ?? undefined;
+
+			const pipelineResult = await runProviderPipeline({
+				inputProvider: providers.inputProvider,
+				outputProvider: providers.outputProvider,
+				syncProvider: providers.syncProvider,
+				tableNames: sheetTitles,
+				localTranslationsForSync: localDataForSync,
 			});
-			localeCount = Object.keys(driveResult.translations).length;
+
+			writeTranslationFiles(
+				pipelineResult.translations,
+				pipelineResult.locales,
+				absTranslationsOutputDir,
+			);
+			writeLocalesFile(
+				pipelineResult.locales,
+				pipelineResult.localeMapping,
+				absLocalesOutputPath,
+			);
+
+			if (pipelineResult.locales.length > 0) {
+				writeLanguageDataFile(
+					pipelineResult.translations,
+					pipelineResult.locales,
+					absDataJsonPath,
+				);
+			}
+
+			localeCount = pipelineResult.locales.length;
 		} else {
-			const translations = await getSpreadSheetData(sheetTitles, options);
-			localeCount = Object.keys(translations).length;
+			// Validate that at least one auth mode is configured
+			if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
+				throw new Error(
+					'Authentication required: provide either\n' +
+					'  (A) google-client-email + google-private-key inputs (classic service-account key), or\n' +
+					'  (B) a google-github-actions/auth step before this action (Workload Identity Federation).',
+				);
+			}
+
+			if (driveFolderId || (spreadsheetIds && spreadsheetIds.length > 0)) {
+				const driveResult = await manageDriveTranslations({
+					driveFolderId,
+					scanForSpreadsheets,
+					spreadsheetIds,
+					syncImages,
+					imageOutputPath: syncImages ? imageOutputPath : undefined,
+					docTitles: sheetTitles,
+					translationOptions: options,
+				});
+				localeCount = Object.keys(driveResult.translations).length;
+			} else {
+				const translations = await getSpreadSheetData(sheetTitles, options);
+				localeCount = Object.keys(translations).length;
+			}
 		}
 
-		core.setOutput('translations-dir', path.resolve(workspaceDir, translationsOutputDir));
-		core.setOutput('locales-file', path.resolve(workspaceDir, localesOutputPath));
-		core.setOutput('data-json-file', path.resolve(workspaceDir, dataJsonPath));
+		core.setOutput('translations-dir', absTranslationsOutputDir);
+		core.setOutput('locales-file', absLocalesOutputPath);
+		core.setOutput('data-json-file', absDataJsonPath);
 
 		core.info(`✅ Fetched translations for ${localeCount} locales`);
 	} catch (error) {

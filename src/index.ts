@@ -147,6 +147,7 @@ export type {
   ProviderRuntimeConfig,
   ProviderConfigValidationResult,
   LegacyConfigMappingResult,
+  ProviderRuntimeSelection,
 } from './providers';
 export {
   createGoogleSheetsInputProvider,
@@ -159,6 +160,8 @@ export {
   validateProviderRuntimeConfig,
   assertValidProviderRuntimeConfig,
   mapLegacyGoogleOptionsToProviderConfig,
+  createProvidersFromRuntimeConfig,
+  requiresGoogleAuthForRuntimeConfig,
 } from './providers';
 
 // Default export
