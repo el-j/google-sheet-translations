@@ -139,12 +139,26 @@ export type {
   GoogleSheetsInputProviderOptions,
   GoogleSheetsOutputProviderOptions,
   GoogleSheetsSyncProviderOptions,
+  CryptPadCsvSource,
+  CryptPadCsvInputProviderOptions,
+  ProviderPipelineOptions,
+  ProviderPipelineResult,
+  ProviderReferenceConfig,
+  ProviderRuntimeConfig,
+  ProviderConfigValidationResult,
+  LegacyConfigMappingResult,
 } from './providers';
 export {
   createGoogleSheetsInputProvider,
   createGoogleSheetsOutputProvider,
   createGoogleSheetsSyncProvider,
   GOOGLE_SHEETS_PROVIDER_CAPABILITIES,
+  createCryptPadCsvInputProvider,
+  CRYPTPAD_CSV_INPUT_CAPABILITIES,
+  runProviderPipeline,
+  validateProviderRuntimeConfig,
+  assertValidProviderRuntimeConfig,
+  mapLegacyGoogleOptionsToProviderConfig,
 } from './providers';
 
 // Default export

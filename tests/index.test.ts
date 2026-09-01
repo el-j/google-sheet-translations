@@ -112,6 +112,15 @@ describe('Package exports', () => {
       'createGoogleSheetsOutputProvider',
       'createGoogleSheetsSyncProvider',
       'GOOGLE_SHEETS_PROVIDER_CAPABILITIES',
+      // concrete CryptPad provider adapter
+      'createCryptPadCsvInputProvider',
+      'CRYPTPAD_CSV_INPUT_CAPABILITIES',
+      // provider pipeline orchestrator
+      'runProviderPipeline',
+      // provider config schema + legacy mapping
+      'validateProviderRuntimeConfig',
+      'assertValidProviderRuntimeConfig',
+      'mapLegacyGoogleOptionsToProviderConfig',
     ];
 
     expectedKeys.forEach(key => {

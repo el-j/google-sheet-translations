@@ -45,3 +45,29 @@ export type {
   GoogleSheetsOutputProviderOptions,
   GoogleSheetsSyncProviderOptions,
 } from './google';
+
+export {
+  createCryptPadCsvInputProvider,
+  CRYPTPAD_CSV_INPUT_CAPABILITIES,
+} from './cryptpad';
+
+export type {
+  CryptPadCsvSource,
+  CryptPadCsvInputProviderOptions,
+} from './cryptpad';
+
+export { runProviderPipeline } from './orchestrator';
+export type { ProviderPipelineOptions, ProviderPipelineResult } from './orchestrator';
+
+export {
+  validateProviderRuntimeConfig,
+  assertValidProviderRuntimeConfig,
+  mapLegacyGoogleOptionsToProviderConfig,
+} from './config';
+
+export type {
+  ProviderReferenceConfig,
+  ProviderRuntimeConfig,
+  ProviderConfigValidationResult,
+  LegacyConfigMappingResult,
+} from './config';
