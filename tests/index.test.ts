@@ -107,6 +107,11 @@ describe('Package exports', () => {
       'hasRequiredCapabilities',
       'assertRequiredCapabilities',
       'assertOperationCapabilities',
+      // concrete Google provider adapters
+      'createGoogleSheetsInputProvider',
+      'createGoogleSheetsOutputProvider',
+      'createGoogleSheetsSyncProvider',
+      'GOOGLE_SHEETS_PROVIDER_CAPABILITIES',
     ];
 
     expectedKeys.forEach(key => {

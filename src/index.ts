@@ -136,6 +136,15 @@ export type {
   AnyTranslationProvider,
   ProviderRegistry,
   SegmentedProviderRegistry,
+  GoogleSheetsInputProviderOptions,
+  GoogleSheetsOutputProviderOptions,
+  GoogleSheetsSyncProviderOptions,
+} from './providers';
+export {
+  createGoogleSheetsInputProvider,
+  createGoogleSheetsOutputProvider,
+  createGoogleSheetsSyncProvider,
+  GOOGLE_SHEETS_PROVIDER_CAPABILITIES,
 } from './providers';
 
 // Default export

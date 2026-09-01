@@ -32,3 +32,16 @@ export type {
   ProviderRegistry,
   SegmentedProviderRegistry,
 } from './contracts';
+
+export {
+  createGoogleSheetsInputProvider,
+  createGoogleSheetsOutputProvider,
+  createGoogleSheetsSyncProvider,
+  GOOGLE_SHEETS_PROVIDER_CAPABILITIES,
+} from './google';
+
+export type {
+  GoogleSheetsInputProviderOptions,
+  GoogleSheetsOutputProviderOptions,
+  GoogleSheetsSyncProviderOptions,
+} from './google';
