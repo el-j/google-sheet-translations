@@ -1,0 +1,94 @@
+# Migration to v3 Provider Runtime
+
+This guide helps existing users migrate from Google-first options to the v3 provider runtime.
+
+## Migration principle
+
+- Legacy API remains available during transition.
+- New integrations should use provider config.
+- Existing behavior can be mapped with helper utilities.
+
+## From legacy to provider config
+
+### Legacy call
+
+```typescript
+await getSpreadSheetData(['home'], {
+  spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+  syncLocalChanges: true,
+  autoTranslate: true,
+  waitSeconds: 2,
+});
+```
+
+### Provider runtime equivalent
+
+```typescript
+const config = {
+  input: {
+    provider: 'google-sheets',
+    options: {
+      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+      waitSeconds: 2,
+    },
+  },
+  sync: {
+    provider: 'google-sheets',
+    options: {
+      spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+      autoTranslate: true,
+    },
+  },
+};
+```
+
+## Mapping helper
+
+Use `mapLegacyGoogleOptionsToProviderConfig` for incremental migration:
+
+```typescript
+import { mapLegacyGoogleOptionsToProviderConfig } from '@el-j/google-sheet-translations';
+
+const { config, deprecations } = mapLegacyGoogleOptionsToProviderConfig({
+  spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID,
+  syncLocalChanges: true,
+  autoTranslate: true,
+});
+
+console.log(deprecations);
+```
+
+## Action migration
+
+### Old
+
+- `google-client-email`
+- `google-private-key`
+- `google-spreadsheet-id`
+- `sheet-titles`
+
+### New provider mode
+
+- `provider-config` or `provider-config-path`
+- still keep `sheet-titles`
+
+## CLI migration
+
+Use:
+
+```bash
+gst-run-provider --config=provider.config.json --sheet-titles=home,about
+```
+
+## Suggested staged rollout
+
+1. Keep legacy in production.
+2. Add provider config in CI preview.
+3. Compare output snapshots.
+4. Switch default automation to provider mode.
+5. Remove legacy flow after confidence window.
+
+## Notes
+
+- `cryptpad-csv` is read-only in MVP.
+- For full sync/write-back and asset sync planning, follow the provider full-sync roadmap.

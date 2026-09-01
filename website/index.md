@@ -3,10 +3,10 @@ layout: home
 
 hero:
   name: "google-sheet-translations"
-  text: "Your Google Sheets,\nas a translation backend"
+  text: "Your translation data,\nfrom multiple providers"
   tagline: >
-    Fetch, sync and auto-translate — single spreadsheet or an entire Drive folder.
-    Full TypeScript safety, zero configuration overhead, built-in image sync.
+    Fetch, sync and transform translations with a provider runtime architecture.
+    Google Sheets is fully supported today, and CryptPad CSV input is now available in v3 mode.
   image:
     src: /logo.svg
     alt: google-sheet-translations
@@ -20,12 +20,27 @@ hero:
     - theme: alt
       text: GitHub Action
       link: /guide/github-actions
+    - theme: alt
+      text: Provider Runtime (v3)
+      link: /guide/provider-runtime
 
 features:
   - icon: 🗂️
     title: Google Drive Folder Management
     details: Point the package at a Drive folder and it auto-discovers every translation spreadsheet inside — across any sub-folder depth. One call, many sheets, one merged result.
     link: /guide/drive-folder
+    linkText: Learn more
+
+  - icon: 🧩
+    title: Provider Runtime Architecture (v3)
+    details: Select input, output, and sync providers explicitly. Compose workflows with capability checks so unsupported operations fail early and clearly.
+    link: /guide/provider-runtime
+    linkText: Learn more
+
+  - icon: 🧾
+    title: CryptPad CSV Input (v3)
+    details: Pull translation tables from CryptPad CSV exports or public endpoints and run the same transformation pipeline used by Google providers.
+    link: /guide/provider-runtime#cryptpad-csv-mvp
     linkText: Learn more
 
   - icon: 🖼️
@@ -138,3 +153,34 @@ console.log(result.imageSync?.downloaded.length, 'images downloaded');
 ```
 
 > **Need Drive API access?** See [service account setup with Drive →](/guide/service-account-setup#enabling-the-drive-api-for-folder--image-usage)
+
+## Quick start — provider runtime (v3)
+
+```typescript
+import {
+  assertValidProviderRuntimeConfig,
+  createProvidersFromRuntimeConfig,
+  runProviderPipeline,
+} from '@el-j/google-sheet-translations';
+
+const config = assertValidProviderRuntimeConfig({
+  input: {
+    provider: 'cryptpad-csv',
+    options: {
+      sources: [
+        { tableName: 'home', url: 'https://cryptpad.fr/.../export.csv' },
+      ],
+    },
+  },
+});
+
+const providers = createProvidersFromRuntimeConfig(config);
+const result = await runProviderPipeline({
+  inputProvider: providers.inputProvider,
+  tableNames: ['home'],
+});
+
+console.log(result.locales);
+```
+
+See [Provider Runtime (v3)](/guide/provider-runtime) and the [v3 migration guide](/guide/provider-migration-v3).

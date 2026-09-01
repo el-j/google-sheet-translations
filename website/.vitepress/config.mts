@@ -31,6 +31,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
+      { text: 'Provider Runtime', link: '/guide/provider-runtime' },
       { text: 'GitHub Action', link: '/guide/github-actions' },
       {
         text: `v${pkg.version}`,
@@ -71,6 +72,8 @@ export default defineConfig({
           text: 'Guides & Integrations',
           items: [
             { text: 'GitHub Actions', link: '/guide/github-actions' },
+            { text: 'Provider Runtime (v3)', link: '/guide/provider-runtime' },
+            { text: 'Migration to v3', link: '/guide/provider-migration-v3' },
             { text: 'Bidirectional Sync', link: '/guide/bidirectional-sync' },
             { text: 'Auto-Translation', link: '/guide/auto-translation' },
             { text: 'Google Docs Ingestion', link: '/guide/google-docs-ingestion' },

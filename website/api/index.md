@@ -10,6 +10,16 @@
 | [`getMultipleSpreadSheetsData`](/api/get-multiple-spreadsheets-data) | Fetch from multiple spreadsheet IDs and deep-merge results |
 | [`manageDriveTranslations`](/api/manage-drive-translations) | Top-level orchestrator — scan a Drive folder, fetch all spreadsheets, and optionally sync images |
 
+## Provider runtime (v3)
+
+| Export | Description |
+|--------|-------------|
+| `assertValidProviderRuntimeConfig` | Validate and type-check provider runtime config before execution |
+| `createProvidersFromRuntimeConfig` | Build concrete input/output/sync providers from config |
+| `runProviderPipeline` | Execute provider-driven pull/transform/write/sync flow |
+| `createGoogleSheetsInputProvider` / `createGoogleSheetsOutputProvider` / `createGoogleSheetsSyncProvider` | Google provider adapter factories |
+| `createCryptPadCsvInputProvider` | CryptPad CSV input adapter factory (read-only MVP) |
+
 ## Google Drive utilities
 
 | Export | Description |
