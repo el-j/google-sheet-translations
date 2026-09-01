@@ -106,6 +106,38 @@ export type { DocIngesterOptions, DocIngestResult, DocUpdateMode } from './utils
 export { setupWIF, grantDrivePermissions, GcpApiError } from './setup/wifSetup';
 export type { WifSetupOptions, WifSetupResult, GrantDrivePermissionsOptions } from './setup/wifSetup';
 
+// Provider platform contracts and capability policy (v3 foundation)
+export {
+  PROVIDER_CAPABILITIES,
+  EMPTY_PROVIDER_CAPABILITIES,
+  OPERATION_CAPABILITY_REQUIREMENTS,
+  createCapabilitySet,
+  missingCapabilities,
+  hasRequiredCapabilities,
+  assertRequiredCapabilities,
+  assertOperationCapabilities,
+} from './providers';
+export type {
+  ProviderCapability,
+  ProviderCapabilitySet,
+  ProviderOperation,
+  ProviderKind,
+  ProviderMetadata,
+  CanonicalTableInput,
+  TranslationInputRequest,
+  TranslationInputResult,
+  TranslationOutputPayload,
+  TranslationOutputResult,
+  TranslationSyncPayload,
+  TranslationSyncResult,
+  TranslationInputProvider,
+  TranslationOutputProvider,
+  TranslationSyncProvider,
+  AnyTranslationProvider,
+  ProviderRegistry,
+  SegmentedProviderRegistry,
+} from './providers';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;

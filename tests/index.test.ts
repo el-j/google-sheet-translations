@@ -98,6 +98,15 @@ describe('Package exports', () => {
       'exportDoc',
       'entriesToSeedKeys',
       'entriesToTranslationData',
+      // provider capabilities and policies
+      'PROVIDER_CAPABILITIES',
+      'EMPTY_PROVIDER_CAPABILITIES',
+      'OPERATION_CAPABILITY_REQUIREMENTS',
+      'createCapabilitySet',
+      'missingCapabilities',
+      'hasRequiredCapabilities',
+      'assertRequiredCapabilities',
+      'assertOperationCapabilities',
     ];
 
     expectedKeys.forEach(key => {
