@@ -3,90 +3,66 @@ layout: home
 
 hero:
   name: "google-sheet-translations"
-  text: "Your translation data,\nfrom multiple providers"
+  text: "Provider-first Translation\nOperations"
   tagline: >
-    Fetch, sync and transform translations with a provider runtime architecture.
-    Google Sheets is fully supported today, and CryptPad CSV input is now available in v3 mode.
+    Build reliable localization pipelines with explicit input, output, and sync providers.
+    Use Google Sheets for full sync workflows and CryptPad CSV for no-auth ingestion.
   image:
     src: /logo.svg
     alt: google-sheet-translations
   actions:
     - theme: brand
-      text: Get Started →
-      link: /guide/getting-started
+      text: Start with v3 Runtime →
+      link: /guide/provider-runtime
     - theme: alt
-      text: Drive Folder & Images
-      link: /guide/drive-folder
+      text: Migrate from v2
+      link: /guide/provider-migration-v3
     - theme: alt
       text: GitHub Action
       link: /guide/github-actions
     - theme: alt
-      text: Provider Runtime (v3)
-      link: /guide/provider-runtime
+      text: v2 Archive
+      link: /v2/
 
 features:
-  - icon: 🗂️
-    title: Google Drive Folder Management
-    details: Point the package at a Drive folder and it auto-discovers every translation spreadsheet inside — across any sub-folder depth. One call, many sheets, one merged result.
-    link: /guide/drive-folder
-    linkText: Learn more
-
-  - icon: 🧩
-    title: Provider Runtime Architecture (v3)
-    details: Select input, output, and sync providers explicitly. Compose workflows with capability checks so unsupported operations fail early and clearly.
+  - title: Provider Runtime Architecture (v3)
+    details: Select input, output, and sync providers explicitly. Capability checks prevent unsupported operations before they can run.
     link: /guide/provider-runtime
     linkText: Learn more
 
-  - icon: 🧾
-    title: CryptPad CSV Input (v3)
-    details: Pull translation tables from CryptPad CSV exports or public endpoints and run the same transformation pipeline used by Google providers.
+  - title: Migration Command and Transition Path
+    details: Move from legacy action inputs to provider config using gst-migrate-v3, with dry-run mode and optional workflow rewrites.
+    link: /guide/provider-migration-v3
+    linkText: Learn more
+
+  - title: CryptPad CSV Input (v3)
+    details: Pull translation tables from CryptPad CSV exports or public endpoints and process them through the same transformation core.
     link: /guide/provider-runtime#cryptpad-csv-mvp
     linkText: Learn more
 
-  - icon: 🖼️
-    title: Built-in Image Sync from Drive
-    details: Download images from your Drive folder to a local asset directory with incremental sync, concurrency control, extension normalisation, and optional stale-file cleanup. No rclone needed.
-    link: /guide/drive-folder#image-sync
-    linkText: Learn more
-
-  - icon: 🔄
-    title: Bidirectional Sync
-    details: Push new translation keys from your local files straight back into the shared spreadsheet. Collaborators see your keys immediately — no manual copy-paste.
+  - title: Google Sheets Full Workflow
+    details: Read, transform, write, and sync translation data with mature Google provider adapters and locale-aware processing.
     link: /guide/bidirectional-sync
     linkText: Learn more
 
-  - icon: 🌐
-    title: Open Access (No Auth)
-    details: Have a public spreadsheet? Pass spreadsheetId + publicSheet true and you're done — no service account, no API key, no invite by email. The link is enough.
-    link: /guide/public-sheets
-    linkText: Learn more
-
-  - icon: 🤖
-    title: Auto-Translation
-    details: Missing a German translation? Enable autoTranslate and the package injects GOOGLETRANSLATE formulas automatically. Translators start from a draft, not a blank cell.
-    link: /guide/auto-translation
-    linkText: Learn more
-
-  - icon: ⚙️
-    title: One GitHub Action — All Modes
-    details: A single action covers basic sync, multi-spreadsheet Drive folders, and image downloads. Just set drive-folder-id and sync-images to unlock the full headless CMS pipeline.
+  - title: GitHub Action Automation
+    details: Run translation sync in CI with either legacy action inputs or provider config mode for v3 pipelines.
     link: /guide/github-actions
     linkText: Learn more
 
-  - icon: 🎯
-    title: Smart Locale Filtering
-    details: The generated locales.ts only contains locales that carry actual content. Empty columns and config-only sheets are silently ignored.
-    link: /guide/locale-filtering
+  - title: Drive Folder Discovery and Assets
+    details: Discover multiple spreadsheets from Drive folders, merge output, and optionally sync remote image assets to your project.
+    link: /guide/drive-folder
     linkText: Learn more
 
-  - icon: 🔒
-    title: Fully Type-Safe
-    details: Strict TypeScript throughout. Path-traversal-safe file writes, runtime type-guards on JSON, and ESLint clean with @typescript-eslint/recommended.
+  - title: Public Read Mode (No Auth)
+    details: Ingest from public Google Sheets without service-account credentials for lightweight read-only workflows.
+    link: /guide/public-sheets
+    linkText: Learn more
 
-  - icon: ⚡
-    title: Next.js Ready
-    details: Drop one import into instrumentation.ts and your translations are prefetched during next build — perfect for static export workflows.
-    link: /guide/nextjs
+  - title: Type-safe Core and Stable Outputs
+    details: Strict TypeScript, deterministic row transformation, and tested provider contracts keep output predictable across environments.
+    link: /api/
     linkText: Learn more
 ---
 

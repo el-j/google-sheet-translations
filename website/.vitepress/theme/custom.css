@@ -21,6 +21,25 @@
   padding-top: 48px;
 }
 
+.VPHero .name,
+.VPHero .text,
+.VPHero .tagline,
+.VPHero .actions {
+  animation: heroFadeSlide 560ms ease both;
+}
+
+.VPHero .text {
+  animation-delay: 60ms;
+}
+
+.VPHero .tagline {
+  animation-delay: 120ms;
+}
+
+.VPHero .actions {
+  animation-delay: 180ms;
+}
+
 .VPHero .container {
   border-radius: 28px;
   background:
@@ -52,7 +71,16 @@
   background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  animation: featureRiseIn 520ms ease both;
 }
+
+.VPFeatures .item:nth-child(2) .VPFeature { animation-delay: 45ms; }
+.VPFeatures .item:nth-child(3) .VPFeature { animation-delay: 90ms; }
+.VPFeatures .item:nth-child(4) .VPFeature { animation-delay: 135ms; }
+.VPFeatures .item:nth-child(5) .VPFeature { animation-delay: 180ms; }
+.VPFeatures .item:nth-child(6) .VPFeature { animation-delay: 225ms; }
+.VPFeatures .item:nth-child(7) .VPFeature { animation-delay: 270ms; }
+.VPFeatures .item:nth-child(8) .VPFeature { animation-delay: 315ms; }
 
 .VPFeature:hover {
   transform: translateY(-3px);
@@ -80,6 +108,28 @@
 .custom-block.warning {
   border-color: #f59e0b;
   background: rgba(245, 158, 11, 0.08);
+}
+
+@keyframes heroFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes featureRiseIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 768px) {

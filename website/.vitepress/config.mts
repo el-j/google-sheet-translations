@@ -132,6 +132,10 @@ export default defineConfig({
           items: [
             { text: 'Overview', link: '/v2/' },
             { text: 'v2 Getting Started', link: '/v2/getting-started' },
+            { text: 'v2 Configuration', link: '/v2/configuration' },
+            { text: 'v2 Public Sheets', link: '/v2/public-sheets' },
+            { text: 'v2 Bidirectional Sync', link: '/v2/bidirectional-sync' },
+            { text: 'v2 Auto-Translation', link: '/v2/auto-translation' },
             { text: 'v2 GitHub Action', link: '/v2/github-actions' },
             { text: 'v2 Migration Notes', link: '/v2/migration-notes' },
           ],

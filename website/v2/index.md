@@ -15,6 +15,10 @@ This archive keeps the v2 usage model available so teams can maintain legacy wor
 ## Quick links
 
 - [v2 Getting Started](/v2/getting-started)
+- [v2 Configuration](/v2/configuration)
+- [v2 Public Sheets](/v2/public-sheets)
+- [v2 Bidirectional Sync](/v2/bidirectional-sync)
+- [v2 Auto-Translation](/v2/auto-translation)
 - [v2 GitHub Action](/v2/github-actions)
 - [v2 Migration Notes](/v2/migration-notes)
 
