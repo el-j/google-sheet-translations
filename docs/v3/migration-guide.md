@@ -110,10 +110,28 @@ These are mutually exclusive.
 
 ## CLI Migration
 
-Use new binary:
+Use the migration command to auto-generate provider config from legacy GitHub Action usage:
 
 ```bash
-gst-run-provider --config=provider.config.json --sheet-titles=home,about
+gst-migrate-v3 --dry-run
+```
+
+Apply migration and rewrite compatible workflow steps:
+
+```bash
+gst-migrate-v3 --write-workflows --provider-config-path=.github/provider.config.json
+```
+
+If the config file already exists and you want to replace it:
+
+```bash
+gst-migrate-v3 --force --provider-config-path=.github/provider.config.json
+```
+
+After migration, run provider mode directly:
+
+```bash
+gst-run-provider --config=.github/provider.config.json --sheet-titles=home,about
 ```
 
 ## Known Constraints

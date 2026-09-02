@@ -184,3 +184,9 @@ console.log(result.locales);
 ```
 
 See [Provider Runtime (v3)](/guide/provider-runtime) and the [v3 migration guide](/guide/provider-migration-v3).
+
+## Docs versioning
+
+::: warning Legacy docs still available
+Need the old integration model? Use the [v2 docs archive](/v2/) for legacy setup and workflows. New projects should use v3 provider runtime docs.
+:::

@@ -74,10 +74,28 @@ console.log(deprecations);
 
 ## CLI migration
 
-Use:
+Preview migration without writing files:
 
 ```bash
-gst-run-provider --config=provider.config.json --sheet-titles=home,about
+gst-migrate-v3 --dry-run
+```
+
+Generate provider config and rewrite compatible workflows:
+
+```bash
+gst-migrate-v3 --write-workflows --provider-config-path=.github/provider.config.json
+```
+
+Overwrite existing config if needed:
+
+```bash
+gst-migrate-v3 --force --provider-config-path=.github/provider.config.json
+```
+
+Then run provider mode:
+
+```bash
+gst-run-provider --config=.github/provider.config.json --sheet-titles=home,about
 ```
 
 ## Suggested staged rollout

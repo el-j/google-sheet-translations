@@ -414,6 +414,19 @@ In addition to `gst-setup-wif`, the package ships `gst-run-provider` for provide
 gst-run-provider --config=provider.config.json --sheet-titles=home,about
 ```
 
+For existing workflows, use `gst-migrate-v3` to generate provider config from legacy action inputs:
+
+```bash
+gst-migrate-v3 --dry-run
+gst-migrate-v3 --write-workflows --provider-config-path=.github/provider.config.json
+```
+
+If a config already exists and should be replaced:
+
+```bash
+gst-migrate-v3 --force --provider-config-path=.github/provider.config.json
+```
+
 Example `provider.config.json` for CryptPad CSV input:
 
 ```json

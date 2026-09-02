@@ -164,6 +164,10 @@ export {
   requiresGoogleAuthForRuntimeConfig,
 } from './providers';
 
+// v3 migration utilities
+export { migrateProjectToV3 } from './migration/migrateV3';
+export type { MigrateV3Options, MigrateV3Result } from './migration/migrateV3';
+
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';
 export default getSpreadSheetData;

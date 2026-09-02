@@ -32,14 +32,14 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
       { text: 'Provider Runtime', link: '/guide/provider-runtime' },
+      { text: 'v3 Migration', link: '/guide/provider-migration-v3' },
       { text: 'GitHub Action', link: '/guide/github-actions' },
       {
         text: `v${pkg.version}`,
         items: [
           { text: 'Changelog', link: '/changelog' },
           { text: 'Contributing', link: '/contributing' },
-          { text: 'v2.2.x', link: '/google-sheet-translations/v2.2/' },
-          { text: 'v2.1.x', link: '/google-sheet-translations/v2.1/' },
+          { text: 'v2 Archive', link: '/v2/' },
         ],
       },
       {
@@ -123,6 +123,17 @@ export default defineConfig({
             { text: 'Doc Ingester', link: '/api/doc-ingester' },
             { text: 'Doc Parser', link: '/api/doc-parser' },
             { text: 'WIF Setup', link: '/api/wif-setup' },
+          ],
+        },
+      ],
+      '/v2/': [
+        {
+          text: 'v2 Archive',
+          items: [
+            { text: 'Overview', link: '/v2/' },
+            { text: 'v2 Getting Started', link: '/v2/getting-started' },
+            { text: 'v2 GitHub Action', link: '/v2/github-actions' },
+            { text: 'v2 Migration Notes', link: '/v2/migration-notes' },
           ],
         },
       ],
