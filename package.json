@@ -46,6 +46,7 @@
     "docs:build": "vitepress build website",
     "docs:preview": "vitepress preview website",
     "test:integration": "INTEGRATION=true vitest run tests/integration --testTimeout=60000",
+    "test:provider-matrix": "vitest run tests/providers --testTimeout=60000",
     "sync:translations": "node scripts/sync-demo-translations.mjs",
     "changelog:preview": "node scripts/changelog-preview.mjs"
   },

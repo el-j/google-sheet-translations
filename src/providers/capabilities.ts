@@ -2,6 +2,8 @@ export const PROVIDER_CAPABILITIES = [
   'readTables',
   'writeTables',
   'syncBack',
+  'readAssets',
+  'writeAssets',
   'autoTranslateFormula',
   'discoverByFolder',
   'assetSync',
@@ -16,6 +18,8 @@ export const EMPTY_PROVIDER_CAPABILITIES: ProviderCapabilitySet = {
   readTables: false,
   writeTables: false,
   syncBack: false,
+  readAssets: false,
+  writeAssets: false,
   autoTranslateFormula: false,
   discoverByFolder: false,
   assetSync: false,
@@ -26,6 +30,8 @@ export type ProviderOperation =
   | 'read-input'
   | 'write-output'
   | 'sync-back'
+  | 'read-assets'
+  | 'write-assets'
   | 'discover-sources'
   | 'sync-assets'
   | 'public-read';
@@ -37,6 +43,8 @@ export const OPERATION_CAPABILITY_REQUIREMENTS: Record<
   'read-input': ['readTables'],
   'write-output': ['writeTables'],
   'sync-back': ['syncBack'],
+  'read-assets': ['readAssets'],
+  'write-assets': ['writeAssets'],
   'discover-sources': ['discoverByFolder'],
   'sync-assets': ['assetSync'],
   'public-read': ['readTables', 'publicReadNoAuth'],

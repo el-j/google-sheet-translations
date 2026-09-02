@@ -33,6 +33,26 @@ export type {
   SegmentedProviderRegistry,
 } from './contracts';
 
+export type {
+  AssetProviderKind,
+  CanonicalAssetEntry,
+  AssetManifestResult,
+  AssetSyncRequest,
+  AssetSyncResult,
+  AssetInputProvider,
+  AssetOutputProvider,
+  AssetSyncProvider,
+} from './assetContracts';
+
+export type {
+  ProviderSourceKind,
+  ProviderSourceDescriptor,
+  ProviderDiscoveryRequest,
+  ProviderDiscoveryResult,
+  ProviderCatalogProvider,
+  InMemoryProviderCatalogOptions,
+} from './catalog';
+
 export {
   createGoogleSheetsInputProvider,
   createGoogleSheetsOutputProvider,
@@ -48,13 +68,41 @@ export type {
 
 export {
   createCryptPadCsvInputProvider,
+  createCryptPadWorkspaceOutputProvider,
+  createCryptPadWorkspaceSyncProvider,
+  createCryptPadAssetSyncProvider,
   CRYPTPAD_CSV_INPUT_CAPABILITIES,
+  CRYPTPAD_WORKSPACE_OUTPUT_CAPABILITIES,
+  CRYPTPAD_WORKSPACE_SYNC_CAPABILITIES,
+  CRYPTPAD_ASSET_SYNC_CAPABILITIES,
 } from './cryptpad';
 
 export type {
   CryptPadCsvSource,
   CryptPadCsvInputProviderOptions,
+  CryptPadWorkspaceProviderOptions,
+  CryptPadAssetSyncProviderOptions,
 } from './cryptpad';
+
+export {
+  createInMemoryProviderCatalogProvider,
+  createDefaultProviderCatalog,
+} from './catalog';
+
+export {
+  buildSyncPlan,
+  resolveSyncPlan,
+} from './syncEngine';
+
+export type {
+  SyncConflictPolicy,
+  SyncChangeType,
+  SyncEntryChange,
+  SyncConflict,
+  SyncPlan,
+  ResolveSyncPlanResult,
+  BuildSyncPlanInput,
+} from './syncEngine';
 
 export { runProviderPipeline } from './orchestrator';
 export type { ProviderPipelineOptions, ProviderPipelineResult } from './orchestrator';

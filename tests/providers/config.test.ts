@@ -30,14 +30,23 @@ describe('provider config schema and validation', () => {
     expect(result.errors.join(' | ')).toContain('Sync provider must define a non-empty "provider" string.');
   });
 
-  it('rejects invalid cryptpad sync combination', () => {
+  it('rejects invalid cryptpad sync combination when sync provider is not cryptpad-workspace', () => {
     const result = validateProviderRuntimeConfig({
       input: { provider: 'cryptpad-csv' },
-      sync: { provider: 'cryptpad-csv' },
+      sync: { provider: 'google-sheets' },
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors[0]).toContain('does not support sync mode');
+    expect(result.errors[0]).toContain('only supports sync mode via "cryptpad-workspace"');
+  });
+
+  it('accepts cryptpad-csv input + cryptpad-workspace sync combination', () => {
+    const result = validateProviderRuntimeConfig({
+      input: { provider: 'cryptpad-csv' },
+      sync: { provider: 'cryptpad-workspace', options: { filePath: './cryptpad-state.json' } },
+    });
+
+    expect(result.valid).toBe(true);
   });
 
   it('throws on invalid runtime config in assert helper', () => {

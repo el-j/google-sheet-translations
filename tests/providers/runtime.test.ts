@@ -39,6 +39,26 @@ describe('provider runtime factory', () => {
     expect(selection.syncProvider?.providerId).toBe('google-sheets');
   });
 
+  it('creates cryptpad-workspace output and sync providers when configured', () => {
+    const selection = createProvidersFromRuntimeConfig({
+      input: {
+        provider: 'cryptpad-csv',
+        options: { sources: [{ tableName: 'home', filePath: './fixtures/home.csv' }] },
+      },
+      output: {
+        provider: 'cryptpad-workspace',
+        options: { filePath: './tmp/cryptpad-state.json' },
+      },
+      sync: {
+        provider: 'cryptpad-workspace',
+        options: { filePath: './tmp/cryptpad-state.json', conflictPolicy: 'manual' },
+      },
+    });
+
+    expect(selection.outputProvider?.providerId).toBe('cryptpad-workspace');
+    expect(selection.syncProvider?.providerId).toBe('cryptpad-workspace');
+  });
+
   it('infers auth requirement for google-sheet input in authenticated mode', () => {
     const needsAuth = requiresGoogleAuthForRuntimeConfig({
       input: {

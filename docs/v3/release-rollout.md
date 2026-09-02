@@ -24,7 +24,10 @@ Legacy Google-first option flow (`getSpreadSheetData` + `SpreadsheetOptions`) re
 - [x] Provider contracts and capability model shipped.
 - [x] Provider-agnostic transformation core extracted.
 - [x] Google provider adapters implemented (input/output/sync).
-- [x] CryptPad CSV provider implemented (MVP input only).
+- [x] CryptPad CSV provider implemented for read-input.
+- [x] CryptPad workspace provider implemented for write-output and sync-back.
+- [x] Asset sync provider contracts and CryptPad asset sync provider implemented.
+- [x] Provider catalog and discovery interfaces implemented.
 - [x] Provider orchestrator and capability gating implemented.
 - [x] Provider config schema and legacy mapping implemented.
 - [x] Action provider-mode inputs implemented (`provider-config`, `provider-config-path`).
@@ -35,20 +38,24 @@ Legacy Google-first option flow (`getSpreadSheetData` + `SpreadsheetOptions`) re
 - [x] Provider unit suite passes.
 - [x] Provider contract suite passes across Google/CryptPad input adapters.
 - [x] Golden fixture test passes for CryptPad pipeline output.
+- [x] Golden fixture test passes for sync conflict planning.
+- [x] Provider parity matrix covers input/output/sync/assets/discovery.
 - [x] Existing legacy action tests still pass with provider-mode additions.
 
 ## Documentation Gates
 
 - [x] Migration guide published.
+- [x] Full-sync operations guide and conflict policy playbook published.
 - [x] Capability matrix published.
 - [x] Provider config examples published.
-- [x] CryptPad MVP limitations documented.
+- [x] CryptPad full-mode adapter scope documented.
 
 ## Release Operations Gates
 
 - [ ] Update CHANGELOG with v3 migration section.
 - [ ] Publish release notes (draft below) and pin migration guide links.
-- [ ] Verify dist bundles include `dist-cli/run-provider.mjs`.
+- [x] Verify dist bundles include `dist-cli/run-provider.mjs`.
+- [x] Verify dist bundles include `dist-cli/migrate-v3.mjs`.
 - [ ] Dry-run npm publish and GitHub release workflow.
 
 ## v3 Release Notes Draft
@@ -56,9 +63,12 @@ Legacy Google-first option flow (`getSpreadSheetData` + `SpreadsheetOptions`) re
 ### Highlights
 
 - New provider runtime architecture for input/output/sync composition.
-- First non-Google provider support via `cryptpad-csv` read-only input adapter.
+- Non-Google full-path support via `cryptpad-csv` input and `cryptpad-workspace` output/sync.
 - Capability-aware orchestration with explicit validation for unsupported operations.
+- Generic sync conflict engine with `remote-wins`, `local-wins`, and `manual` policies.
+- Asset sync contract and provider-catalog discovery interfaces.
 - New provider-run CLI binary: `gst-run-provider`.
+- Migration CLI parity mode: `gst-migrate-v3 --dry-run --parity-check`.
 - GitHub Action provider mode via `provider-config` or `provider-config-path`.
 
 ### Breaking and Migration-Relevant Changes

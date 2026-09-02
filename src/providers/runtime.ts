@@ -5,7 +5,10 @@ import {
 } from './google';
 import {
   createCryptPadCsvInputProvider,
+  createCryptPadWorkspaceOutputProvider,
+  createCryptPadWorkspaceSyncProvider,
   type CryptPadCsvInputProviderOptions,
+  type CryptPadWorkspaceProviderOptions,
   type CryptPadCsvSource,
 } from './cryptpad';
 import type {
@@ -62,6 +65,22 @@ function createOutputProvider(
   switch (providerId) {
     case 'google-sheets':
       return createGoogleSheetsOutputProvider(options);
+    case 'cryptpad-workspace': {
+      if (typeof options.filePath !== 'string' || options.filePath.trim().length === 0) {
+        throw new Error('cryptpad-workspace output provider requires a non-empty "filePath" option.');
+      }
+
+      const typedOptions: CryptPadWorkspaceProviderOptions = {
+        filePath: options.filePath,
+        authToken: typeof options.authToken === 'string' ? options.authToken : undefined,
+        expectedRevision:
+          typeof options.expectedRevision === 'number' ? options.expectedRevision : undefined,
+        providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
+        displayName: typeof options.displayName === 'string' ? options.displayName : undefined,
+      };
+
+      return createCryptPadWorkspaceOutputProvider(typedOptions);
+    }
     default:
       throw new Error(`Unsupported output provider: "${providerId}"`);
   }
@@ -74,6 +93,28 @@ function createSyncProvider(
   switch (providerId) {
     case 'google-sheets':
       return createGoogleSheetsSyncProvider(options);
+    case 'cryptpad-workspace': {
+      if (typeof options.filePath !== 'string' || options.filePath.trim().length === 0) {
+        throw new Error('cryptpad-workspace sync provider requires a non-empty "filePath" option.');
+      }
+
+      const typedOptions: CryptPadWorkspaceProviderOptions = {
+        filePath: options.filePath,
+        authToken: typeof options.authToken === 'string' ? options.authToken : undefined,
+        expectedRevision:
+          typeof options.expectedRevision === 'number' ? options.expectedRevision : undefined,
+        conflictPolicy:
+          options.conflictPolicy === 'remote-wins' ||
+          options.conflictPolicy === 'local-wins' ||
+          options.conflictPolicy === 'manual'
+            ? options.conflictPolicy
+            : undefined,
+        providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
+        displayName: typeof options.displayName === 'string' ? options.displayName : undefined,
+      };
+
+      return createCryptPadWorkspaceSyncProvider(typedOptions);
+    }
     default:
       throw new Error(`Unsupported sync provider: "${providerId}"`);
   }

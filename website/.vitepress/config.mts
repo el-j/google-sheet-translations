@@ -74,6 +74,7 @@ export default defineConfig({
             { text: 'GitHub Actions', link: '/guide/github-actions' },
             { text: 'Provider Runtime (v3)', link: '/guide/provider-runtime' },
             { text: 'Migration to v3', link: '/guide/provider-migration-v3' },
+            { text: 'Full Sync Operations (v3)', link: '/guide/full-sync-operations-v3' },
             { text: 'Bidirectional Sync', link: '/guide/bidirectional-sync' },
             { text: 'Auto-Translation', link: '/guide/auto-translation' },
             { text: 'Google Docs Ingestion', link: '/guide/google-docs-ingestion' },

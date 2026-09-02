@@ -68,10 +68,10 @@ export function validateProviderRuntimeConfig(
     input.provider === 'cryptpad-csv' &&
     isObject(sync) &&
     typeof sync.provider === 'string' &&
-    sync.provider === 'cryptpad-csv'
+    sync.provider !== 'cryptpad-workspace'
   ) {
     errors.push(
-      'Invalid provider combination: "cryptpad-csv" does not support sync mode. Use a sync-capable provider (for example "google-sheets") or omit sync.',
+      'Invalid provider combination: "cryptpad-csv" only supports sync mode via "cryptpad-workspace" (or use another sync-capable provider).',
     );
   }
 

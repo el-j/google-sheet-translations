@@ -15,6 +15,8 @@ describe('provider capabilities', () => {
       'readTables',
       'writeTables',
       'syncBack',
+      'readAssets',
+      'writeAssets',
       'autoTranslateFormula',
       'discoverByFolder',
       'assetSync',
@@ -43,6 +45,12 @@ describe('provider capabilities', () => {
     expect(missingCapabilities(capabilities, ['readTables', 'syncBack'])).toEqual([
       'syncBack',
     ]);
+  });
+
+  it('supports explicit asset capability operations', () => {
+    const capabilities = createCapabilitySet({ readAssets: true, writeAssets: true });
+    expect(hasRequiredCapabilities(capabilities, ['readAssets'])).toBe(true);
+    expect(hasRequiredCapabilities(capabilities, ['writeAssets'])).toBe(true);
   });
 
   it('validates required capabilities', () => {

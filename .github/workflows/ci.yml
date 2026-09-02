@@ -58,6 +58,10 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Provider parity matrix
+        if: matrix.node-version == '22'
+        run: npm run test:provider-matrix
+
       - name: Integration test (public spreadsheet connectivity)
         if: matrix.node-version == '22'
         run: npm run test:integration
