@@ -58,13 +58,12 @@ function listWorkflowFiles(projectRoot: string): string[] {
 
 function extractInputsFromStep(lines: string[], start: number, end: number): Record<string, string> {
   const inputs: Record<string, string> = {};
-  let withIndent = -1;
 
   for (let i = start; i < end; i++) {
     const line = lines[i];
     const withMatch = line.match(/^(\s*)with:\s*$/);
     if (withMatch) {
-      withIndent = withMatch[1].length;
+      const withIndent = withMatch[1].length;
       for (let j = i + 1; j < end; j++) {
         const nextLine = lines[j];
         if (nextLine.trim() === '') continue;
