@@ -122,6 +122,25 @@ describe('migrateProjectToV3', () => {
     expect(fs.readFileSync(workflowPath, 'utf8')).toBe(before);
   });
 
+  it('reports successful parity check against legacy mapping', () => {
+    const projectRoot = createTempProject();
+    writeWorkflow(
+      projectRoot,
+      'sync.yml',
+      `jobs:\n  t:\n    steps:\n      - uses: el-j/google-sheet-translations@v2\n        with:\n          google-spreadsheet-id: 'sheet123'\n          row-limit: '50'\n          wait-seconds: '3'\n          sync-local-changes: 'true'\n          auto-translate: 'true'\n          override: 'false'\n`,
+    );
+
+    const result = migrateProjectToV3({
+      projectRoot,
+      dryRun: true,
+      parityCheck: true,
+    });
+
+    expect(result.parityCheck).toBeDefined();
+    expect(result.parityCheck?.passed).toBe(true);
+    expect(result.parityCheck?.differences).toEqual([]);
+  });
+
   it('throws when no workflow files exist', () => {
     const projectRoot = createTempProject();
     expect(() => migrateProjectToV3({ projectRoot })).toThrow(

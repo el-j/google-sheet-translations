@@ -23,12 +23,14 @@ function printHelp(): void {
    --project-root=PATH          Project root (default: current working directory)
    --provider-config-path=PATH  Output provider config path (default: provider.config.json)
    --write-workflows            Rewrite legacy action steps to provider-config-path mode
+   --parity-check               Validate generated config parity against legacy option mapping
    --dry-run                    Preview changes without writing files
    --force                      Overwrite existing provider config file
    --help                       Show this help
 
  EXAMPLES
    gst-migrate-v3 --dry-run
+   gst-migrate-v3 --dry-run --parity-check
    gst-migrate-v3 --write-workflows --provider-config-path=.github/provider.config.json
 `);
 }
@@ -50,6 +52,7 @@ async function main(): Promise<void> {
     dryRun: args['dry-run'] === 'true',
     writeWorkflows: args['write-workflows'] === 'true',
     force: args.force === 'true',
+    parityCheck: args['parity-check'] === 'true',
   });
 
   console.log('Migration summary:');
@@ -84,6 +87,19 @@ async function main(): Promise<void> {
     console.log('\nWarnings:');
     for (const warning of result.warnings) {
       console.log(`- ${warning}`);
+    }
+  }
+
+  if (result.parityCheck) {
+    console.log('\nParity check:');
+    console.log(`- Passed: ${result.parityCheck.passed ? 'yes' : 'no'}`);
+    console.log(`- Differences: ${result.parityCheck.differences.length}`);
+
+    if (!result.parityCheck.passed) {
+      for (const diff of result.parityCheck.differences) {
+        console.log(`- ${diff}`);
+      }
+      process.exitCode = 2;
     }
   }
 

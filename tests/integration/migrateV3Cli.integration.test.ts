@@ -53,4 +53,25 @@ describe('CLI Integration: gst-migrate-v3 binary', () => {
     expect(stdout).toContain('- Created files: 0');
     expect(fs.existsSync(path.join(projectRoot, 'provider.config.json'))).toBe(false);
   });
+
+  it('supports parity-check mode and reports pass', async () => {
+    const projectRoot = createTempProject();
+    const workflowsDir = path.join(projectRoot, '.github', 'workflows');
+    fs.mkdirSync(workflowsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(workflowsDir, 'sync.yml'),
+      `jobs:\n  t:\n    steps:\n      - uses: el-j/google-sheet-translations@v2\n        with:\n          google-spreadsheet-id: 'sheet123'\n          row-limit: '10'\n`,
+      'utf8',
+    );
+
+    const { stdout } = await execFileAsync('node', [
+      cliPath,
+      `--project-root=${projectRoot}`,
+      '--dry-run',
+      '--parity-check',
+    ]);
+
+    expect(stdout).toContain('Parity check:');
+    expect(stdout).toContain('- Passed: yes');
+  });
 });

@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { ProviderRuntimeConfig } from '../providers/config';
+import { mapLegacyGoogleOptionsToProviderConfig } from '../providers/config';
+import type { SpreadsheetOptions } from '../utils/configurationHandler';
 
 export interface MigrateV3Options {
   projectRoot?: string;
@@ -8,6 +10,13 @@ export interface MigrateV3Options {
   dryRun?: boolean;
   writeWorkflows?: boolean;
   force?: boolean;
+  parityCheck?: boolean;
+}
+
+export interface MigrationParityCheck {
+  passed: boolean;
+  differences: string[];
+  expectedConfig: ProviderRuntimeConfig;
 }
 
 export interface MigrateV3Result {
@@ -18,6 +27,7 @@ export interface MigrateV3Result {
   rewrittenWorkflows: string[];
   createdFiles: string[];
   warnings: string[];
+  parityCheck?: MigrationParityCheck;
 }
 
 const LEGACY_KEYS_TO_REMOVE = new Set([
@@ -106,6 +116,11 @@ function parseBool(input: string | undefined, fallback: boolean): boolean {
   if (cleaned === 'true') return true;
   if (cleaned === 'false') return false;
   return fallback;
+}
+
+function parseOptionalBool(input: string | undefined): boolean | undefined {
+  if (!input) return undefined;
+  return parseBool(input, false);
 }
 
 function parseNum(input: string | undefined): number | undefined {
@@ -209,6 +224,115 @@ function hasUnsupportedDriveMode(inputs: Record<string, string>): boolean {
   return Boolean(inputs['drive-folder-id'] || inputs['spreadsheet-ids'] || inputs['sync-images']);
 }
 
+function toLegacyOptions(inputs: Record<string, string>): SpreadsheetOptions {
+  return {
+    spreadsheetId: unquote(inputs['google-spreadsheet-id']),
+    rowLimit: parseNum(inputs['row-limit']),
+    waitSeconds: parseNum(inputs['wait-seconds']),
+    syncLocalChanges: parseBool(inputs['sync-local-changes'], true),
+    autoTranslate: parseOptionalBool(inputs['auto-translate']),
+    override: parseOptionalBool(inputs['override']),
+    publicSheet: parseOptionalBool(inputs['public-sheet']),
+  };
+}
+
+function normalizeValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(normalizeValue);
+  }
+
+  if (value && typeof value === 'object') {
+    const normalizedEntries = Object.entries(value as Record<string, unknown>)
+      .filter(([, nested]) => nested !== undefined)
+      .map(([key, nested]) => [key, normalizeValue(nested)] as const)
+      .sort(([a], [b]) => a.localeCompare(b));
+
+    return Object.fromEntries(normalizedEntries);
+  }
+
+  return value;
+}
+
+function canonicalizeParityConfig(config: ProviderRuntimeConfig): ProviderRuntimeConfig {
+  const clone: ProviderRuntimeConfig = JSON.parse(JSON.stringify(config));
+
+  const inputOptions = clone.input?.options as Record<string, unknown> | undefined;
+  if (inputOptions?.publicSheet === false) {
+    delete inputOptions.publicSheet;
+  }
+
+  const syncOptions = clone.sync?.options as Record<string, unknown> | undefined;
+  if (syncOptions?.autoTranslate === false) {
+    delete syncOptions.autoTranslate;
+  }
+  if (syncOptions?.override === false) {
+    delete syncOptions.override;
+  }
+
+  return clone;
+}
+
+function collectDifferences(
+  actual: unknown,
+  expected: unknown,
+  atPath = 'config',
+): string[] {
+  if (Array.isArray(actual) && Array.isArray(expected)) {
+    if (actual.length !== expected.length) {
+      return [
+        `${atPath}: array length differs (actual ${actual.length}, expected ${expected.length})`,
+      ];
+    }
+
+    const differences: string[] = [];
+    for (let i = 0; i < actual.length; i++) {
+      differences.push(...collectDifferences(actual[i], expected[i], `${atPath}[${i}]`));
+    }
+    return differences;
+  }
+
+  const actualIsObject = Boolean(actual) && typeof actual === 'object';
+  const expectedIsObject = Boolean(expected) && typeof expected === 'object';
+
+  if (actualIsObject && expectedIsObject) {
+    const actualRecord = actual as Record<string, unknown>;
+    const expectedRecord = expected as Record<string, unknown>;
+    const keys = Array.from(new Set([...Object.keys(actualRecord), ...Object.keys(expectedRecord)])).sort();
+
+    const differences: string[] = [];
+    for (const key of keys) {
+      differences.push(
+        ...collectDifferences(actualRecord[key], expectedRecord[key], `${atPath}.${key}`),
+      );
+    }
+    return differences;
+  }
+
+  if (actual !== expected) {
+    return [
+      `${atPath}: actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`,
+    ];
+  }
+
+  return [];
+}
+
+function runParityCheck(
+  providerConfig: ProviderRuntimeConfig,
+  inputs: Record<string, string>,
+): MigrationParityCheck {
+  const mapped = mapLegacyGoogleOptionsToProviderConfig(toLegacyOptions(inputs));
+  const normalizedActual = normalizeValue(canonicalizeParityConfig(providerConfig));
+  const normalizedExpected = normalizeValue(canonicalizeParityConfig(mapped.config));
+  const differences = collectDifferences(normalizedActual, normalizedExpected);
+
+  return {
+    passed: differences.length === 0,
+    differences,
+    expectedConfig: mapped.config,
+  };
+}
+
 export function migrateProjectToV3(options: MigrateV3Options = {}): MigrateV3Result {
   const projectRoot = path.resolve(options.projectRoot ?? process.cwd());
   const providerConfigPath = options.providerConfigPath ?? 'provider.config.json';
@@ -275,6 +399,16 @@ export function migrateProjectToV3(options: MigrateV3Options = {}): MigrateV3Res
   }
 
   const providerConfig = buildProviderConfigFromInputs(firstLegacyInputs);
+  let parityCheck: MigrationParityCheck | undefined;
+
+  if (options.parityCheck) {
+    parityCheck = runParityCheck(providerConfig, firstLegacyInputs);
+    if (!parityCheck.passed) {
+      warnings.push(
+        `Parity check found ${parityCheck.differences.length} difference(s) between generated provider config and legacy mapping.`,
+      );
+    }
+  }
 
   if (fs.existsSync(absoluteProviderConfigPath) && !options.force) {
     warnings.push(
@@ -298,5 +432,6 @@ export function migrateProjectToV3(options: MigrateV3Options = {}): MigrateV3Res
     rewrittenWorkflows,
     createdFiles,
     warnings,
+    parityCheck,
   };
 }

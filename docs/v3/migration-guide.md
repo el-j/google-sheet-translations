@@ -116,6 +116,12 @@ Use the migration command to auto-generate provider config from legacy GitHub Ac
 gst-migrate-v3 --dry-run
 ```
 
+Validate migration parity against legacy option mapping in dry-run mode:
+
+```bash
+gst-migrate-v3 --dry-run --parity-check
+```
+
 Apply migration and rewrite compatible workflow steps:
 
 ```bash

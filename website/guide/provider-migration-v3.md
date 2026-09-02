@@ -80,6 +80,12 @@ Preview migration without writing files:
 gst-migrate-v3 --dry-run
 ```
 
+Run config parity validation against legacy option mapping:
+
+```bash
+gst-migrate-v3 --dry-run --parity-check
+```
+
 Generate provider config and rewrite compatible workflows:
 
 ```bash

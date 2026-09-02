@@ -418,6 +418,7 @@ For existing workflows, use `gst-migrate-v3` to generate provider config from le
 
 ```bash
 gst-migrate-v3 --dry-run
+gst-migrate-v3 --dry-run --parity-check
 gst-migrate-v3 --write-workflows --provider-config-path=.github/provider.config.json
 ```
 
