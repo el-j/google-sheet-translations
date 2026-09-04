@@ -60,6 +60,11 @@ features:
     link: /guide/public-sheets
     linkText: Learn more
 
+  - title: Extensible Custom Providers
+    details: Implement simple TypeScript contracts for custom backends (Airtable, Notion, CSV, local DB) without vendor lock-in.
+    link: /guide/provider-runtime#implementing-custom-providers
+    linkText: Learn more
+
   - title: Type-safe Core and Stable Outputs
     details: Strict TypeScript, deterministic row transformation, and tested provider contracts keep output predictable across environments.
     link: /api/
