@@ -1,10 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import {
-  createCryptPadCsvInputProvider,
-  runProviderPipeline,
-} from '../../src/providers';
+import { createCryptPadCsvInputProvider, runProviderPipeline } from '../../src/providers';
 
 describe('provider golden fixtures', () => {
   it('matches golden translation output for cryptpad csv pipeline', async () => {

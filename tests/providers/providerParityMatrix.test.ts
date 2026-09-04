@@ -54,19 +54,35 @@ describe('provider parity matrix', () => {
     const catalogProvider = createDefaultProviderCatalog();
 
     expect(() =>
-      assertOperationCapabilities(inputProvider.providerId, inputProvider.capabilities, 'read-input'),
+      assertOperationCapabilities(
+        inputProvider.providerId,
+        inputProvider.capabilities,
+        'read-input',
+      ),
     ).not.toThrow();
     expect(() =>
-      assertOperationCapabilities(outputProvider.providerId, outputProvider.capabilities, 'write-output'),
+      assertOperationCapabilities(
+        outputProvider.providerId,
+        outputProvider.capabilities,
+        'write-output',
+      ),
     ).not.toThrow();
     expect(() =>
       assertOperationCapabilities(syncProvider.providerId, syncProvider.capabilities, 'sync-back'),
     ).not.toThrow();
     expect(() =>
-      assertOperationCapabilities(assetProvider.providerId, assetProvider.capabilities, 'sync-assets'),
+      assertOperationCapabilities(
+        assetProvider.providerId,
+        assetProvider.capabilities,
+        'sync-assets',
+      ),
     ).not.toThrow();
     expect(() =>
-      assertOperationCapabilities(catalogProvider.providerId, catalogProvider.capabilities, 'discover-sources'),
+      assertOperationCapabilities(
+        catalogProvider.providerId,
+        catalogProvider.capabilities,
+        'discover-sources',
+      ),
     ).not.toThrow();
   });
 
@@ -130,7 +146,9 @@ describe('provider parity matrix', () => {
           publicReadNoAuth: true,
         },
         readTables: vi.fn().mockResolvedValue({
-          tables: [{ tableId: 'sheet:home', tableName: 'home', rows: [{ key: 'welcome', en: 'Hello' }] }],
+          tables: [
+            { tableId: 'sheet:home', tableName: 'home', rows: [{ key: 'welcome', en: 'Hello' }] },
+          ],
         }),
       },
       outputProvider: {

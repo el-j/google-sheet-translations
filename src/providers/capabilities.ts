@@ -57,10 +57,7 @@ export type ProviderOperation =
 /**
  * Mapping defining which capabilities are mandatory for each {@link ProviderOperation}.
  */
-export const OPERATION_CAPABILITY_REQUIREMENTS: Record<
-  ProviderOperation,
-  ProviderCapability[]
-> = {
+export const OPERATION_CAPABILITY_REQUIREMENTS: Record<ProviderOperation, ProviderCapability[]> = {
   'read-input': ['readTables'],
   'write-output': ['writeTables'],
   'sync-back': ['syncBack'],

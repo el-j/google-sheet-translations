@@ -5,7 +5,11 @@ import {
   createProvidersFromRuntimeConfig,
   runProviderPipeline,
 } from '../providers';
-import { writeLanguageDataFile, writeLocalesFile, writeTranslationFiles } from '../utils/fileWriter';
+import {
+  writeLanguageDataFile,
+  writeLocalesFile,
+  writeTranslationFiles,
+} from '../utils/fileWriter';
 import { readDataJson } from '../utils/readDataJson';
 
 /**
@@ -80,14 +84,8 @@ async function main(): Promise<void> {
     cwd,
     args['translations-output-dir'] ?? 'translations',
   );
-  const localesOutputPath = path.resolve(
-    cwd,
-    args['locales-output-path'] ?? 'src/i18n/locales.ts',
-  );
-  const dataJsonPath = path.resolve(
-    cwd,
-    args['data-json-path'] ?? 'src/lib/languageData.json',
-  );
+  const localesOutputPath = path.resolve(cwd, args['locales-output-path'] ?? 'src/i18n/locales.ts');
+  const dataJsonPath = path.resolve(cwd, args['data-json-path'] ?? 'src/lib/languageData.json');
 
   const assetTargetDirArg = args['asset-target-dir'];
   const configAssetTargetDir =

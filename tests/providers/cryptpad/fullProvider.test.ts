@@ -131,11 +131,7 @@ describe('cryptpad workspace providers', () => {
     expect(result.downloaded).toEqual(['images/logo.png', 'images/logo-copy.png']);
 
     expect(() => {
-      assertOperationCapabilities(
-        provider.providerId,
-        provider.capabilities,
-        'sync-assets',
-      );
+      assertOperationCapabilities(provider.providerId, provider.capabilities, 'sync-assets');
     }).not.toThrow();
   });
 });

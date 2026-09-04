@@ -15,11 +15,7 @@ export {
   assertOperationCapabilities,
 } from './capabilities';
 
-export type {
-  ProviderCapability,
-  ProviderCapabilitySet,
-  ProviderOperation,
-} from './capabilities';
+export type { ProviderCapability, ProviderCapabilitySet, ProviderOperation } from './capabilities';
 
 export type {
   ProviderKind,
@@ -90,15 +86,9 @@ export type {
   CryptPadAssetSyncProviderOptions,
 } from './cryptpad';
 
-export {
-  createInMemoryProviderCatalogProvider,
-  createDefaultProviderCatalog,
-} from './catalog';
+export { createInMemoryProviderCatalogProvider, createDefaultProviderCatalog } from './catalog';
 
-export {
-  buildSyncPlan,
-  resolveSyncPlan,
-} from './syncEngine';
+export { buildSyncPlan, resolveSyncPlan } from './syncEngine';
 
 export type {
   SyncConflictPolicy,
@@ -126,9 +116,6 @@ export type {
   LegacyConfigMappingResult,
 } from './config';
 
-export {
-  createProvidersFromRuntimeConfig,
-  requiresGoogleAuthForRuntimeConfig,
-} from './runtime';
+export { createProvidersFromRuntimeConfig, requiresGoogleAuthForRuntimeConfig } from './runtime';
 
 export type { ProviderRuntimeSelection } from './runtime';

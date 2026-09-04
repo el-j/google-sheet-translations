@@ -36,9 +36,7 @@ describe('cryptpad csv input provider', () => {
   });
 
   it('reads CSV from URL sources', async () => {
-    const fetchCsv = vi
-      .fn()
-      .mockResolvedValue('key,en\nheadline,Hello from cryptpad\n');
+    const fetchCsv = vi.fn().mockResolvedValue('key,en\nheadline,Hello from cryptpad\n');
 
     const provider = createCryptPadCsvInputProvider(
       {
@@ -52,10 +50,7 @@ describe('cryptpad csv input provider', () => {
 
     const result = await provider.readTables({ tableNames: ['landing'] });
 
-    expect(fetchCsv).toHaveBeenCalledWith(
-      'https://cryptpad.fr/export.csv',
-      undefined,
-    );
+    expect(fetchCsv).toHaveBeenCalledWith('https://cryptpad.fr/export.csv', undefined);
     expect(result.tables[0].rows[0]).toEqual({
       key: 'headline',
       en: 'Hello from cryptpad',
@@ -63,9 +58,7 @@ describe('cryptpad csv input provider', () => {
   });
 
   it('filters tables by request.tableNames', async () => {
-    const readCsvFile = vi
-      .fn()
-      .mockResolvedValue('key,en\nwelcome,Welcome\n');
+    const readCsvFile = vi.fn().mockResolvedValue('key,en\nwelcome,Welcome\n');
 
     const provider = createCryptPadCsvInputProvider(
       {

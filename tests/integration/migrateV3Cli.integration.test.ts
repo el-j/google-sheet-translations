@@ -27,7 +27,9 @@ describe('CLI Integration: gst-migrate-v3 binary', () => {
       expect.unreachable('Should have exited with code 1');
     } catch (err: any) {
       expect(err.code).toBe(1);
-      expect(String(err.stderr || '')).toContain('No workflow files found under .github/workflows.');
+      expect(String(err.stderr || '')).toContain(
+        'No workflow files found under .github/workflows.',
+      );
     }
   });
 
@@ -128,7 +130,9 @@ describe('CLI Integration: gst-migrate-v3 binary', () => {
     ]);
     expect(firstRun).toContain('- Created files: 0');
     expect(firstRun).toContain('Use --force to overwrite');
-    expect(JSON.parse(fs.readFileSync(path.join(projectRoot, 'provider.config.json'), 'utf8'))).toEqual({
+    expect(
+      JSON.parse(fs.readFileSync(path.join(projectRoot, 'provider.config.json'), 'utf8')),
+    ).toEqual({
       stale: true,
     });
 
@@ -138,7 +142,9 @@ describe('CLI Integration: gst-migrate-v3 binary', () => {
       '--force',
     ]);
     expect(forcedRun).toContain('- Created files: 1');
-    const overwritten = JSON.parse(fs.readFileSync(path.join(projectRoot, 'provider.config.json'), 'utf8'));
+    const overwritten = JSON.parse(
+      fs.readFileSync(path.join(projectRoot, 'provider.config.json'), 'utf8'),
+    );
     expect(overwritten.input.provider).toBe('google-sheets');
   });
 });

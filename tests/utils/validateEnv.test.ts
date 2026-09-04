@@ -20,18 +20,14 @@ describe('validateEnv', () => {
   });
 
   test('should throw error when all required environment variables are missing', () => {
-    expect(() => validateEnv()).toThrow(
-      /Missing required environment variable/
-    );
+    expect(() => validateEnv()).toThrow(/Missing required environment variable/);
   });
 
   test('should throw error when GOOGLE_SPREADSHEET_ID is missing', () => {
     process.env.GOOGLE_CLIENT_EMAIL = 'test@example.com';
     process.env.GOOGLE_PRIVATE_KEY = 'key';
 
-    expect(() => validateEnv()).toThrow(
-      /Missing required environment variable/
-    );
+    expect(() => validateEnv()).toThrow(/Missing required environment variable/);
   });
 
   test('should throw error when some required environment variables are missing', () => {
@@ -40,9 +36,7 @@ describe('validateEnv', () => {
     process.env.GOOGLE_SPREADSHEET_ID = 'test-spreadsheet-id';
     // GOOGLE_PRIVATE_KEY intentionally missing
 
-    expect(() => validateEnv()).toThrow(
-      /Missing required environment variables/
-    );
+    expect(() => validateEnv()).toThrow(/Missing required environment variables/);
   });
 
   test('should return valid environment variables', () => {
@@ -50,7 +44,7 @@ describe('validateEnv', () => {
     const testVars: GoogleEnvVars = {
       GOOGLE_CLIENT_EMAIL: 'test@example.com',
       GOOGLE_PRIVATE_KEY: 'test-private-key',
-      GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
+      GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id',
     };
 
     process.env.GOOGLE_CLIENT_EMAIL = testVars.GOOGLE_CLIENT_EMAIL;
@@ -64,17 +58,17 @@ describe('validateEnv', () => {
   test('should handle environment variables with special characters', () => {
     // Set variables with special characters
     const privateKey = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg==\n-----END PRIVATE KEY-----\n';
-    
+
     process.env.GOOGLE_CLIENT_EMAIL = 'test@example.com';
     process.env.GOOGLE_PRIVATE_KEY = privateKey;
     process.env.GOOGLE_SPREADSHEET_ID = 'test-spreadsheet-id';
 
     const result = validateEnv();
-    
+
     expect(result).toEqual({
       GOOGLE_CLIENT_EMAIL: 'test@example.com',
       GOOGLE_PRIVATE_KEY: privateKey,
-      GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
+      GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id',
     });
   });
 
@@ -133,7 +127,8 @@ describe('validateCredentials', () => {
 
   test('should return credentials when both are set (no spreadsheet ID required)', () => {
     process.env.GOOGLE_CLIENT_EMAIL = 'service@project.iam.gserviceaccount.com';
-    process.env.GOOGLE_PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n';
+    process.env.GOOGLE_PRIVATE_KEY =
+      '-----BEGIN PRIVATE KEY-----\nMIIE\n-----END PRIVATE KEY-----\n';
 
     const result = validateCredentials();
     expect(result.GOOGLE_CLIENT_EMAIL).toBe('service@project.iam.gserviceaccount.com');

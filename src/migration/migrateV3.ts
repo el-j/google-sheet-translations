@@ -78,7 +78,11 @@ function listWorkflowFiles(projectRoot: string): string[] {
 }
 
 /** Parses the `with:` block of one workflow step (lines `[start, end)`) into a flat key/value map. */
-function extractInputsFromStep(lines: string[], start: number, end: number): Record<string, string> {
+function extractInputsFromStep(
+  lines: string[],
+  start: number,
+  end: number,
+): Record<string, string> {
   const inputs: Record<string, string> = {};
 
   for (let i = start; i < end; i++) {
@@ -210,16 +214,12 @@ function rewriteWorkflow(content: string, providerConfigPath: string): string {
     const stepLines = lines.slice(start, end);
 
     const usesLegacy = stepLines.some((line) =>
-      Array.from(LEGACY_KEYS_TO_REMOVE).some((key) =>
-        line.match(new RegExp(`^\\s*${key}:`)),
-      ),
+      Array.from(LEGACY_KEYS_TO_REMOVE).some((key) => line.match(new RegExp(`^\\s*${key}:`))),
     );
 
     if (!usesLegacy) continue;
 
-    const hasProviderConfig = stepLines.some((line) =>
-      /^\s*provider-config(-path)?:/.test(line),
-    );
+    const hasProviderConfig = stepLines.some((line) => /^\s*provider-config(-path)?:/.test(line));
     if (hasProviderConfig) continue;
 
     const withLineIndex = stepLines.findIndex((line) => /^\s*with:\s*$/.test(line));
@@ -302,11 +302,7 @@ function canonicalizeParityConfig(config: ProviderRuntimeConfig): ProviderRuntim
   return clone;
 }
 
-function collectDifferences(
-  actual: unknown,
-  expected: unknown,
-  atPath = 'config',
-): string[] {
+function collectDifferences(actual: unknown, expected: unknown, atPath = 'config'): string[] {
   if (Array.isArray(actual) && Array.isArray(expected)) {
     if (actual.length !== expected.length) {
       return [
@@ -327,7 +323,9 @@ function collectDifferences(
   if (actualIsObject && expectedIsObject) {
     const actualRecord = actual as Record<string, unknown>;
     const expectedRecord = expected as Record<string, unknown>;
-    const keys = Array.from(new Set([...Object.keys(actualRecord), ...Object.keys(expectedRecord)])).sort();
+    const keys = Array.from(
+      new Set([...Object.keys(actualRecord), ...Object.keys(expectedRecord)]),
+    ).sort();
 
     const differences: string[] = [];
     for (const key of keys) {
@@ -339,9 +337,7 @@ function collectDifferences(
   }
 
   if (actual !== expected) {
-    return [
-      `${atPath}: actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`,
-    ];
+    return [`${atPath}: actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`];
   }
 
   return [];
@@ -406,10 +402,13 @@ export function migrateProjectToV3(options: MigrateV3Options = {}): MigrateV3Res
 
     for (const range of ranges) {
       const inputs = extractInputsFromStep(lines, range.start, range.end);
-      const hasLegacyKeys = Object.keys(inputs).some((k) =>
-        LEGACY_KEYS_TO_REMOVE.has(k) || k === 'google-client-email' || k === 'google-private-key',
+      const hasLegacyKeys = Object.keys(inputs).some(
+        (k) =>
+          LEGACY_KEYS_TO_REMOVE.has(k) || k === 'google-client-email' || k === 'google-private-key',
       );
-      const hasProviderConfig = Boolean(inputs['provider-config'] || inputs['provider-config-path']);
+      const hasProviderConfig = Boolean(
+        inputs['provider-config'] || inputs['provider-config-path'],
+      );
 
       if (hasLegacyKeys && !hasProviderConfig) {
         hasLegacyInFile = true;

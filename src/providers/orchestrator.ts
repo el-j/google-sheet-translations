@@ -87,10 +87,7 @@ function createDefaultDeps(): OrchestratorDeps {
   };
 }
 
-function mergeTranslations(
-  target: TranslationData,
-  next: TranslationData,
-): void {
+function mergeTranslations(target: TranslationData, next: TranslationData): void {
   for (const [locale, sheets] of Object.entries(next)) {
     if (!target[locale]) {
       target[locale] = {};

@@ -116,9 +116,7 @@ export function createCryptPadCsvInputProvider(
               : '';
 
           if (!csvText) {
-            throw new Error(
-              `Source "${source.tableName}" must define either url or filePath.`,
-            );
+            throw new Error(`Source "${source.tableName}" must define either url or filePath.`);
           }
 
           return {

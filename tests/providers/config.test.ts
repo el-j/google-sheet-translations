@@ -32,9 +32,13 @@ describe('provider config schema and validation', () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors.join(' | ')).toContain('Input provider must define a non-empty "provider" string.');
+    expect(result.errors.join(' | ')).toContain(
+      'Input provider must define a non-empty "provider" string.',
+    );
     expect(result.errors.join(' | ')).toContain('Output provider must be an object when provided.');
-    expect(result.errors.join(' | ')).toContain('Sync provider must define a non-empty "provider" string.');
+    expect(result.errors.join(' | ')).toContain(
+      'Sync provider must define a non-empty "provider" string.',
+    );
   });
 
   it('reports an error for an output provider with an empty "provider" string', () => {
@@ -84,7 +88,9 @@ describe('provider config schema and validation', () => {
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Asset sync provider must define a non-empty "provider" string.');
+    expect(result.errors).toContain(
+      'Asset sync provider must define a non-empty "provider" string.',
+    );
   });
 
   it('accepts a valid assetSync provider config', () => {

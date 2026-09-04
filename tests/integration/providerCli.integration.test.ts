@@ -124,8 +124,12 @@ describe('CLI Integration: gst-run-provider binary', () => {
       `--asset-target-dir=${assetTargetDir}`,
     ]);
 
-    expect(stdout).toContain('Asset sync completed: 1 manifest entry, 1 downloaded, 0 updated, 0 deleted, 0 skipped.');
-    expect(fs.readFileSync(path.join(assetTargetDir, 'images/logo.png'), 'utf8')).toBe('logo-bytes');
+    expect(stdout).toContain(
+      'Asset sync completed: 1 manifest entry, 1 downloaded, 0 updated, 0 deleted, 0 skipped.',
+    );
+    expect(fs.readFileSync(path.join(assetTargetDir, 'images/logo.png'), 'utf8')).toBe(
+      'logo-bytes',
+    );
   });
 
   it('runs asset sync using config-driven options when --asset-target-dir is omitted', async () => {
@@ -175,7 +179,11 @@ describe('CLI Integration: gst-run-provider binary', () => {
       `--data-json-path=${path.join(projectRoot, 'src/lib/languageData.json')}`,
     ]);
 
-    expect(stdout).toContain('Asset sync completed: 1 manifest entry, 1 downloaded, 0 updated, 0 deleted, 0 skipped.');
-    expect(fs.readFileSync(path.join(assetTargetDir, 'images/logo.png'), 'utf8')).toBe('logo-bytes-config');
+    expect(stdout).toContain(
+      'Asset sync completed: 1 manifest entry, 1 downloaded, 0 updated, 0 deleted, 0 skipped.',
+    );
+    expect(fs.readFileSync(path.join(assetTargetDir, 'images/logo.png'), 'utf8')).toBe(
+      'logo-bytes-config',
+    );
   });
 });

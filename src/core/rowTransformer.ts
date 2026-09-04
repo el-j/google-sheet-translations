@@ -19,10 +19,7 @@ export interface LocaleMappingResult {
 
 export interface RowTransformerDependencies {
   filterValidLocales: (headerRow: string[], keyColumn: string) => string[];
-  createLocaleMapping: (
-    originalHeaders: string[],
-    keyColumn: string,
-  ) => LocaleMappingResult;
+  createLocaleMapping: (originalHeaders: string[], keyColumn: string) => LocaleMappingResult;
   logger?: Pick<Console, 'warn' | 'error' | 'log'>;
 }
 
@@ -86,9 +83,7 @@ export function transformRowsToSheetData(
         return rowLocal;
       });
 
-      const nonEmptyLanguageCells = languageCells.filter(
-        (cell) => Object.keys(cell).length > 0,
-      );
+      const nonEmptyLanguageCells = languageCells.filter((cell) => Object.keys(cell).length > 0);
 
       const prepareObj: Record<string, Record<string, string>> = {};
       prepareObj[sheetTitle] = nonEmptyLanguageCells.reduce<Record<string, string>>(

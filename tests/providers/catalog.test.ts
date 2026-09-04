@@ -31,11 +31,7 @@ describe('provider catalog discovery', () => {
   it('declares discover-sources capability gate', () => {
     const catalog = createDefaultProviderCatalog();
     expect(() => {
-      assertOperationCapabilities(
-        catalog.providerId,
-        catalog.capabilities,
-        'discover-sources',
-      );
+      assertOperationCapabilities(catalog.providerId, catalog.capabilities, 'discover-sources');
     }).not.toThrow();
   });
 });

@@ -62,10 +62,7 @@ describe('createCryptPadAssetSyncProvider', () => {
     expect(result.downloaded).toEqual(['images/logo.png']);
     expect(result.updated).toEqual([]);
     expect(result.skipped).toEqual([]);
-    expect(writeFile).toHaveBeenCalledWith(
-      expect.stringContaining('images/logo.png'),
-      content,
-    );
+    expect(writeFile).toHaveBeenCalledWith(expect.stringContaining('images/logo.png'), content);
   });
 
   it('updates an existing asset when content hash differs', async () => {
@@ -117,10 +114,12 @@ describe('createCryptPadAssetSyncProvider', () => {
     const provider = createCryptPadAssetSyncProvider(
       { manifestPath: '/manifest.json' },
       {
-        readManifest: vi.fn().mockResolvedValue([
-          entry({ assetId: 'a', relativePath: 'a.png', hash: 'shared-hash' }),
-          entry({ assetId: 'b', relativePath: 'b.png', hash: 'shared-hash' }),
-        ]),
+        readManifest: vi
+          .fn()
+          .mockResolvedValue([
+            entry({ assetId: 'a', relativePath: 'a.png', hash: 'shared-hash' }),
+            entry({ assetId: 'b', relativePath: 'b.png', hash: 'shared-hash' }),
+          ]),
         readAssetBuffer,
         fileExists: vi.fn().mockResolvedValue(false),
         readFile: vi.fn(),
@@ -184,9 +183,7 @@ describe('createCryptPadAssetSyncProvider', () => {
     const provider = createCryptPadAssetSyncProvider(
       { manifestPath: '/manifest.json' },
       {
-        readManifest: vi.fn().mockResolvedValue([
-          entry({ relativePath: '../../etc/passwd' }),
-        ]),
+        readManifest: vi.fn().mockResolvedValue([entry({ relativePath: '../../etc/passwd' })]),
         readAssetBuffer: vi.fn(),
         fileExists: vi.fn(),
         readFile: vi.fn(),
@@ -267,7 +264,11 @@ describe('createCryptPadAssetSyncProvider', () => {
       const manifestPath = path.join(workDir, 'manifest.json');
 
       const okManifest: CanonicalAssetEntry[] = [
-        { assetId: 'remote', relativePath: 'remote.png', sourceUrl: 'https://example.com/remote.png' },
+        {
+          assetId: 'remote',
+          relativePath: 'remote.png',
+          sourceUrl: 'https://example.com/remote.png',
+        },
       ];
       await fs.writeFile(manifestPath, JSON.stringify(okManifest));
 

@@ -1,17 +1,14 @@
-import type { GoogleSpreadsheetWorksheet } from "google-spreadsheet";
-import type { SheetRow } from "../types";
-import {
-	transformRowsToSheetData,
-	type SheetProcessingResult,
-} from "../core/rowTransformer";
-import { withRetry } from "./rateLimiter";
-import { filterValidLocales } from "./localeFilter";
-import { createLocaleMapping } from "./localeNormalizer";
+import type { GoogleSpreadsheetWorksheet } from 'google-spreadsheet';
+import type { SheetRow } from '../types';
+import { transformRowsToSheetData, type SheetProcessingResult } from '../core/rowTransformer';
+import { withRetry } from './rateLimiter';
+import { filterValidLocales } from './localeFilter';
+import { createLocaleMapping } from './localeNormalizer';
 
 /**
  * Result of processing a single sheet
  */
-export type { SheetProcessingResult } from "../core/rowTransformer";
+export type { SheetProcessingResult } from '../core/rowTransformer';
 
 /**
  * Core row-processing logic shared by both the authenticated and public sheet paths.
@@ -24,14 +21,14 @@ export type { SheetProcessingResult } from "../core/rowTransformer";
  * @returns Processing result containing translations and locales
  */
 export async function processRawRows(
-rows: SheetRow[],
-sheetTitle: string,
+  rows: SheetRow[],
+  sheetTitle: string,
 ): Promise<SheetProcessingResult> {
-return transformRowsToSheetData(rows, sheetTitle, {
-filterValidLocales,
-createLocaleMapping,
-logger: console,
-});
+  return transformRowsToSheetData(rows, sheetTitle, {
+    filterValidLocales,
+    createLocaleMapping,
+    logger: console,
+  });
 }
 
 /**
@@ -46,36 +43,36 @@ logger: console,
  * @returns Processing result containing translations and locales
  */
 export async function processSheet(
-sheet: GoogleSpreadsheetWorksheet,
-sheetTitle: string,
-rowLimit: number,
-baseDelayMs = 1_000,
+  sheet: GoogleSpreadsheetWorksheet,
+  sheetTitle: string,
+  rowLimit: number,
+  baseDelayMs = 1_000,
 ): Promise<SheetProcessingResult> {
-const emptyResult: SheetProcessingResult = {
-translations: {},
-locales: [],
-localeMapping: {},
-originalMapping: {},
-success: false,
-};
+  const emptyResult: SheetProcessingResult = {
+    translations: {},
+    locales: [],
+    localeMapping: {},
+    originalMapping: {},
+    success: false,
+  };
 
-try {
-const googleRows = await withRetry(
-() => sheet.getRows({ limit: rowLimit }),
-`getRows: ${sheetTitle}`,
-baseDelayMs,
-);
+  try {
+    const googleRows = await withRetry(
+      () => sheet.getRows({ limit: rowLimit }),
+      `getRows: ${sheetTitle}`,
+      baseDelayMs,
+    );
 
-if (!googleRows || googleRows.length === 0) {
-console.warn(`No rows found in sheet "${sheetTitle}"`);
-return emptyResult;
-}
+    if (!googleRows || googleRows.length === 0) {
+      console.warn(`No rows found in sheet "${sheetTitle}"`);
+      return emptyResult;
+    }
 
-// Convert GoogleSpreadsheetRow objects to plain SheetRow objects, then reuse shared logic
-const rows: SheetRow[] = googleRows.map((row) => row.toObject());
-return processRawRows(rows, sheetTitle);
-} catch (error) {
-console.error(`Error processing sheet "${sheetTitle}":`, error);
-return emptyResult;
-}
+    // Convert GoogleSpreadsheetRow objects to plain SheetRow objects, then reuse shared logic
+    const rows: SheetRow[] = googleRows.map((row) => row.toObject());
+    return processRawRows(rows, sheetTitle);
+  } catch (error) {
+    console.error(`Error processing sheet "${sheetTitle}":`, error);
+    return emptyResult;
+  }
 }

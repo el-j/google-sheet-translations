@@ -78,7 +78,9 @@ function createOutputProvider(
       return createGoogleSheetsOutputProvider(options);
     case 'cryptpad-workspace': {
       if (typeof options.filePath !== 'string' || options.filePath.trim().length === 0) {
-        throw new Error('cryptpad-workspace output provider requires a non-empty "filePath" option.');
+        throw new Error(
+          'cryptpad-workspace output provider requires a non-empty "filePath" option.',
+        );
       }
 
       const typedOptions: CryptPadWorkspaceProviderOptions = {
@@ -138,7 +140,9 @@ function createAssetSyncProvider(
   switch (providerId) {
     case 'cryptpad-assets': {
       if (typeof options.manifestPath !== 'string' || options.manifestPath.trim().length === 0) {
-        throw new Error('cryptpad-assets sync provider requires a non-empty "manifestPath" option.');
+        throw new Error(
+          'cryptpad-assets sync provider requires a non-empty "manifestPath" option.',
+        );
       }
 
       const typedOptions: CryptPadAssetSyncProviderOptions = {
@@ -163,10 +167,7 @@ function createAssetSyncProvider(
 export function createProvidersFromRuntimeConfig(
   config: ProviderRuntimeConfig,
 ): ProviderRuntimeSelection {
-  const inputProvider = createInputProvider(
-    config.input.provider,
-    asRecord(config.input.options),
-  );
+  const inputProvider = createInputProvider(config.input.provider, asRecord(config.input.options));
 
   const outputProvider = config.output
     ? createOutputProvider(config.output.provider, asRecord(config.output.options))

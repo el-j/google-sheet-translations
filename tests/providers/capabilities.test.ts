@@ -42,9 +42,7 @@ describe('provider capabilities', () => {
 
   it('reports missing required capabilities', () => {
     const capabilities = createCapabilitySet({ readTables: true });
-    expect(missingCapabilities(capabilities, ['readTables', 'syncBack'])).toEqual([
-      'syncBack',
-    ]);
+    expect(missingCapabilities(capabilities, ['readTables', 'syncBack'])).toEqual(['syncBack']);
   });
 
   it('supports explicit asset capability operations', () => {
@@ -60,9 +58,7 @@ describe('provider capabilities', () => {
     });
 
     expect(hasRequiredCapabilities(capabilities, ['readTables'])).toBe(true);
-    expect(hasRequiredCapabilities(capabilities, ['readTables', 'syncBack'])).toBe(
-      true,
-    );
+    expect(hasRequiredCapabilities(capabilities, ['readTables', 'syncBack'])).toBe(true);
     expect(hasRequiredCapabilities(capabilities, ['writeTables'])).toBe(false);
   });
 
@@ -70,12 +66,7 @@ describe('provider capabilities', () => {
     const capabilities = createCapabilitySet({ readTables: true });
 
     expect(() => {
-      assertRequiredCapabilities(
-        'cryptpad-csv',
-        capabilities,
-        ['readTables', 'syncBack'],
-        'sync',
-      );
+      assertRequiredCapabilities('cryptpad-csv', capabilities, ['readTables', 'syncBack'], 'sync');
     }).toThrow(
       'Provider "cryptpad-csv" is missing required capabilities for operation "sync": syncBack',
     );

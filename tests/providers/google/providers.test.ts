@@ -21,9 +21,7 @@ describe('google provider adapters', () => {
   });
 
   it('reads public tables via the public sheet reader', async () => {
-    const readPublicSheet = vi
-      .fn()
-      .mockResolvedValue([{ key: 'welcome', en: 'Welcome' }]);
+    const readPublicSheet = vi.fn().mockResolvedValue([{ key: 'welcome', en: 'Welcome' }]);
 
     const provider = createGoogleSheetsInputProvider(
       {

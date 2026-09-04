@@ -131,7 +131,10 @@ function flattenTranslations(translations: TranslationData): Map<string, FlatVal
   return result;
 }
 
-function getChangeType(beforeValue: string | undefined, afterValue: string | undefined): SyncChangeType {
+function getChangeType(
+  beforeValue: string | undefined,
+  afterValue: string | undefined,
+): SyncChangeType {
   if (beforeValue === undefined && afterValue !== undefined) {
     return 'insert';
   }
@@ -141,7 +144,10 @@ function getChangeType(beforeValue: string | undefined, afterValue: string | und
   return 'update';
 }
 
-function diffChanges(base: Map<string, FlatValue>, next: Map<string, FlatValue>): SyncEntryChange[] {
+function diffChanges(
+  base: Map<string, FlatValue>,
+  next: Map<string, FlatValue>,
+): SyncEntryChange[] {
   const keys = new Set<string>([...base.keys(), ...next.keys()]);
   const changes: SyncEntryChange[] = [];
 

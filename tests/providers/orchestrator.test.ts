@@ -72,9 +72,9 @@ describe('provider orchestrator', () => {
       readTables: vi.fn(),
     };
 
-    await expect(
-      runProviderPipeline({ inputProvider }),
-    ).rejects.toThrow('missing required capabilities');
+    await expect(runProviderPipeline({ inputProvider })).rejects.toThrow(
+      'missing required capabilities',
+    );
   });
 
   it('fails when output is requested but provider lacks write capability', async () => {
@@ -94,9 +94,9 @@ describe('provider orchestrator', () => {
       writeTranslations: vi.fn(),
     };
 
-    await expect(
-      runProviderPipeline({ inputProvider, outputProvider }),
-    ).rejects.toThrow('missing required capabilities');
+    await expect(runProviderPipeline({ inputProvider, outputProvider })).rejects.toThrow(
+      'missing required capabilities',
+    );
   });
 
   it('skips unsuccessful table transformations gracefully', async () => {

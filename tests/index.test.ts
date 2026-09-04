@@ -25,7 +25,9 @@ describe('Package exports', () => {
     expect(packageExports.convertToDataJsonFormat).toBe(convertToDataJsonFormat);
     expect(packageExports.convertFromDataJsonFormat).toBe(convertFromDataJsonFormat);
     expect(packageExports.findLocalChanges).toBe(findLocalChanges);
-    expect(packageExports.updateSpreadsheetWithLocalChanges).toBe(updateSpreadsheetWithLocalChanges);
+    expect(packageExports.updateSpreadsheetWithLocalChanges).toBe(
+      updateSpreadsheetWithLocalChanges,
+    );
   });
 
   test('should export all public API symbols', () => {
@@ -125,7 +127,7 @@ describe('Package exports', () => {
       'requiresGoogleAuthForRuntimeConfig',
     ];
 
-    expectedKeys.forEach(key => {
+    expectedKeys.forEach((key) => {
       expect(packageExports).toHaveProperty(key);
     });
   });

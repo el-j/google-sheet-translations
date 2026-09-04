@@ -5,207 +5,207 @@ describe('findLocalChanges', () => {
   test('should return empty changes when local data is empty', () => {
     const localData: TranslationData = {};
     const spreadsheetData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
+      },
     };
-    
+
     const result = findLocalChanges(localData, spreadsheetData);
     expect(result).toEqual({});
   });
 
   test('should return empty changes when no new keys exist', () => {
     const localData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
+      },
     };
-    
+
     const spreadsheetData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
+      },
     };
-    
+
     const result = findLocalChanges(localData, spreadsheetData);
     expect(result).toEqual({});
   });
 
   test('should find new keys in an existing locale and sheet', () => {
     const localData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome',
-          'newKey': 'New Key Value'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+          newKey: 'New Key Value',
+        },
+      },
     };
-    
+
     const spreadsheetData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
+      },
     };
-    
+
     const result = findLocalChanges(localData, spreadsheetData);
     expect(result).toEqual({
-      'en': {
-        'home': {
-          'newKey': 'New Key Value'
-        }
-      }
+      en: {
+        home: {
+          newKey: 'New Key Value',
+        },
+      },
     });
   });
 
   test('should find new keys in a new sheet for existing locale', () => {
     const localData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
+      en: {
+        home: {
+          welcome: 'Welcome',
         },
-        'about': {
-          'title': 'About Us'
-        }
-      }
+        about: {
+          title: 'About Us',
+        },
+      },
     };
-    
+
     const spreadsheetData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
+      },
     };
-    
+
     const result = findLocalChanges(localData, spreadsheetData);
     expect(result).toEqual({
-      'en': {
-        'about': {
-          'title': 'About Us'
-        }
-      }
+      en: {
+        about: {
+          title: 'About Us',
+        },
+      },
     });
   });
 
   test('should find new keys in a new locale', () => {
     const localData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
       },
-      'fr': {
-        'home': {
-          'welcome': 'Bienvenue'
-        }
-      }
+      fr: {
+        home: {
+          welcome: 'Bienvenue',
+        },
+      },
     };
-    
+
     const spreadsheetData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
+      },
     };
-    
+
     const result = findLocalChanges(localData, spreadsheetData);
     expect(result).toEqual({
-      'fr': {
-        'home': {
-          'welcome': 'Bienvenue'
-        }
-      }
+      fr: {
+        home: {
+          welcome: 'Bienvenue',
+        },
+      },
     });
   });
 
   test('should handle complex scenarios with multiple new keys across locales and sheets', () => {
     const localData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome',
-          'newHomeKey': 'New Home Key'
+      en: {
+        home: {
+          welcome: 'Welcome',
+          newHomeKey: 'New Home Key',
         },
-        'about': {
-          'title': 'About Us',
-          'newAboutKey': 'New About Key'
-        }
+        about: {
+          title: 'About Us',
+          newAboutKey: 'New About Key',
+        },
       },
-      'fr': {
-        'home': {
-          'welcome': 'Bienvenue',
-          'newHomeKey': 'Nouvelle Clé Accueil'
-        }
+      fr: {
+        home: {
+          welcome: 'Bienvenue',
+          newHomeKey: 'Nouvelle Clé Accueil',
+        },
       },
-      'de': {
-        'home': {
-          'welcome': 'Willkommen'
-        }
-      }
+      de: {
+        home: {
+          welcome: 'Willkommen',
+        },
+      },
     };
-    
+
     const spreadsheetData: TranslationData = {
-      'en': {
-        'home': {
-          'welcome': 'Welcome'
-        }
-      }
+      en: {
+        home: {
+          welcome: 'Welcome',
+        },
+      },
     };
-    
+
     const result = findLocalChanges(localData, spreadsheetData);
     expect(result).toEqual({
-      'en': {
-        'home': {
-          'newHomeKey': 'New Home Key'
+      en: {
+        home: {
+          newHomeKey: 'New Home Key',
         },
-        'about': {
-          'title': 'About Us',
-          'newAboutKey': 'New About Key'
-        }
+        about: {
+          title: 'About Us',
+          newAboutKey: 'New About Key',
+        },
       },
-      'fr': {
-        'home': {
-          'welcome': 'Bienvenue',
-          'newHomeKey': 'Nouvelle Clé Accueil'
-        }
+      fr: {
+        home: {
+          welcome: 'Bienvenue',
+          newHomeKey: 'Nouvelle Clé Accueil',
+        },
       },
-      'de': {
-        'home': {
-          'welcome': 'Willkommen'
-        }
-      }
+      de: {
+        home: {
+          welcome: 'Willkommen',
+        },
+      },
     });
   });
 
   test('should ignore empty sheets or locales in local data', () => {
     const localData: TranslationData = {
-      'en': {
-        'home': {}
+      en: {
+        home: {},
       },
       '': {
-        'about': {
-          'title': 'About Us'
-        }
-      }
+        about: {
+          title: 'About Us',
+        },
+      },
     };
-    
+
     const spreadsheetData: TranslationData = {};
-    
+
     const result = findLocalChanges(localData, spreadsheetData);
     expect(result).toEqual({
       '': {
-        'about': {
-          'title': 'About Us'
-        }
-      }
+        about: {
+          title: 'About Us',
+        },
+      },
     });
   });
 
@@ -216,23 +216,23 @@ describe('findLocalChanges', () => {
     // but localData has the key 'nav_guide' which is absent from spreadsheetData['en-us'].
     // It should therefore appear in changes.
     const localData: TranslationData = {
-      'en': { 'home': { 'nav_guide': 'Guide' } }
+      en: { home: { nav_guide: 'Guide' } },
     };
     const spreadsheetData: TranslationData = {
-      'en-us': { 'home': { 'en-us': 'English' } }
+      'en-us': { home: { 'en-us': 'English' } },
     };
 
     const result = findLocalChanges(localData, spreadsheetData);
-    expect(result).toEqual({ 'en': { 'home': { 'nav_guide': 'Guide' } } });
+    expect(result).toEqual({ en: { home: { nav_guide: 'Guide' } } });
   });
 
   test('locale alias: short code "en" does NOT report key as new when "en-us" already has it', () => {
     // 'en' resolves to 'en-us'; 'nav_guide' already exists → no change
     const localData: TranslationData = {
-      'en': { 'home': { 'nav_guide': 'Guide' } }
+      en: { home: { nav_guide: 'Guide' } },
     };
     const spreadsheetData: TranslationData = {
-      'en-us': { 'home': { 'nav_guide': 'Guide', 'en-us': 'English' } }
+      'en-us': { home: { nav_guide: 'Guide', 'en-us': 'English' } },
     };
 
     const result = findLocalChanges(localData, spreadsheetData);
@@ -241,10 +241,10 @@ describe('findLocalChanges', () => {
 
   test('locale alias: "en-GB" in localData resolves to "en-us" in spreadsheetData', () => {
     const localData: TranslationData = {
-      'en-GB': { 'home': { 'title': 'Hello' } }
+      'en-GB': { home: { title: 'Hello' } },
     };
     const spreadsheetData: TranslationData = {
-      'en-us': { 'home': { 'title': 'Hello' } }
+      'en-us': { home: { title: 'Hello' } },
     };
 
     const result = findLocalChanges(localData, spreadsheetData);
@@ -253,15 +253,15 @@ describe('findLocalChanges', () => {
 
   test('locale alias: short "de" resolves to "de-de" in spreadsheetData', () => {
     const localData: TranslationData = {
-      'de': { 'home': { 'new_key': 'Neu' } }
+      de: { home: { new_key: 'Neu' } },
     };
     const spreadsheetData: TranslationData = {
-      'de-de': { 'home': { 'existing': 'Bestehend' } }
+      'de-de': { home: { existing: 'Bestehend' } },
     };
 
     const result = findLocalChanges(localData, spreadsheetData);
     // 'new_key' is not in de-de/home → should be a change
-    expect(result).toEqual({ 'de': { 'home': { 'new_key': 'Neu' } } });
+    expect(result).toEqual({ de: { home: { new_key: 'Neu' } } });
   });
 
   // ── i18n sheet protection ──────────────────────────────────────────────────
@@ -270,29 +270,29 @@ describe('findLocalChanges', () => {
     // The i18n sheet stores locale display names (metadata).
     // Its keys must never be treated as new translation keys to push back.
     const localData: TranslationData = {
-      'en': {
-        'i18n': { 'en': 'English', 'de': 'German' },  // must be excluded
-        'home': { 'welcome': 'Welcome', 'newKey': 'New' },  // must be included
+      en: {
+        i18n: { en: 'English', de: 'German' }, // must be excluded
+        home: { welcome: 'Welcome', newKey: 'New' }, // must be included
       },
     };
     const spreadsheetData: TranslationData = {
-      'en': {
-        'i18n': { 'en': 'English', 'de': 'German' },
-        'home': { 'welcome': 'Welcome' },
+      en: {
+        i18n: { en: 'English', de: 'German' },
+        home: { welcome: 'Welcome' },
       },
     };
 
     const result = findLocalChanges(localData, spreadsheetData);
-    expect(result).toEqual({ 'en': { 'home': { 'newKey': 'New' } } });
+    expect(result).toEqual({ en: { home: { newKey: 'New' } } });
     // i18n changes must NOT appear
     expect(result['en']?.['i18n']).toBeUndefined();
   });
 
   test('should not report i18n keys as new even when spreadsheet i18n section is empty', () => {
     const localData: TranslationData = {
-      'en': {
-        'i18n': { 'en': 'English' },
-        'ui': { 'btn': 'Click me' },
+      en: {
+        i18n: { en: 'English' },
+        ui: { btn: 'Click me' },
       },
     };
     const spreadsheetData: TranslationData = {};
@@ -300,15 +300,15 @@ describe('findLocalChanges', () => {
     const result = findLocalChanges(localData, spreadsheetData);
     // Only 'ui' sheet keys should appear; i18n must be absent
     expect(result['en']?.['i18n']).toBeUndefined();
-    expect(result['en']?.['ui']).toEqual({ 'btn': 'Click me' });
+    expect(result['en']?.['ui']).toEqual({ btn: 'Click me' });
   });
 
   test('should gracefully skip undefined or null locale and sheet values in localData', () => {
     const localData = {
-      'en': undefined,
-      'fr': {
-        'home': undefined,
-        'about': { 'title': 'À propos' },
+      en: undefined,
+      fr: {
+        home: undefined,
+        about: { title: 'À propos' },
       },
     } as unknown as TranslationData;
 
@@ -316,8 +316,8 @@ describe('findLocalChanges', () => {
     const result = findLocalChanges(localData, spreadsheetData);
 
     expect(result).toEqual({
-      'fr': {
-        'about': { 'title': 'À propos' },
+      fr: {
+        about: { title: 'À propos' },
       },
     });
   });

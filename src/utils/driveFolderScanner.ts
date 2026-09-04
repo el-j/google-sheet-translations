@@ -41,10 +41,8 @@ const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 const DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive.readonly'];
 
 async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
-  const clientEmail =
-    credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey =
-    credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
 
   let driveCredentials: { client_email: string; private_key: string } | undefined;
 
@@ -53,7 +51,7 @@ async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
   } else if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     throw new Error(
       'Google Drive credentials required: set GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY, ' +
-      'or set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation.'
+        'or set GOOGLE_APPLICATION_CREDENTIALS for Workload Identity Federation.',
     );
   }
 
@@ -67,7 +65,7 @@ async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
 async function listFilesInFolder(
   folderId: string,
   mimeType: string,
-  token: string
+  token: string,
 ): Promise<DriveFile[]> {
   const results: DriveFile[] = [];
   let pageToken: string | undefined;
@@ -87,9 +85,7 @@ async function listFilesInFolder(
 
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(
-        `Drive API error ${response.status}: ${text}`
-      );
+      throw new Error(`Drive API error ${response.status}: ${text}`);
     }
 
     const data = (await response.json()) as DriveFilesResponse;
@@ -106,7 +102,7 @@ async function scanFolder(
   token: string,
   recursive: boolean,
   nameFilter?: RegExp,
-  seen = new Set<string>()
+  seen = new Set<string>(),
 ): Promise<DriveSpreadsheetFile[]> {
   console.log(`[driveFolderScanner] Scanning folder: ${folderId} (path: "${folderPath}")`);
 
@@ -132,14 +128,7 @@ async function scanFolder(
     const subfolders = await listFilesInFolder(folderId, FOLDER_MIME, token);
     for (const folder of subfolders) {
       const subPath = folderPath ? `${folderPath}/${folder.name}` : folder.name;
-      const subResults = await scanFolder(
-        folder.id,
-        subPath,
-        token,
-        recursive,
-        nameFilter,
-        seen
-      );
+      const subResults = await scanFolder(folder.id, subPath, token, recursive, nameFilter, seen);
       results.push(...subResults);
     }
   }
@@ -153,7 +142,7 @@ async function scanFolder(
  * Uses Drive API v3 via authenticated fetch (no googleapis package needed).
  */
 export async function scanDriveFolderForSpreadsheets(
-  options: ScanDriveFolderOptions
+  options: ScanDriveFolderOptions,
 ): Promise<DriveSpreadsheetFile[]> {
   const { folderId, recursive = true, nameFilter, credentials } = options;
 

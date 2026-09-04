@@ -88,7 +88,9 @@ function createDefaultDeps(): CryptPadAssetSyncProviderDeps {
       if (asset.sourceUrl) {
         const response = await fetch(asset.sourceUrl, { signal });
         if (!response.ok) {
-          throw new Error(`Failed to fetch asset from ${asset.sourceUrl} (HTTP ${response.status})`);
+          throw new Error(
+            `Failed to fetch asset from ${asset.sourceUrl} (HTTP ${response.status})`,
+          );
         }
         const buffer = Buffer.from(await response.arrayBuffer());
         return buffer;

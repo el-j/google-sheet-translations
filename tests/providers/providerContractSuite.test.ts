@@ -8,17 +8,11 @@ import {
 } from '../../src/providers';
 import type { TranslationInputProvider } from '../../src/providers';
 
-async function runInputProviderContractChecks(
-  provider: TranslationInputProvider,
-): Promise<void> {
+async function runInputProviderContractChecks(provider: TranslationInputProvider): Promise<void> {
   expect(provider.kind).toBe('input');
   expect(typeof provider.providerId).toBe('string');
 
-  assertOperationCapabilities(
-    provider.providerId,
-    provider.capabilities,
-    'read-input',
-  );
+  assertOperationCapabilities(provider.providerId, provider.capabilities, 'read-input');
 
   const result = await provider.readTables({ tableNames: ['home'] });
   expect(Array.isArray(result.tables)).toBe(true);
@@ -40,10 +34,7 @@ describe('provider contract suite', () => {
       sources: [
         {
           tableName: 'home',
-          filePath: path.resolve(
-            __dirname,
-            '../fixtures/providers/home.csv',
-          ),
+          filePath: path.resolve(__dirname, '../fixtures/providers/home.csv'),
         },
       ],
     });
@@ -58,9 +49,7 @@ describe('provider contract suite', () => {
         publicSheet: true,
       },
       {
-        readPublicSheet: vi.fn().mockResolvedValue([
-          { key: 'welcome', en: 'Welcome' },
-        ]),
+        readPublicSheet: vi.fn().mockResolvedValue([{ key: 'welcome', en: 'Welcome' }]),
         withRetry: (fn: () => Promise<any>) => fn(),
       },
     );

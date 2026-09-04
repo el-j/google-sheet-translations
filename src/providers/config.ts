@@ -50,9 +50,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
  * before it is trusted as a {@link ProviderRuntimeConfig}. Collects every error found
  * rather than failing on the first one, so a config file can be fixed in one pass.
  */
-export function validateProviderRuntimeConfig(
-  config: unknown,
-): ProviderConfigValidationResult {
+export function validateProviderRuntimeConfig(config: unknown): ProviderConfigValidationResult {
   const errors: string[] = [];
 
   if (!isObject(config)) {

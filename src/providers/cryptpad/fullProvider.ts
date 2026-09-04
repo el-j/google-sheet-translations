@@ -9,11 +9,7 @@ import type {
   TranslationSyncResult,
 } from '../contracts';
 import { createCapabilitySet, type ProviderCapabilitySet } from '../capabilities';
-import {
-  resolveSyncPlan,
-  type SyncConflictPolicy,
-  type BuildSyncPlanInput,
-} from '../syncEngine';
+import { resolveSyncPlan, type SyncConflictPolicy, type BuildSyncPlanInput } from '../syncEngine';
 import type { TranslationData } from '../../types';
 
 interface CryptPadWorkspaceSnapshot {
@@ -174,7 +170,9 @@ export function createCryptPadWorkspaceOutputProvider(
 }
 
 function buildSyncInput(payload: TranslationSyncPayload): BuildSyncPlanInput {
-  const base = (payload.metadata?.baseTranslations as TranslationData | undefined) ?? payload.remoteTranslations;
+  const base =
+    (payload.metadata?.baseTranslations as TranslationData | undefined) ??
+    payload.remoteTranslations;
   return {
     baseTranslations: base,
     localTranslations: payload.localTranslations,
@@ -242,7 +240,4 @@ export function createCryptPadWorkspaceSyncProvider(
   };
 }
 
-export {
-  CRYPTPAD_WORKSPACE_OUTPUT_CAPABILITIES,
-  CRYPTPAD_WORKSPACE_SYNC_CAPABILITIES,
-};
+export { CRYPTPAD_WORKSPACE_OUTPUT_CAPABILITIES, CRYPTPAD_WORKSPACE_SYNC_CAPABILITIES };

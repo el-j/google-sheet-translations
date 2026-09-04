@@ -11,10 +11,7 @@ import type {
   TranslationSyncProvider,
   TranslationSyncResult,
 } from '../contracts';
-import {
-  createCapabilitySet,
-  type ProviderCapabilitySet,
-} from '../capabilities';
+import { createCapabilitySet, type ProviderCapabilitySet } from '../capabilities';
 import { createAuthClient } from '../../utils/auth';
 import { readPublicSheet } from '../../utils/publicSheetReader';
 import { withRetry } from '../../utils/rateLimiter';
@@ -304,10 +301,7 @@ export function createGoogleSheetsSyncProvider(
     displayName: options.displayName ?? 'Google Sheets Sync',
     capabilities: SYNC_CAPABILITIES,
     async syncTranslations(payload: TranslationSyncPayload): Promise<TranslationSyncResult> {
-      const changes = deps.findLocalChanges(
-        payload.localTranslations,
-        payload.remoteTranslations,
-      );
+      const changes = deps.findLocalChanges(payload.localTranslations, payload.remoteTranslations);
 
       if (!hasAnyChanges(changes)) {
         return {

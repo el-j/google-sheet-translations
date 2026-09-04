@@ -28,11 +28,11 @@
     "README.md"
   ],
   "scripts": {
-    "build:action": "rimraf dist-action && esbuild src/action-entrypoint.ts --bundle --platform=node --format=esm --outfile=dist-action/index.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" --log-level=info && node -e \"const fs=require('fs');const path='dist-action/index.mjs';const search='const url = (opts.url || \\\"\\\").toString();\\n          if (!url.includes(\\\"googleapis.com\\\") && !url.includes(\\\"google.com\\\")) {';const replacement='const url = (opts.url || \\\"\\\").toString();\\n          let isGoogleHost = false;\\n          try {\\n            const parsedUrl = new URL(url);\\n            const hostname = (parsedUrl.hostname || \\\"\\\").toLowerCase();\\n            isGoogleHost = hostname === \\\"googleapis.com\\\" || hostname.endsWith(\\\".googleapis.com\\\") || hostname === \\\"google.com\\\" || hostname.endsWith(\\\".google.com\\\");\\n          } catch {\\n            isGoogleHost = false;\\n          }\\n          if (!isGoogleHost) {';const data=fs.readFileSync(path,'utf8');if(!data.includes(search)){throw new Error('Expected host-check snippet not found in dist-action bundle');}fs.writeFileSync(path,data.replace(search,replacement));\"",
-    "build:cli": "rimraf dist-cli && esbuild src/setup/cli.ts --bundle --platform=node --format=esm --outfile=dist-cli/setup-wif.mjs --banner:js=\"#!/usr/bin/env node\nimport{createRequire}from'module';const require=createRequire(import.meta.url);\" --log-level=info && esbuild src/setup/providerCli.ts --bundle --platform=node --format=esm --outfile=dist-cli/run-provider.mjs --banner:js=\"#!/usr/bin/env node\nimport{createRequire}from'module';const require=createRequire(import.meta.url);\" --log-level=info && esbuild src/setup/migrateV3Cli.ts --bundle --platform=node --format=esm --outfile=dist-cli/migrate-v3.mjs --banner:js=\"#!/usr/bin/env node\nimport{createRequire}from'module';const require=createRequire(import.meta.url);\" --log-level=info",
+    "build:action": "rimraf dist-action && rolldown -c --environment BUILD_TARGET:action && node scripts/patch-action-bundle.mjs",
+    "build:cli": "rimraf dist-cli && rolldown -c --environment BUILD_TARGET:cli",
     "build:types": "tsc --emitDeclarationOnly",
-    "build:cjs": "esbuild src/index.ts --bundle --format=cjs --outfile=dist/index.js --platform=node --packages=external",
-    "build:esm": "esbuild src/index.ts --bundle --format=esm --outfile=dist/esm/index.js --platform=node --packages=external && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",
+    "build:cjs": "rolldown -c --environment BUILD_TARGET:cjs",
+    "build:esm": "rolldown -c --environment BUILD_TARGET:esm && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",
     "build": "npm run build:types && npm run build:cjs && npm run build:esm && npm run build:cli",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
@@ -40,6 +40,8 @@
     "test": "vitest run --coverage",
     "lint": "oxlint src/ --deny-warnings",
     "lint:fix": "oxlint src/ --fix",
+    "format": "oxfmt --write src/ tests/",
+    "format:check": "oxfmt --check src/ tests/",
     "dev": "tsc --watch",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run",
@@ -78,7 +80,6 @@
     "typescript": ">=4.0.0"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^11.0.1",
@@ -89,10 +90,11 @@
     "@vitest/coverage-v8": "^5.0.0",
     "conventional-changelog-conventionalcommits": "^10.4.0",
     "dotenv": "17.4.2",
-    "esbuild": "^0.28.2",
     "npm-check-updates": "^23.1.0",
+    "oxfmt": "^0.66.0",
     "oxlint": "^1.81.0",
     "rimraf": "^6.1.3",
+    "rolldown": "^1.2.7",
     "semantic-release": "^25.0.9",
     "ts-node": "^10.9.2",
     "typescript": "^7.0.2",
@@ -112,7 +114,6 @@
     }
   },
   "allowScripts": {
-    "esbuild@0.28.2": true,
     "fsevents@2.3.3": true
   }
 }
