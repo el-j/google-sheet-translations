@@ -1,23 +1,44 @@
 import { createCapabilitySet } from './capabilities';
 import type { ProviderCapabilitySet } from './capabilities';
 
+/**
+ * Classification of a discoverable resource within a provider catalog.
+ */
 export type ProviderSourceKind = 'table' | 'asset';
 
+/**
+ * Metadata descriptor describing a discoverable data source (sheet, table, or asset manifest).
+ */
 export interface ProviderSourceDescriptor {
+  /** Identifier of the provider that can read this source. */
   providerId: string;
+  /** Unique identifier of the specific resource / document. */
   sourceId: string;
+  /** Kind of resource represented by this descriptor. */
   kind: ProviderSourceKind;
+  /** Human-readable display title or filename. */
   name: string;
+  /** Additional provider-specific metadata (e.g. URLs, mime types). */
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Filter and cancellation options for catalog source discovery.
+ */
 export interface ProviderDiscoveryRequest {
+  /** Optional search query or filter string. */
   query?: string;
+  /** Optional cancellation signal. */
   signal?: AbortSignal;
 }
 
+/**
+ * Result returned by a catalog source discovery operation.
+ */
 export interface ProviderDiscoveryResult {
+  /** Discovered source descriptors matching the request. */
   sources: ProviderSourceDescriptor[];
+  /** Optional diagnostic or pagination metadata. */
   metadata?: Record<string, unknown>;
 }
 
@@ -30,9 +51,15 @@ export interface ProviderCatalogProvider {
   discoverSources(request?: ProviderDiscoveryRequest): Promise<ProviderDiscoveryResult>;
 }
 
+/**
+ * Options for configuring an in-memory {@link ProviderCatalogProvider}.
+ */
 export interface InMemoryProviderCatalogOptions {
+  /** Custom provider identifier. Defaults to 'in-memory-catalog'. */
   providerId?: string;
+  /** Custom human-friendly provider name. */
   displayName?: string;
+  /** Fixed list of sources returned during discovery. */
   sources: ProviderSourceDescriptor[];
 }
 

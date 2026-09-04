@@ -22,15 +22,21 @@ interface CryptPadWorkspaceSnapshot {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Options for configuring CryptPad workspace output and sync providers.
+ */
 export interface CryptPadWorkspaceProviderOptions {
   /** Path to the local JSON snapshot file acting as the CryptPad workspace state. */
   filePath: string;
+  /** Optional authentication token for future remote write-back endpoints. */
   authToken?: string;
   /** Optimistic-concurrency guard: if set, writes fail unless the on-disk revision matches. */
   expectedRevision?: number;
   /** Conflict resolution strategy used by the sync provider; ignored by the output provider. */
   conflictPolicy?: SyncConflictPolicy;
+  /** Custom provider identifier. */
   providerId?: string;
+  /** Custom human-friendly provider name. */
   displayName?: string;
 }
 

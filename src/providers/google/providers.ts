@@ -23,32 +23,61 @@ import { findLocalChanges } from '../../utils/dataConverter/findLocalChanges';
 import type { SheetRow, TranslationData } from '../../types';
 import { DEFAULT_WAIT_SECONDS } from '../../constants';
 
+/**
+ * Options for creating a Google Sheets input provider.
+ */
 export interface GoogleSheetsInputProviderOptions {
+  /** Target spreadsheet ID. If omitted, falls back to GOOGLE_SPREADSHEET_ID env var. */
   spreadsheetId?: string;
+  /** Maximum number of rows to retrieve per sheet tab. Defaults to 100. */
   rowLimit?: number;
+  /** Throttling delay in seconds between API requests. */
   waitSeconds?: number;
+  /** When true, fetches public spreadsheet without requiring authentication. */
   publicSheet?: boolean;
+  /** Custom provider identifier. Defaults to 'google-sheets'. */
   providerId?: string;
+  /** Custom provider display name. */
   displayName?: string;
 }
 
+/**
+ * Options for creating a Google Sheets output provider.
+ */
 export interface GoogleSheetsOutputProviderOptions {
+  /** Target spreadsheet ID. If omitted, falls back to GOOGLE_SPREADSHEET_ID env var. */
   spreadsheetId?: string;
+  /** Throttling delay in seconds between API requests. */
   waitSeconds?: number;
+  /** When true, automatically inserts GOOGLETRANSLATE formulas for missing translations. */
   autoTranslate?: boolean;
+  /** When true with autoTranslate, overwrites existing manual translations with formulas. */
   override?: boolean;
+  /** Column header mappings for locale normalization. */
   localeMapping?: Record<string, string>;
+  /** Custom provider identifier. Defaults to 'google-sheets'. */
   providerId?: string;
+  /** Custom provider display name. */
   displayName?: string;
 }
 
+/**
+ * Options for creating a Google Sheets sync provider.
+ */
 export interface GoogleSheetsSyncProviderOptions {
+  /** Target spreadsheet ID. If omitted, falls back to GOOGLE_SPREADSHEET_ID env var. */
   spreadsheetId?: string;
+  /** Throttling delay in seconds between API requests. */
   waitSeconds?: number;
+  /** When true, automatically inserts GOOGLETRANSLATE formulas for missing translations. */
   autoTranslate?: boolean;
+  /** When true with autoTranslate, overwrites existing manual translations with formulas. */
   override?: boolean;
+  /** Column header mappings for locale normalization. */
   localeMapping?: Record<string, string>;
+  /** Custom provider identifier. Defaults to 'google-sheets'. */
   providerId?: string;
+  /** Custom provider display name. */
   displayName?: string;
 }
 
@@ -316,6 +345,9 @@ export function createGoogleSheetsSyncProvider(
   };
 }
 
+/**
+ * Static capability sets declared for Google Sheets input, output, and sync providers.
+ */
 export const GOOGLE_SHEETS_PROVIDER_CAPABILITIES = {
   input: INPUT_CAPABILITIES,
   output: OUTPUT_CAPABILITIES,

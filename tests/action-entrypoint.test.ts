@@ -299,6 +299,90 @@ describe('action-entrypoint', () => {
 				'Use either provider-config or provider-config-path, not both.',
 			);
 		});
+
+		it('wires asset sync provider and options from action inputs and logs result', async () => {
+			const mockAssetSyncProvider = { providerId: 'cryptpad-assets', syncAssets: vi.fn(), capabilities: {} };
+			mockCreateProvidersFromRuntimeConfig.mockReturnValueOnce({
+				inputProvider: { providerId: 'cryptpad-csv' } as any,
+				assetSyncProvider: mockAssetSyncProvider as any,
+			});
+			mockRunProviderPipeline.mockResolvedValueOnce({
+				translations: { en: { home: { welcome: 'Welcome' } } },
+				locales: ['en'],
+				localeMapping: { en: 'en' },
+				originalLocaleMapping: { en: 'en' },
+				inputTableCount: 1,
+				assetSyncResult: {
+					manifestCount: 2,
+					downloaded: ['img1.png'],
+					updated: [],
+					deleted: [],
+					skipped: ['img2.png'],
+				},
+			});
+
+			const providerConfig = JSON.stringify({
+				input: { provider: 'cryptpad-csv', options: { sources: [] } },
+				assetSync: { provider: 'cryptpad-assets', options: { manifestPath: 'assets.json' } },
+			});
+			const inputs = makeInputs({
+				'provider-config': providerConfig,
+				'google-client-email': '',
+				'google-private-key': '',
+				'asset-target-dir': 'public/assets',
+				'asset-delete-missing': 'true',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockRunProviderPipeline).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assetSyncProvider: mockAssetSyncProvider,
+					assetSync: {
+						targetDirectory: '/workspace/public/assets',
+						deleteMissing: true,
+					},
+				}),
+			);
+			expect(mockInfo).toHaveBeenCalledWith(
+				expect.stringContaining('Asset sync completed: 2 manifest entries, 1 downloaded, 0 updated, 0 deleted, 1 skipped.'),
+			);
+		});
+
+		it('uses config-driven assetSync targetDirectory when action input is not provided', async () => {
+			const mockAssetSyncProvider = { providerId: 'cryptpad-assets', syncAssets: vi.fn(), capabilities: {} };
+			mockCreateProvidersFromRuntimeConfig.mockReturnValueOnce({
+				inputProvider: { providerId: 'cryptpad-csv' } as any,
+				assetSyncProvider: mockAssetSyncProvider as any,
+			});
+
+			const providerConfig = JSON.stringify({
+				input: { provider: 'cryptpad-csv', options: { sources: [] } },
+				assetSync: {
+					provider: 'cryptpad-assets',
+					options: { manifestPath: 'assets.json', targetDirectory: 'config/assets', deleteMissing: true },
+				},
+			});
+			const inputs = makeInputs({
+				'provider-config': providerConfig,
+				'google-client-email': '',
+				'google-private-key': '',
+			});
+			mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+			await run();
+
+			expect(mockRunProviderPipeline).toHaveBeenCalledWith(
+				expect.objectContaining({
+					assetSyncProvider: mockAssetSyncProvider,
+					assetSync: {
+						targetDirectory: '/workspace/config/assets',
+						deleteMissing: true,
+					},
+				}),
+			);
+		});
 	});
 
 	describe('drive-folder mode', () => {

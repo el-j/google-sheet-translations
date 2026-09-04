@@ -90,10 +90,20 @@ async function main(): Promise<void> {
   );
 
   const assetTargetDirArg = args['asset-target-dir'];
-  const assetSync = assetTargetDirArg
+  const configAssetTargetDir =
+    typeof config.assetSync?.options?.targetDirectory === 'string' &&
+    config.assetSync.options.targetDirectory.trim().length > 0
+      ? config.assetSync.options.targetDirectory.trim()
+      : undefined;
+  const effectiveAssetTargetDir = assetTargetDirArg || configAssetTargetDir;
+  const effectiveAssetDeleteMissing = assetTargetDirArg
+    ? args['asset-delete-missing'] === 'true'
+    : Boolean(config.assetSync?.options?.deleteMissing);
+
+  const assetSync = effectiveAssetTargetDir
     ? {
-        targetDirectory: path.resolve(cwd, assetTargetDirArg),
-        deleteMissing: args['asset-delete-missing'] === 'true',
+        targetDirectory: path.resolve(cwd, effectiveAssetTargetDir),
+        deleteMissing: effectiveAssetDeleteMissing,
       }
     : undefined;
 

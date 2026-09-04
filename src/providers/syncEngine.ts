@@ -8,46 +8,91 @@ import type { TranslationData } from '../types';
  * to reconcile local translation edits against the remote snapshot before writing back.
  */
 export type SyncConflictPolicy = 'remote-wins' | 'local-wins' | 'manual';
+
+/**
+ * Kind of change detected for a single key during three-way diff.
+ */
 export type SyncChangeType = 'insert' | 'update' | 'delete';
 
+/**
+ * Represents a single change applied to a translation key.
+ */
 export interface SyncEntryChange {
+  /** Dot-delimited path `locale.sheet.key`. */
   path: string;
+  /** Locale code of the key. */
   locale: string;
+  /** Sheet / table name containing the key. */
   sheet: string;
+  /** Translation key identifier. */
   key: string;
+  /** Type of modification. */
   type: SyncChangeType;
+  /** Previous string value prior to change, if present. */
   before?: string;
+  /** New string value after change, if present. */
   after?: string;
 }
 
+/**
+ * Describes a conflicting modification where both local and remote diverged from base.
+ */
 export interface SyncConflict {
+  /** Dot-delimited path `locale.sheet.key`. */
   path: string;
+  /** Locale code of the key. */
   locale: string;
+  /** Sheet / table name containing the key. */
   sheet: string;
+  /** Translation key identifier. */
   key: string;
+  /** Value present in base ancestor snapshot. */
   baseValue?: string;
+  /** Value present in local snapshot. */
   localValue?: string;
+  /** Value present in remote snapshot. */
   remoteValue?: string;
+  /** Classification of why conflict occurred. */
   reason: 'diverged-update' | 'delete-vs-update';
 }
 
+/**
+ * Detailed plan computed by {@link buildSyncPlan} separating local, remote, and conflicting changes.
+ */
 export interface SyncPlan {
+  /** Changes occurring locally relative to base snapshot. */
   localChanges: SyncEntryChange[];
+  /** Changes occurring remotely relative to base snapshot. */
   remoteChanges: SyncEntryChange[];
+  /** Keys changed concurrently with incompatible values. */
   conflicts: SyncConflict[];
 }
 
+/**
+ * Outcome of resolving a three-way {@link SyncPlan} via {@link resolveSyncPlan}.
+ */
 export interface ResolveSyncPlanResult {
+  /** Conflict resolution strategy that was applied. */
   policy: SyncConflictPolicy;
+  /** Final merged translation tree. */
   mergedTranslations: TranslationData;
+  /** Count of local modifications successfully incorporated. */
   appliedLocalChanges: number;
+  /** Count of remote modifications preserved. */
   appliedRemoteChanges: number;
+  /** Count of conflicts skipped / deferred for manual resolution. */
   skippedConflicts: number;
 }
 
+/**
+ * Inputs required to construct a three-way diff {@link SyncPlan}.
+ */
 export interface BuildSyncPlanInput {
+  /** Common ancestor snapshot. */
   baseTranslations: TranslationData;
+  /** Current local modifications snapshot. */
   localTranslations: TranslationData;
+  /** Current remote authoritative snapshot. */
   remoteTranslations: TranslationData;
 }
 

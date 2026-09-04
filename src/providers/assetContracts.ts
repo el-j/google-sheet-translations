@@ -21,30 +21,55 @@ export interface CanonicalAssetEntry {
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Result returned when retrieving an asset manifest.
+ */
 export interface AssetManifestResult {
+  /** List of asset entries contained in the manifest. */
   assets: CanonicalAssetEntry[];
+  /** Optional manifest-level metadata. */
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Parameters for performing an asset synchronization operation.
+ */
 export interface AssetSyncRequest {
+  /** Local target directory where assets will be synchronized. */
   targetDirectory: string;
   /** When true, local files under `targetDirectory` not named in the manifest are deleted. */
   deleteMissing?: boolean;
+  /** Optional abort signal for early cancellation. */
   signal?: AbortSignal;
 }
 
+/**
+ * Statistics and affected paths resulting from an asset sync execution.
+ */
 export interface AssetSyncResult {
+  /** Total number of assets listed in the input manifest. */
   manifestCount: number;
+  /** Relative paths of assets downloaded fresh. */
   downloaded: string[];
+  /** Relative paths of assets modified / updated. */
   updated: string[];
+  /** Relative paths of orphaned local assets deleted (when deleteMissing was true). */
   deleted: string[];
+  /** Relative paths of unchanged assets skipped due to matching hash or size. */
   skipped: string[];
+  /** Optional provider-specific execution metadata. */
   metadata?: Record<string, unknown>;
 }
 
+/**
+ * Common metadata attributes shared across all asset provider interfaces.
+ */
 export interface AssetProviderMetadata {
+  /** Unique provider identifier (e.g. 'cryptpad-assets'). */
   providerId: string;
+  /** Human-readable provider name. */
   displayName: string;
+  /** Capability set declaring which asset operations are supported. */
   capabilities: ProviderCapabilitySet;
 }
 

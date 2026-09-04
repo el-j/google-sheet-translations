@@ -15,10 +15,19 @@ export const PROVIDER_CAPABILITIES = [
   'publicReadNoAuth',
 ] as const;
 
+/**
+ * Union of capability flag identifiers supported by the provider platform.
+ */
 export type ProviderCapability = (typeof PROVIDER_CAPABILITIES)[number];
 
+/**
+ * Record mapping each {@link ProviderCapability} to a boolean indicating whether it is supported.
+ */
 export type ProviderCapabilitySet = Record<ProviderCapability, boolean>;
 
+/**
+ * Baseline capability set where all capabilities are explicitly disabled (`false`).
+ */
 export const EMPTY_PROVIDER_CAPABILITIES: ProviderCapabilitySet = {
   readTables: false,
   writeTables: false,
@@ -45,6 +54,9 @@ export type ProviderOperation =
   | 'sync-assets'
   | 'public-read';
 
+/**
+ * Mapping defining which capabilities are mandatory for each {@link ProviderOperation}.
+ */
 export const OPERATION_CAPABILITY_REQUIREMENTS: Record<
   ProviderOperation,
   ProviderCapability[]

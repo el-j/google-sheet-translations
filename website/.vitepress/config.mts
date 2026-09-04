@@ -130,6 +130,7 @@ export default defineConfig({
           text: 'Provider Platform (v3)',
           items: [
             { text: 'Overview', link: '/api/provider-platform' },
+            { text: 'Provider Contracts', link: '/api/provider-contracts' },
             { text: 'Google Sheets Provider', link: '/api/google-provider' },
             { text: 'CryptPad Providers', link: '/api/cryptpad-provider' },
             { text: 'Migrate to v3', link: '/api/migrate-v3' },

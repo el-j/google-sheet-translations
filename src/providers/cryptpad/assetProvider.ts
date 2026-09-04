@@ -10,10 +10,15 @@ import type {
   CanonicalAssetEntry,
 } from '../assetContracts';
 
+/**
+ * Options for configuring a CryptPad asset synchronization provider.
+ */
 export interface CryptPadAssetSyncProviderOptions {
   /** Path to a JSON file containing a {@link CanonicalAssetEntry}[] manifest. */
   manifestPath: string;
+  /** Optional custom provider identifier. Defaults to 'cryptpad-assets'. */
   providerId?: string;
+  /** Optional human-friendly provider name. */
   displayName?: string;
 }
 

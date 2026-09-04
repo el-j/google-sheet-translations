@@ -127,4 +127,55 @@ describe('CLI Integration: gst-run-provider binary', () => {
     expect(stdout).toContain('Asset sync completed: 1 manifest entry, 1 downloaded, 0 updated, 0 deleted, 0 skipped.');
     expect(fs.readFileSync(path.join(assetTargetDir, 'images/logo.png'), 'utf8')).toBe('logo-bytes');
   });
+
+  it('runs asset sync using config-driven options when --asset-target-dir is omitted', async () => {
+    const projectRoot = createTempDir();
+    const csvPath = path.join(projectRoot, 'home.csv');
+    fs.writeFileSync(csvPath, 'key,en\nwelcome,Welcome\n', 'utf8');
+
+    const assetSourceDir = path.join(projectRoot, 'asset-source');
+    fs.mkdirSync(assetSourceDir, { recursive: true });
+    const logoPath = path.join(assetSourceDir, 'logo.png');
+    fs.writeFileSync(logoPath, 'logo-bytes-config', 'utf8');
+
+    const manifestPath = path.join(projectRoot, 'asset-manifest.json');
+    fs.writeFileSync(
+      manifestPath,
+      JSON.stringify([{ assetId: 'logo', relativePath: 'images/logo.png', sourcePath: logoPath }]),
+      'utf8',
+    );
+
+    const assetTargetDir = path.join(projectRoot, 'static/assets');
+
+    const configPath = path.join(projectRoot, 'provider.config.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        input: {
+          provider: 'cryptpad-csv',
+          options: { sources: [{ tableName: 'home', filePath: csvPath }] },
+        },
+        assetSync: {
+          provider: 'cryptpad-assets',
+          options: {
+            manifestPath,
+            targetDirectory: assetTargetDir,
+          },
+        },
+      }),
+      'utf8',
+    );
+
+    const { stdout } = await execFileAsync('node', [
+      cliPath,
+      `--config=${configPath}`,
+      '--sheet-titles=home',
+      `--translations-output-dir=${path.join(projectRoot, 'translations')}`,
+      `--locales-output-path=${path.join(projectRoot, 'src/i18n/locales.ts')}`,
+      `--data-json-path=${path.join(projectRoot, 'src/lib/languageData.json')}`,
+    ]);
+
+    expect(stdout).toContain('Asset sync completed: 1 manifest entry, 1 downloaded, 0 updated, 0 deleted, 0 skipped.');
+    expect(fs.readFileSync(path.join(assetTargetDir, 'images/logo.png'), 'utf8')).toBe('logo-bytes-config');
+  });
 });

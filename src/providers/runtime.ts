@@ -21,10 +21,17 @@ import type {
 import type { AssetSyncProvider } from './assetContracts';
 import type { ProviderRuntimeConfig } from './config';
 
+/**
+ * Set of instantiated providers resolved from a {@link ProviderRuntimeConfig}.
+ */
 export interface ProviderRuntimeSelection {
+  /** Required input provider for reading source tables. */
   inputProvider: TranslationInputProvider;
+  /** Optional output provider for writing destination tables. */
   outputProvider?: TranslationOutputProvider;
+  /** Optional sync provider for two-way / three-way changes sync. */
   syncProvider?: TranslationSyncProvider;
+  /** Optional asset sync provider for fetching and mirroring media assets. */
   assetSyncProvider?: AssetSyncProvider;
 }
 

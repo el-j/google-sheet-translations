@@ -4,8 +4,13 @@ import type { ProviderRuntimeConfig } from '../providers/config';
 import { mapLegacyGoogleOptionsToProviderConfig } from '../providers/config';
 import type { SpreadsheetOptions } from '../utils/configurationHandler';
 
+/**
+ * Options controlling the automated migration from v2 to v3 provider architecture.
+ */
 export interface MigrateV3Options {
+  /** Root directory of the project being migrated. Defaults to process.cwd(). */
   projectRoot?: string;
+  /** Relative destination path for generated provider config JSON (defaults to 'provider.config.json'). */
   providerConfigPath?: string;
   /** Preview changes without writing any files. */
   dryRun?: boolean;
@@ -24,14 +29,25 @@ export interface MigrationParityCheck {
   expectedConfig: ProviderRuntimeConfig;
 }
 
+/**
+ * Summary of actions taken and files modified during v3 project migration.
+ */
 export interface MigrateV3Result {
+  /** Resolved project root directory. */
   projectRoot: string;
+  /** Relative path to the generated provider configuration file. */
   providerConfigPath: string;
+  /** Concrete runtime configuration object generated from existing project setup. */
   providerConfig: ProviderRuntimeConfig;
+  /** Paths of GitHub Actions workflows containing legacy configurations found. */
   legacyWorkflowsFound: string[];
+  /** Paths of workflows rewritten to reference provider-config-path. */
   rewrittenWorkflows: string[];
+  /** Paths of newly created files on disk. */
   createdFiles: string[];
+  /** Warning messages produced during migration (e.g. conflicting settings). */
   warnings: string[];
+  /** Detailed parity check outcome when parityCheck option was enabled. */
   parityCheck?: MigrationParityCheck;
 }
 

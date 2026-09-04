@@ -21,13 +21,23 @@ export interface ProviderRuntimeConfig {
   assetSync?: ProviderReferenceConfig;
 }
 
+/**
+ * Outcome returned by {@link validateProviderRuntimeConfig}.
+ */
 export interface ProviderConfigValidationResult {
+  /** True when the configuration satisfies all syntactic and structural requirements. */
   valid: boolean;
+  /** List of validation error messages encountered during inspection. */
   errors: string[];
 }
 
+/**
+ * Result returned when mapping legacy spreadsheet options to a v3 provider runtime configuration.
+ */
 export interface LegacyConfigMappingResult {
+  /** Generated modern provider runtime configuration. */
   config: ProviderRuntimeConfig;
+  /** Explanatory deprecation warnings advising migration steps. */
   deprecations: string[];
 }
 

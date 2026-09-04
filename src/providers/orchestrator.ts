@@ -12,33 +12,61 @@ import type {
 } from './contracts';
 import type { AssetSyncProvider, AssetSyncResult } from './assetContracts';
 
+/**
+ * Configuration options for executing asset sync within the provider pipeline.
+ */
 export interface ProviderAssetSyncRequestOptions {
+  /** Local directory where synchronized assets will be written. */
   targetDirectory: string;
+  /** When true, local files in targetDirectory not found in the manifest are removed. */
   deleteMissing?: boolean;
 }
 
+/**
+ * Input options supplied to {@link runProviderPipeline} to configure input, output,
+ * sync, asset sync providers, and execution parameters.
+ */
 export interface ProviderPipelineOptions {
+  /** Provider responsible for reading canonical source tables. */
   inputProvider: TranslationInputProvider;
+  /** Optional provider responsible for writing canonical tables to a destination. */
   outputProvider?: TranslationOutputProvider;
+  /** Optional provider responsible for reconciling local changes back to the remote source. */
   syncProvider?: TranslationSyncProvider;
   /** Optional asset-sync provider (e.g. CryptPad asset manifest sync). Runs only when `assetSync` is also set. */
   assetSyncProvider?: AssetSyncProvider;
   /** Target directory (and delete-missing behavior) for the asset sync run. Ignored if `assetSyncProvider` is absent. */
   assetSync?: ProviderAssetSyncRequestOptions;
+  /** Explicit list of table names to process. Defaults to input provider default if omitted. */
   tableNames?: string[];
+  /** Snapshot of local translations used for three-way sync back. */
   localTranslationsForSync?: TranslationData;
+  /** Optional abort signal for cancelling in-flight operations. */
   signal?: AbortSignal;
 }
 
+/**
+ * Result returned by {@link runProviderPipeline} containing processed translations,
+ * discovered locales, mapping tables, and optional step results.
+ */
 export interface ProviderPipelineResult {
+  /** Merged translation data structured by locale -> table -> key -> value. */
   translations: TranslationData;
+  /** Normalized list of locale identifiers present in the translations. */
   locales: string[];
+  /** Mapping of original header columns to normalized locale codes. */
   localeMapping: Record<string, string>;
+  /** Original locale mapping preserved for reverse lookup. */
   originalLocaleMapping: Record<string, string>;
+  /** Total number of tables read from the input provider. */
   inputTableCount: number;
+  /** Result from the output provider stage, if outputProvider was configured. */
   outputResult?: TranslationOutputResult;
+  /** Result from the sync provider stage, if syncProvider was configured. */
   syncResult?: TranslationSyncResult;
+  /** Result from the asset sync provider stage, if assetSyncProvider was configured and executed. */
   assetSyncResult?: AssetSyncResult;
+  /** Additional provider-specific metadata returned from the pipeline execution. */
   metadata?: Record<string, unknown>;
 }
 

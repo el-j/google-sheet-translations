@@ -1392,14 +1392,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path8 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path10 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path8 && path8[0] !== "/") {
-          path8 = `/${path8}`;
+        if (path10 && path10[0] !== "/") {
+          path10 = `/${path10}`;
         }
-        return new URL(`${origin}${path8}`);
+        return new URL(`${origin}${path10}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -2220,9 +2220,9 @@ var require_diagnostics = __commonJS({
         "undici:client:sendHeaders",
         (evt) => {
           const {
-            request: { method, path: path8, origin }
+            request: { method, path: path10, origin }
           } = evt;
-          debugLog("sending request to %s %s%s", method, origin, path8);
+          debugLog("sending request to %s %s%s", method, origin, path10);
         }
       );
     }
@@ -2240,14 +2240,14 @@ var require_diagnostics = __commonJS({
         "undici:request:headers",
         (evt) => {
           const {
-            request: { method, path: path8, origin },
+            request: { method, path: path10, origin },
             response: { statusCode }
           } = evt;
           debugLog(
             "received response to %s %s%s - HTTP %d",
             method,
             origin,
-            path8,
+            path10,
             statusCode
           );
         }
@@ -2256,23 +2256,23 @@ var require_diagnostics = __commonJS({
         "undici:request:trailers",
         (evt) => {
           const {
-            request: { method, path: path8, origin }
+            request: { method, path: path10, origin }
           } = evt;
-          debugLog("trailers received from %s %s%s", method, origin, path8);
+          debugLog("trailers received from %s %s%s", method, origin, path10);
         }
       );
       diagnosticsChannel.subscribe(
         "undici:request:error",
         (evt) => {
           const {
-            request: { method, path: path8, origin },
+            request: { method, path: path10, origin },
             error: error2
           } = evt;
           debugLog(
             "request to %s %s%s errored - %s",
             method,
             origin,
-            path8,
+            path10,
             error2.message
           );
         }
@@ -2387,7 +2387,7 @@ var require_request = __commonJS({
     var kHandler = /* @__PURE__ */ Symbol("handler");
     var Request3 = class {
       constructor(origin, {
-        path: path8,
+        path: path10,
         method,
         body,
         headers,
@@ -2404,11 +2404,11 @@ var require_request = __commonJS({
         maxRedirections,
         typeOfService
       }, handler) {
-        if (typeof path8 !== "string") {
+        if (typeof path10 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path8[0] !== "/" && !(path8.startsWith("http://") || path8.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path10[0] !== "/" && !(path10.startsWith("http://") || path10.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path8)) {
+        } else if (invalidPathRegex.test(path10)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -2483,7 +2483,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? serializePathWithQuery(path8, query) : path8;
+        this.path = query ? serializePathWithQuery(path10, query) : path10;
         this.origin = origin;
         this.protocol = getProtocolFromUrlString(origin);
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
@@ -7666,7 +7666,7 @@ var require_client_h1 = __commonJS({
       return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
     }
     function writeH1(client, request) {
-      const { method, path: path8, host, upgrade, blocking, reset } = request;
+      const { method, path: path10, host, upgrade, blocking, reset } = request;
       let { body, headers, contentLength } = request;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util.isFormDataLike(body)) {
@@ -7744,7 +7744,7 @@ var require_client_h1 = __commonJS({
       if (socket.setTypeOfService) {
         socket.setTypeOfService(request.typeOfService);
       }
-      let header = `${method} ${path8} HTTP/1.1\r
+      let header = `${method} ${path10} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -8397,7 +8397,7 @@ var require_client_h2 = __commonJS({
     function writeH2(client, request) {
       const requestTimeout = request.bodyTimeout ?? client[kBodyTimeout];
       const session = client[kHTTP2Session];
-      const { method, path: path8, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
+      const { method, path: path10, host, upgrade, expectContinue, signal, protocol, headers: reqHeaders } = request;
       let { body } = request;
       if (upgrade != null && upgrade !== "websocket") {
         util.errorRequest(client, request, new InvalidArgumentError(`Custom upgrade "${upgrade}" not supported over HTTP/2`));
@@ -8465,7 +8465,7 @@ var require_client_h2 = __commonJS({
           }
           headers[HTTP2_HEADER_METHOD] = "CONNECT";
           headers[HTTP2_HEADER_PROTOCOL] = "websocket";
-          headers[HTTP2_HEADER_PATH] = path8;
+          headers[HTTP2_HEADER_PATH] = path10;
           if (protocol === "ws:" || protocol === "wss:") {
             headers[HTTP2_HEADER_SCHEME] = protocol === "ws:" ? "http" : "https";
           } else {
@@ -8506,7 +8506,7 @@ var require_client_h2 = __commonJS({
         stream.setTimeout(requestTimeout);
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path8;
+      headers[HTTP2_HEADER_PATH] = path10;
       headers[HTTP2_HEADER_SCHEME] = protocol === "http:" ? "http" : "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -10849,10 +10849,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path8 = "/",
+          path: path10 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path8;
+        opts.path = origin + path10;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL(origin);
           headers.host = host;
@@ -12883,10 +12883,10 @@ var require_mock_utils = __commonJS({
       }
     }
     function buildHeadersFromArray(headers) {
-      const clone2 = headers.slice();
+      const clone3 = headers.slice();
       const entries = [];
-      for (let index = 0; index < clone2.length; index += 2) {
-        entries.push([clone2[index], clone2[index + 1]]);
+      for (let index = 0; index < clone3.length; index += 2) {
+        entries.push([clone3[index], clone3[index + 1]]);
       }
       return Object.fromEntries(entries);
     }
@@ -12935,20 +12935,20 @@ var require_mock_utils = __commonJS({
       }
       return normalizedQp;
     }
-    function safeUrl(path8) {
-      if (typeof path8 !== "string") {
-        return path8;
+    function safeUrl(path10) {
+      if (typeof path10 !== "string") {
+        return path10;
       }
-      const pathSegments = path8.split("?", 3);
+      const pathSegments = path10.split("?", 3);
       if (pathSegments.length !== 2) {
-        return path8;
+        return path10;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path8, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path8);
+    function matchKey(mockDispatch2, { path: path10, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path10);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -12973,8 +12973,8 @@ var require_mock_utils = __commonJS({
       const basePath = key.query ? serializePathWithQuery(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
       const resolvedPathWithoutTrailingSlash = removeTrailingSlash(resolvedPath);
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path8, ignoreTrailingSlash }) => {
-        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path8)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path8), resolvedPath);
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path10, ignoreTrailingSlash }) => {
+        return ignoreTrailingSlash ? matchValue(removeTrailingSlash(safeUrl(path10)), resolvedPathWithoutTrailingSlash) : matchValue(safeUrl(path10), resolvedPath);
       });
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
@@ -13013,19 +13013,19 @@ var require_mock_utils = __commonJS({
         mockDispatches.splice(index, 1);
       }
     }
-    function removeTrailingSlash(path8) {
-      while (path8.endsWith("/")) {
-        path8 = path8.slice(0, -1);
+    function removeTrailingSlash(path10) {
+      while (path10.endsWith("/")) {
+        path10 = path10.slice(0, -1);
       }
-      if (path8.length === 0) {
-        path8 = "/";
+      if (path10.length === 0) {
+        path10 = "/";
       }
-      return path8;
+      return path10;
     }
     function buildKey(opts) {
-      const { path: path8, method, body, headers, query } = opts;
+      const { path: path10, method, body, headers, query } = opts;
       return {
-        path: path8,
+        path: path10,
         method,
         body,
         headers,
@@ -13715,10 +13715,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path8, data: { statusCode }, persist, times: times2, timesInvoked, origin }) => ({
+          ({ method, path: path10, data: { statusCode }, persist, times: times2, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path8,
+            Path: path10,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -13800,9 +13800,9 @@ var require_mock_agent = __commonJS({
         const acceptNonStandardSearchParameters = this[kMockAgentAcceptsNonStandardSearchParameters];
         const dispatchOpts = { ...opts };
         if (acceptNonStandardSearchParameters && dispatchOpts.path) {
-          const [path8, searchParams] = dispatchOpts.path.split("?");
+          const [path10, searchParams] = dispatchOpts.path.split("?");
           const normalizedSearchParams = normalizeSearchParams(searchParams, acceptNonStandardSearchParameters);
-          dispatchOpts.path = `${path8}?${normalizedSearchParams}`;
+          dispatchOpts.path = `${path10}?${normalizedSearchParams}`;
         }
         return this[kAgent].dispatch(dispatchOpts, handler);
       }
@@ -13930,8 +13930,8 @@ var require_snapshot_utils = __commonJS({
         match: new Set(matchHeaders.map((header) => caseSensitive ? header : header.toLowerCase()))
       };
     }
-    var crypto3 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
-    var hashId = crypto3?.hash ? (value) => crypto3.hash("sha256", value, "base64url") : (value) => Buffer.from(value).toString("base64url");
+    var crypto4 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
+    var hashId = crypto4?.hash ? (value) => crypto4.hash("sha256", value, "base64url") : (value) => Buffer.from(value).toString("base64url");
     function isUndiciHeaders(headers) {
       return Array.isArray(headers) && (headers.length & 1) === 0;
     }
@@ -14203,12 +14203,12 @@ var require_snapshot_recorder = __commonJS({
        * @return {Promise<void>} - Resolves when snapshots are loaded
        */
       async loadSnapshots(filePath) {
-        const path8 = filePath || this.#snapshotPath;
-        if (!path8) {
+        const path10 = filePath || this.#snapshotPath;
+        if (!path10) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
         try {
-          const data = await readFile(resolve(path8), "utf8");
+          const data = await readFile(resolve(path10), "utf8");
           const parsed = JSON.parse(data);
           if (Array.isArray(parsed)) {
             this.#snapshots.clear();
@@ -14222,7 +14222,7 @@ var require_snapshot_recorder = __commonJS({
           if (error2.code === "ENOENT") {
             this.#snapshots.clear();
           } else {
-            throw new UndiciError(`Failed to load snapshots from ${path8}`, { cause: error2 });
+            throw new UndiciError(`Failed to load snapshots from ${path10}`, { cause: error2 });
           }
         }
       }
@@ -14233,11 +14233,11 @@ var require_snapshot_recorder = __commonJS({
        * @returns {Promise<void>} - Resolves when snapshots are saved
        */
       async saveSnapshots(filePath) {
-        const path8 = filePath || this.#snapshotPath;
-        if (!path8) {
+        const path10 = filePath || this.#snapshotPath;
+        if (!path10) {
           throw new InvalidArgumentError("Snapshot path is required");
         }
-        const resolvedPath = resolve(path8);
+        const resolvedPath = resolve(path10);
         await mkdir2(dirname2(resolvedPath), { recursive: true });
         const data = Array.from(this.#snapshots.entries()).map(([hash, snapshot]) => ({
           hash,
@@ -14869,15 +14869,15 @@ var require_redirect_handler = __commonJS({
           return;
         }
         const { origin, pathname, search } = util.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path8 = search ? `${pathname}${search}` : pathname;
-        const redirectUrlString = `${origin}${path8}`;
+        const path10 = search ? `${pathname}${search}` : pathname;
+        const redirectUrlString = `${origin}${path10}`;
         for (const historyUrl of this.history) {
           if (historyUrl.toString() === redirectUrlString) {
             throw new InvalidArgumentError(`Redirect loop detected. Cannot redirect to ${origin}. This typically happens when using a Client or Pool with cross-origin redirects. Use an Agent for cross-origin redirects.`);
           }
         }
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path8;
+        this.opts.path = path10;
         this.opts.origin = origin;
         this.opts.query = null;
       }
@@ -16646,10 +16646,10 @@ var require_cache_handler = __commonJS({
       }
       return locationUrl.pathname + locationUrl.search;
     }
-    function deleteCachedUri(store, cacheKey, path8) {
+    function deleteCachedUri(store, cacheKey, path10) {
       deleteCachedValue(store, {
         ...cacheKey,
-        path: path8
+        path: path10
       });
       for (let i2 = 0; i2 < util.safeHTTPMethods.length; i2++) {
         const method = util.safeHTTPMethods[i2];
@@ -16657,7 +16657,7 @@ var require_cache_handler = __commonJS({
           deleteCachedValue(store, {
             ...cacheKey,
             method,
-            path: path8
+            path: path10
           });
         }
       }
@@ -16668,9 +16668,9 @@ var require_cache_handler = __commonJS({
       }
       const values2 = Array.isArray(headerValue) ? headerValue : [headerValue];
       for (let i2 = 0; i2 < values2.length; i2++) {
-        const path8 = getSameOriginPath(cacheKey, values2[i2]);
-        if (path8 !== void 0) {
-          deleteCachedUri(store, cacheKey, path8);
+        const path10 = getSameOriginPath(cacheKey, values2[i2]);
+        if (path10 !== void 0) {
+          deleteCachedUri(store, cacheKey, path10);
         }
       }
     }
@@ -20460,10 +20460,10 @@ var require_subresource_integrity = __commonJS({
     var assert = __require("node:assert");
     var { runtimeFeatures } = require_runtime_features();
     var validSRIHashAlgorithmTokenSet = /* @__PURE__ */ new Map([["sha256", 0], ["sha384", 1], ["sha512", 2]]);
-    var crypto3;
+    var crypto4;
     if (runtimeFeatures.has("crypto")) {
-      crypto3 = __require("node:crypto");
-      const cryptoHashes = crypto3.getHashes();
+      crypto4 = __require("node:crypto");
+      const cryptoHashes = crypto4.getHashes();
       if (cryptoHashes.length === 0) {
         validSRIHashAlgorithmTokenSet.clear();
       }
@@ -20553,7 +20553,7 @@ var require_subresource_integrity = __commonJS({
       return result;
     }
     var applyAlgorithmToBytes = (algorithm, bytes) => {
-      return crypto3.hash(algorithm, bytes, "base64");
+      return crypto4.hash(algorithm, bytes, "base64");
     };
     function caseSensitiveMatch(actualValue, expectedValue) {
       let actualValueLength = actualValue.length;
@@ -21548,11 +21548,11 @@ var require_fetch = __commonJS({
       function dispatch({ body }) {
         const url = requestCurrentURL(request);
         const agent = fetchParams.controller.dispatcher;
-        const path8 = url.pathname + url.search;
+        const path10 = url.pathname + url.search;
         const hasTrailingQuestionMark = url.search.length === 0 && url.href[url.href.length - url.hash.length - 1] === "?";
         return new Promise((resolve, reject) => agent.dispatch(
           {
-            path: hasTrailingQuestionMark ? `${path8}?` : path8,
+            path: hasTrailingQuestionMark ? `${path10}?` : path10,
             origin: url.origin,
             method: request.method,
             body: agent.isMockActive ? request.body && (request.body.source || request.body.stream) : body,
@@ -22499,9 +22499,9 @@ var require_util4 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path8) {
-      for (let i2 = 0; i2 < path8.length; ++i2) {
-        const code = path8.charCodeAt(i2);
+    function validateCookiePath(path10) {
+      for (let i2 = 0; i2 < path10.length; ++i2) {
+        const code = path10.charCodeAt(i2);
         if (code < 32 || // exclude CTLs (0-31)
         code > 126 || // exclude DEL and non-ascii
         code === 59) {
@@ -23536,7 +23536,7 @@ var require_connection = __commonJS({
     var { WebsocketFrameSend } = require_frame();
     var assert = __require("node:assert");
     var { runtimeFeatures } = require_runtime_features();
-    var crypto3 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
+    var crypto4 = runtimeFeatures.has("crypto") ? __require("node:crypto") : null;
     var warningEmitted = false;
     function establishWebSocketConnection(url, protocols, client, handler, options) {
       const requestURL = url;
@@ -23556,7 +23556,7 @@ var require_connection = __commonJS({
         const headersList = getHeadersList(new Headers4(options.headers));
         request.headersList = headersList;
       }
-      const keyValue = crypto3.randomBytes(16).toString("base64");
+      const keyValue = crypto4.randomBytes(16).toString("base64");
       request.headersList.append("sec-websocket-key", keyValue, true);
       request.headersList.append("sec-websocket-version", "13", true);
       for (const protocol of protocols) {
@@ -23596,7 +23596,7 @@ var require_connection = __commonJS({
             return;
           }
           const secWSAccept = response.headersList.get("Sec-WebSocket-Accept");
-          const digest = crypto3.hash("sha1", keyValue + uid, "base64");
+          const digest = crypto4.hash("sha1", keyValue + uid, "base64");
           if (secWSAccept !== digest) {
             failWebsocketConnection(handler, 1002, "Incorrect hash received in Sec-WebSocket-Accept header.");
             return;
@@ -25738,11 +25738,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path8 = opts.path;
+          let path10 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path8 = `/${path8}`;
+            path10 = `/${path10}`;
           }
-          url = new URL(util.parseOrigin(url).origin + path8);
+          url = new URL(util.parseOrigin(url).origin + path10);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -25902,7 +25902,7 @@ var require_extend = __commonJS({
       return obj[name];
     };
     module.exports = function extend() {
-      var options, name, src, copy, copyIsArray, clone2;
+      var options, name, src, copy, copyIsArray, clone3;
       var target = arguments[0];
       var i2 = 1;
       var length = arguments.length;
@@ -25925,11 +25925,11 @@ var require_extend = __commonJS({
               if (deep && copy && (isPlainObject4(copy) || (copyIsArray = isArray2(copy)))) {
                 if (copyIsArray) {
                   copyIsArray = false;
-                  clone2 = src && isArray2(src) ? src : [];
+                  clone3 = src && isArray2(src) ? src : [];
                 } else {
-                  clone2 = src && isPlainObject4(src) ? src : {};
+                  clone3 = src && isPlainObject4(src) ? src : {};
                 }
-                setProperty(target, { name, newValue: extend(deep, clone2, copy) });
+                setProperty(target, { name, newValue: extend(deep, clone3, copy) });
               } else if (typeof copy !== "undefined") {
                 setProperty(target, { name, newValue: copy });
               }
@@ -26434,7 +26434,7 @@ var require_ms = __commonJS({
       options = options || {};
       var type = typeof val;
       if (type === "string" && val.length > 0) {
-        return parse(val);
+        return parse2(val);
       } else if (type === "number" && isFinite(val)) {
         return options.long ? fmtLong(val) : fmtShort(val);
       }
@@ -26442,7 +26442,7 @@ var require_ms = __commonJS({
         "val is not a non-empty string or a valid number. val=" + JSON.stringify(val)
       );
     };
-    function parse(str) {
+    function parse2(str) {
       str = String(str);
       if (str.length > 100) {
         return;
@@ -27952,11 +27952,11 @@ var require_ponyfill_es2018 = __commonJS({
           throw new TypeError(`${context} is not a function.`);
         }
       }
-      function isObject3(x2) {
+      function isObject4(x2) {
         return typeof x2 === "object" && x2 !== null || typeof x2 === "function";
       }
       function assertObject(x2, context) {
-        if (!isObject3(x2)) {
+        if (!isObject4(x2)) {
           throw new TypeError(`${context} is not an object.`);
         }
       }
@@ -31237,17 +31237,17 @@ var require_ponyfill_es2018 = __commonJS({
             throw streamBrandCheckException$1("pipeThrough");
           }
           assertRequiredArgument(rawTransform, 1, "pipeThrough");
-          const transform = convertReadableWritablePair(rawTransform, "First parameter");
+          const transform2 = convertReadableWritablePair(rawTransform, "First parameter");
           const options = convertPipeOptions(rawOptions, "Second parameter");
           if (IsReadableStreamLocked(this)) {
             throw new TypeError("ReadableStream.prototype.pipeThrough cannot be used on a locked ReadableStream");
           }
-          if (IsWritableStreamLocked(transform.writable)) {
+          if (IsWritableStreamLocked(transform2.writable)) {
             throw new TypeError("ReadableStream.prototype.pipeThrough cannot be used on a locked WritableStream");
           }
-          const promise = ReadableStreamPipeTo(this, transform.writable, options.preventClose, options.preventAbort, options.preventCancel, options.signal);
+          const promise = ReadableStreamPipeTo(this, transform2.writable, options.preventClose, options.preventAbort, options.preventCancel, options.signal);
           setPromiseIsHandledToTrue(promise);
-          return transform.readable;
+          return transform2.readable;
         }
         pipeTo(destination, rawOptions = {}) {
           if (!IsReadableStream(this)) {
@@ -31545,14 +31545,14 @@ var require_ponyfill_es2018 = __commonJS({
         const flush = original === null || original === void 0 ? void 0 : original.flush;
         const readableType = original === null || original === void 0 ? void 0 : original.readableType;
         const start = original === null || original === void 0 ? void 0 : original.start;
-        const transform = original === null || original === void 0 ? void 0 : original.transform;
+        const transform2 = original === null || original === void 0 ? void 0 : original.transform;
         const writableType = original === null || original === void 0 ? void 0 : original.writableType;
         return {
           cancel: cancel === void 0 ? void 0 : convertTransformerCancelCallback(cancel, original, `${context} has member 'cancel' that`),
           flush: flush === void 0 ? void 0 : convertTransformerFlushCallback(flush, original, `${context} has member 'flush' that`),
           readableType,
           start: start === void 0 ? void 0 : convertTransformerStartCallback(start, original, `${context} has member 'start' that`),
-          transform: transform === void 0 ? void 0 : convertTransformerTransformCallback(transform, original, `${context} has member 'transform' that`),
+          transform: transform2 === void 0 ? void 0 : convertTransformerTransformCallback(transform2, original, `${context} has member 'transform' that`),
           writableType
         };
       }
@@ -32022,7 +32022,7 @@ var require_streams = __commonJS({
 });
 
 // node_modules/fetch-blob/index.js
-async function* toIterator(parts, clone2 = true) {
+async function* toIterator(parts, clone3 = true) {
   for (const part of parts) {
     if ("stream" in part) {
       yield* (
@@ -32030,7 +32030,7 @@ async function* toIterator(parts, clone2 = true) {
         part.stream()
       );
     } else if (ArrayBuffer.isView(part)) {
-      if (clone2) {
+      if (clone3) {
         let position = part.byteOffset;
         const end = part.byteOffset + part.byteLength;
         while (position !== end) {
@@ -32460,22 +32460,22 @@ var init_from = __esm({
     init_file();
     init_fetch_blob();
     ({ stat: stat2 } = fs3);
-    blobFromSync = (path8, type) => fromBlob(statSync(path8), path8, type);
-    blobFrom = (path8, type) => stat2(path8).then((stat3) => fromBlob(stat3, path8, type));
-    fileFrom = (path8, type) => stat2(path8).then((stat3) => fromFile(stat3, path8, type));
-    fileFromSync = (path8, type) => fromFile(statSync(path8), path8, type);
-    fromBlob = (stat3, path8, type = "") => new fetch_blob_default([new BlobDataItem({
-      path: path8,
+    blobFromSync = (path10, type) => fromBlob(statSync(path10), path10, type);
+    blobFrom = (path10, type) => stat2(path10).then((stat3) => fromBlob(stat3, path10, type));
+    fileFrom = (path10, type) => stat2(path10).then((stat3) => fromFile(stat3, path10, type));
+    fileFromSync = (path10, type) => fromFile(statSync(path10), path10, type);
+    fromBlob = (stat3, path10, type = "") => new fetch_blob_default([new BlobDataItem({
+      path: path10,
       size: stat3.size,
       lastModified: stat3.mtimeMs,
       start: 0
     })], { type });
-    fromFile = (stat3, path8, type = "") => new file_default([new BlobDataItem({
-      path: path8,
+    fromFile = (stat3, path10, type = "") => new file_default([new BlobDataItem({
+      path: path10,
       size: stat3.size,
       lastModified: stat3.mtimeMs,
       start: 0
-    })], basename(path8), { type, lastModified: stat3.mtimeMs });
+    })], basename(path10), { type, lastModified: stat3.mtimeMs });
     BlobDataItem = class _BlobDataItem {
       #path;
       #start;
@@ -34662,7 +34662,7 @@ var require_bignumber = __commonJS({
     (function(globalObject) {
       "use strict";
       var BigNumber, isNumeric = /^-?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i, mathceil = Math.ceil, mathfloor = Math.floor, bignumberError = "[BigNumber Error] ", tooManyDigits = bignumberError + "Number primitive has more than 15 significant digits: ", BASE = 1e14, LOG_BASE = 14, MAX_SAFE_INTEGER = 9007199254740991, POWS_TEN = [1, 10, 100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12, 1e13], SQRT_BASE = 1e7, MAX = 1e9;
-      function clone2(configObject) {
+      function clone3(configObject) {
         var div, convertBase, parseNumeric, P = BigNumber2.prototype = { constructor: BigNumber2, toString: null, valueOf: null }, ONE = new BigNumber2(1), DECIMAL_PLACES = 20, ROUNDING_MODE = 4, TO_EXP_NEG = -7, TO_EXP_POS = 21, MIN_EXP = -1e7, MAX_EXP = 1e7, CRYPTO = false, MODULO_MODE = 1, POW_PRECISION = 0, FORMAT = {
           prefix: "",
           groupSize: 3,
@@ -34788,7 +34788,7 @@ var require_bignumber = __commonJS({
             x2.c = [x2.e = 0];
           }
         }
-        BigNumber2.clone = clone2;
+        BigNumber2.clone = clone3;
         BigNumber2.ROUND_UP = 0;
         BigNumber2.ROUND_DOWN = 1;
         BigNumber2.ROUND_CEIL = 2;
@@ -35989,7 +35989,7 @@ var require_bignumber = __commonJS({
         }
         return str;
       }
-      BigNumber = clone2();
+      BigNumber = clone3();
       BigNumber["default"] = BigNumber.BigNumber = BigNumber;
       if (typeof define == "function" && define.amd) {
         define(function() {
@@ -36097,16 +36097,16 @@ var require_stringify = __commonJS({
         }
       }
       if (typeof JSON2.stringify !== "function") {
-        JSON2.stringify = function(value, replacer, space) {
+        JSON2.stringify = function(value, replacer, space2) {
           var i2;
           gap = "";
           indent = "";
-          if (typeof space === "number") {
-            for (i2 = 0; i2 < space; i2 += 1) {
+          if (typeof space2 === "number") {
+            for (i2 = 0; i2 < space2; i2 += 1) {
               indent += " ";
             }
-          } else if (typeof space === "string") {
-            indent = space;
+          } else if (typeof space2 === "string") {
+            indent = space2;
           }
           rep = replacer;
           if (replacer && typeof replacer !== "function" && (typeof replacer !== "object" || typeof replacer.length !== "number")) {
@@ -37350,22 +37350,22 @@ var require_crypto2 = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.NodeCrypto = void 0;
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var NodeCrypto = class {
       async sha256DigestBase64(str) {
-        return crypto3.createHash("sha256").update(str).digest("base64");
+        return crypto4.createHash("sha256").update(str).digest("base64");
       }
       randomBytesBase64(count) {
-        return crypto3.randomBytes(count).toString("base64");
+        return crypto4.randomBytes(count).toString("base64");
       }
       async verify(pubkey, data, signature) {
-        const verifier = crypto3.createVerify("RSA-SHA256");
+        const verifier = crypto4.createVerify("RSA-SHA256");
         verifier.update(data);
         verifier.end();
         return verifier.verify(pubkey, signature, "base64");
       }
       async sign(privateKey, data) {
-        const signer = crypto3.createSign("RSA-SHA256");
+        const signer = crypto4.createSign("RSA-SHA256");
         signer.update(data);
         signer.end();
         return signer.sign(privateKey, "base64");
@@ -37383,7 +37383,7 @@ var require_crypto2 = __commonJS({
        *   string in hexadecimal encoding.
        */
       async sha256DigestHex(str) {
-        return crypto3.createHash("sha256").update(str).digest("hex");
+        return crypto4.createHash("sha256").update(str).digest("hex");
       }
       /**
        * Computes the HMAC hash of a message using the provided crypto key and the
@@ -37395,7 +37395,7 @@ var require_crypto2 = __commonJS({
        */
       async signWithHmacSha256(key, msg) {
         const cryptoKey = typeof key === "string" ? key : toBuffer(key);
-        return toArrayBuffer(crypto3.createHmac("sha256", cryptoKey).update(msg).digest());
+        return toArrayBuffer(crypto4.createHmac("sha256", cryptoKey).update(msg).digest());
       }
     };
     exports.NodeCrypto = NodeCrypto;
@@ -37684,9 +37684,9 @@ var require_util8 = __commonJS({
     exports.removeUndefinedValuesInObject = removeUndefinedValuesInObject;
     exports.isValidFile = isValidFile;
     exports.getWellKnownCertificateConfigFileLocation = getWellKnownCertificateConfigFileLocation;
-    var fs10 = __require("fs");
+    var fs14 = __require("fs");
     var os5 = __require("os");
-    var path8 = __require("path");
+    var path10 = __require("path");
     var WELL_KNOWN_CERTIFICATE_CONFIG_FILE = "certificate_config.json";
     var CLOUDSDK_CONFIG_DIRECTORY = "gcloud";
     function snakeToCamel(str) {
@@ -37772,15 +37772,15 @@ var require_util8 = __commonJS({
     }
     async function isValidFile(filePath) {
       try {
-        const stats = await fs10.promises.lstat(filePath);
+        const stats = await fs14.promises.lstat(filePath);
         return stats.isFile();
       } catch (e2) {
         return false;
       }
     }
     function getWellKnownCertificateConfigFileLocation() {
-      const configDir = process.env.CLOUDSDK_CONFIG || (_isWindows() ? path8.join(process.env.APPDATA || "", CLOUDSDK_CONFIG_DIRECTORY) : path8.join(process.env.HOME || "", ".config", CLOUDSDK_CONFIG_DIRECTORY));
-      return path8.join(configDir, WELL_KNOWN_CERTIFICATE_CONFIG_FILE);
+      const configDir = process.env.CLOUDSDK_CONFIG || (_isWindows() ? path10.join(process.env.APPDATA || "", CLOUDSDK_CONFIG_DIRECTORY) : path10.join(process.env.HOME || "", ".config", CLOUDSDK_CONFIG_DIRECTORY));
+      return path10.join(configDir, WELL_KNOWN_CERTIFICATE_CONFIG_FILE);
     }
     function _isWindows() {
       return os5.platform().startsWith("win");
@@ -38308,10 +38308,10 @@ var require_oauth2client = __commonJS({
        * https://github.com/googleapis/google-auth-library-nodejs/blob/main/samples/oauth2-codeVerifier.js
        */
       async generateCodeVerifierAsync() {
-        const crypto3 = (0, crypto_1.createCrypto)();
-        const randomString = crypto3.randomBytesBase64(96);
+        const crypto4 = (0, crypto_1.createCrypto)();
+        const randomString = crypto4.randomBytesBase64(96);
         const codeVerifier = randomString.replace(/\+/g, "~").replace(/=/g, "_").replace(/\//g, "-");
-        const unencodedCodeChallenge = await crypto3.sha256DigestBase64(codeVerifier);
+        const unencodedCodeChallenge = await crypto4.sha256DigestBase64(codeVerifier);
         const codeChallenge = unencodedCodeChallenge.split("=")[0].replace(/\+/g, "-").replace(/\//g, "_");
         return { codeVerifier, codeChallenge };
       }
@@ -38752,7 +38752,7 @@ var require_oauth2client = __commonJS({
        * @return Returns a promise resolving to LoginTicket on verification.
        */
       async verifySignedJwtWithCertsAsync(jwt, certs, requiredAudience, issuers, maxExpiry) {
-        const crypto3 = (0, crypto_1.createCrypto)();
+        const crypto4 = (0, crypto_1.createCrypto)();
         if (!maxExpiry) {
           maxExpiry = _OAuth2Client.DEFAULT_MAX_TOKEN_LIFETIME_SECS_;
         }
@@ -38765,7 +38765,7 @@ var require_oauth2client = __commonJS({
         let envelope;
         let payload;
         try {
-          envelope = JSON.parse(crypto3.decodeBase64StringUtf8(segments[0]));
+          envelope = JSON.parse(crypto4.decodeBase64StringUtf8(segments[0]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token envelope: ${segments[0]}': ${err.message}`;
@@ -38776,7 +38776,7 @@ var require_oauth2client = __commonJS({
           throw new Error("Can't parse token envelope: " + segments[0]);
         }
         try {
-          payload = JSON.parse(crypto3.decodeBase64StringUtf8(segments[1]));
+          payload = JSON.parse(crypto4.decodeBase64StringUtf8(segments[1]));
         } catch (err) {
           if (err instanceof Error) {
             err.message = `Can't parse token payload '${segments[0]}`;
@@ -38793,7 +38793,7 @@ var require_oauth2client = __commonJS({
         if (envelope.alg === "ES256") {
           signature = formatEcdsa.joseToDer(signature, "ES256").toString("base64");
         }
-        const verified = await crypto3.verify(cert, signed, signature);
+        const verified = await crypto4.verify(cert, signed, signature);
         if (!verified) {
           throw new Error("Invalid token signature: " + jwt);
         }
@@ -39168,14 +39168,14 @@ var require_buffer_equal_constant_time = __commonJS({
 var require_jwa = __commonJS({
   "node_modules/jwa/index.js"(exports, module) {
     var Buffer4 = require_safe_buffer().Buffer;
-    var crypto3 = __require("crypto");
+    var crypto4 = __require("crypto");
     var formatEcdsa = require_ecdsa_sig_formatter();
     var util = __require("util");
     var MSG_INVALID_ALGORITHM = '"%s" is not a valid algorithm.\n  Supported algorithms are:\n  "HS256", "HS384", "HS512", "RS256", "RS384", "RS512", "PS256", "PS384", "PS512", "ES256", "ES384", "ES512" and "none".';
     var MSG_INVALID_SECRET = "secret must be a string or buffer";
     var MSG_INVALID_VERIFIER_KEY = "key must be a string or a buffer";
     var MSG_INVALID_SIGNER_KEY = "key must be a string, a buffer or an object";
-    var supportsKeyObjects = typeof crypto3.createPublicKey === "function";
+    var supportsKeyObjects = typeof crypto4.createPublicKey === "function";
     if (supportsKeyObjects) {
       MSG_INVALID_VERIFIER_KEY += " or a KeyObject";
       MSG_INVALID_SECRET += "or a KeyObject";
@@ -39265,17 +39265,17 @@ var require_jwa = __commonJS({
       return function sign(thing, secret) {
         checkIsSecretKey(secret);
         thing = normalizeInput(thing);
-        var hmac = crypto3.createHmac("sha" + bits, secret);
+        var hmac = crypto4.createHmac("sha" + bits, secret);
         var sig = (hmac.update(thing), hmac.digest("base64"));
         return fromBase64(sig);
       };
     }
     var bufferEqual;
-    var timingSafeEqual = "timingSafeEqual" in crypto3 ? function timingSafeEqual2(a, b) {
+    var timingSafeEqual = "timingSafeEqual" in crypto4 ? function timingSafeEqual2(a, b) {
       if (a.byteLength !== b.byteLength) {
         return false;
       }
-      return crypto3.timingSafeEqual(a, b);
+      return crypto4.timingSafeEqual(a, b);
     } : function timingSafeEqual2(a, b) {
       if (!bufferEqual) {
         bufferEqual = require_buffer_equal_constant_time();
@@ -39292,7 +39292,7 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto3.createSign("RSA-SHA" + bits);
+        var signer = crypto4.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign(privateKey, "base64"));
         return fromBase64(sig);
       };
@@ -39302,7 +39302,7 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto3.createVerify("RSA-SHA" + bits);
+        var verifier = crypto4.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify(publicKey, signature, "base64");
       };
@@ -39311,11 +39311,11 @@ var require_jwa = __commonJS({
       return function sign(thing, privateKey) {
         checkIsPrivateKey(privateKey);
         thing = normalizeInput(thing);
-        var signer = crypto3.createSign("RSA-SHA" + bits);
+        var signer = crypto4.createSign("RSA-SHA" + bits);
         var sig = (signer.update(thing), signer.sign({
           key: privateKey,
-          padding: crypto3.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto3.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
         }, "base64"));
         return fromBase64(sig);
       };
@@ -39325,12 +39325,12 @@ var require_jwa = __commonJS({
         checkIsPublicKey(publicKey);
         thing = normalizeInput(thing);
         signature = toBase64(signature);
-        var verifier = crypto3.createVerify("RSA-SHA" + bits);
+        var verifier = crypto4.createVerify("RSA-SHA" + bits);
         verifier.update(thing);
         return verifier.verify({
           key: publicKey,
-          padding: crypto3.constants.RSA_PKCS1_PSS_PADDING,
-          saltLength: crypto3.constants.RSA_PSS_SALTLEN_DIGEST
+          padding: crypto4.constants.RSA_PKCS1_PSS_PADDING,
+          saltLength: crypto4.constants.RSA_PSS_SALTLEN_DIGEST
         }, signature, "base64");
       };
     }
@@ -39487,11 +39487,11 @@ var require_verify_stream = __commonJS({
     var toString2 = require_tostring();
     var util = __require("util");
     var JWS_REGEX = /^[a-zA-Z0-9\-_]+?\.[a-zA-Z0-9\-_]+?\.([a-zA-Z0-9\-_]+)?$/;
-    function isObject3(thing) {
+    function isObject4(thing) {
       return Object.prototype.toString.call(thing) === "[object Object]";
     }
     function safeJsonParse(thing) {
-      if (isObject3(thing))
+      if (isObject4(thing))
         return thing;
       try {
         return JSON.parse(thing);
@@ -39726,11 +39726,11 @@ var require_getCredentials = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.getCredentials = getCredentials;
-    var path8 = __require("path");
-    var fs10 = __require("fs");
+    var path10 = __require("path");
+    var fs14 = __require("fs");
     var util_1 = __require("util");
     var errorWithCode_1 = require_errorWithCode();
-    var readFile = fs10.readFile ? (0, util_1.promisify)(fs10.readFile) : async () => {
+    var readFile = fs14.readFile ? (0, util_1.promisify)(fs14.readFile) : async () => {
       throw new errorWithCode_1.ErrorWithCode("use key rather than keyFile.", "MISSING_CREDENTIALS");
     };
     var ExtensionFiles;
@@ -39798,7 +39798,7 @@ var require_getCredentials = __commonJS({
        * @returns An instance of a class that implements ICredentialsProvider.
        */
       static create(keyFilePath) {
-        const keyFileExtension = path8.extname(keyFilePath);
+        const keyFileExtension = path10.extname(keyFilePath);
         switch (keyFileExtension) {
           case ExtensionFiles.JSON:
             return new JsonCredentialsProvider(keyFilePath);
@@ -41407,12 +41407,12 @@ var require_filesubjecttokensupplier = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.FileSubjectTokenSupplier = void 0;
     var util_1 = __require("util");
-    var fs10 = __require("fs");
-    var readFile = (0, util_1.promisify)(fs10.readFile ?? (() => {
+    var fs14 = __require("fs");
+    var readFile = (0, util_1.promisify)(fs14.readFile ?? (() => {
     }));
-    var realpath = (0, util_1.promisify)(fs10.realpath ?? (() => {
+    var realpath = (0, util_1.promisify)(fs14.realpath ?? (() => {
     }));
-    var lstat2 = (0, util_1.promisify)(fs10.lstat ?? (() => {
+    var lstat2 = (0, util_1.promisify)(fs14.lstat ?? (() => {
     }));
     var FileSubjectTokenSupplier = class {
       filePath;
@@ -41530,7 +41530,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.CertificateSubjectTokenSupplier = exports.InvalidConfigurationError = exports.CertificateSourceUnavailableError = exports.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = void 0;
     var util_1 = require_util8();
-    var fs10 = __require("fs");
+    var fs14 = __require("fs");
     var crypto_1 = __require("crypto");
     var https3 = __require("https");
     exports.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = "GOOGLE_API_CERTIFICATE_CONFIG";
@@ -41624,7 +41624,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
         const configPath = this.certificateConfigPath;
         let fileContents;
         try {
-          fileContents = await fs10.promises.readFile(configPath, "utf8");
+          fileContents = await fs14.promises.readFile(configPath, "utf8");
         } catch (err) {
           throw new CertificateSourceUnavailableError(`Failed to read certificate config file at: ${configPath}`);
         }
@@ -41649,14 +41649,14 @@ var require_certificatesubjecttokensupplier = __commonJS({
       async #getKeyAndCert(certPath, keyPath) {
         let cert, key;
         try {
-          cert = await fs10.promises.readFile(certPath);
+          cert = await fs14.promises.readFile(certPath);
           new crypto_1.X509Certificate(cert);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           throw new CertificateSourceUnavailableError(`Failed to read certificate file at ${certPath}: ${message}`);
         }
         try {
-          key = await fs10.promises.readFile(keyPath);
+          key = await fs14.promises.readFile(keyPath);
           (0, crypto_1.createPrivateKey)(key);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
@@ -41675,7 +41675,7 @@ var require_certificatesubjecttokensupplier = __commonJS({
           return JSON.stringify([leafCert.raw.toString("base64")]);
         }
         try {
-          const chainPems = await fs10.promises.readFile(this.trustChainPath, "utf8");
+          const chainPems = await fs14.promises.readFile(this.trustChainPath, "utf8");
           const pemBlocks = chainPems.match(/-----BEGIN CERTIFICATE-----[^-]+-----END CERTIFICATE-----/g) ?? [];
           const chainCerts = pemBlocks.map((pem, index) => {
             try {
@@ -41906,14 +41906,14 @@ var require_awsrequestsigner = __commonJS({
       }
     };
     exports.AwsRequestSigner = AwsRequestSigner;
-    async function sign(crypto3, key, msg) {
-      return await crypto3.signWithHmacSha256(key, msg);
+    async function sign(crypto4, key, msg) {
+      return await crypto4.signWithHmacSha256(key, msg);
     }
-    async function getSigningKey(crypto3, key, dateStamp, region, serviceName) {
-      const kDate = await sign(crypto3, `AWS4${key}`, dateStamp);
-      const kRegion = await sign(crypto3, kDate, region);
-      const kService = await sign(crypto3, kRegion, serviceName);
-      const kSigning = await sign(crypto3, kService, "aws4_request");
+    async function getSigningKey(crypto4, key, dateStamp, region, serviceName) {
+      const kDate = await sign(crypto4, `AWS4${key}`, dateStamp);
+      const kRegion = await sign(crypto4, kDate, region);
+      const kService = await sign(crypto4, kRegion, serviceName);
+      const kSigning = await sign(crypto4, kService, "aws4_request");
       return kSigning;
     }
     async function generateAuthenticationHeaderMap(options) {
@@ -42377,7 +42377,7 @@ var require_pluggable_auth_handler = __commonJS({
     exports.PluggableAuthHandler = exports.ExecutableError = void 0;
     var executable_response_1 = require_executable_response();
     var childProcess = __require("child_process");
-    var fs10 = __require("fs");
+    var fs14 = __require("fs");
     var ExecutableError = class extends Error {
       /**
        * The exit code returned by the executable.
@@ -42462,14 +42462,14 @@ var require_pluggable_auth_handler = __commonJS({
         }
         let filePath;
         try {
-          filePath = await fs10.promises.realpath(this.outputFile);
+          filePath = await fs14.promises.realpath(this.outputFile);
         } catch {
           return void 0;
         }
-        if (!(await fs10.promises.lstat(filePath)).isFile()) {
+        if (!(await fs14.promises.lstat(filePath)).isFile()) {
           return void 0;
         }
-        const responseString = await fs10.promises.readFile(filePath, {
+        const responseString = await fs14.promises.readFile(filePath, {
           encoding: "utf8"
         });
         if (responseString === "") {
@@ -42879,8 +42879,8 @@ var require_gdchclient = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.GdchClient = exports.GDCH_SERVICE_ACCOUNT_TYPE = void 0;
-    var crypto3 = __require("crypto");
-    var fs10 = __require("fs");
+    var crypto4 = __require("crypto");
+    var fs14 = __require("fs");
     var https3 = __require("https");
     var oauth2client_1 = require_oauth2client();
     var DEFAULT_LIFETIME_IN_SECONDS = 3600;
@@ -43070,7 +43070,7 @@ var require_gdchclient = __commonJS({
         const encodedHeader = this.base64UrlEncode(JSON.stringify(header));
         const encodedPayload = this.base64UrlEncode(JSON.stringify(payload));
         const signingInput = `${encodedHeader}.${encodedPayload}`;
-        const signature = crypto3.sign("sha256", Buffer.from(signingInput), {
+        const signature = crypto4.sign("sha256", Buffer.from(signingInput), {
           key: this.privateKey,
           dsaEncoding: "ieee-p1363"
         });
@@ -43111,7 +43111,7 @@ var require_gdchclient = __commonJS({
         const currentPath = this.caCertPath;
         this.caAgentPromise = (async () => {
           try {
-            const ca = await fs10.promises.readFile(currentPath);
+            const ca = await fs14.promises.readFile(currentPath);
             return new https3.Agent({ ca });
           } catch (err) {
             if (this.cachedCaCertPath === currentPath) {
@@ -43171,11 +43171,11 @@ var require_googleauth = __commonJS({
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.GoogleAuth = exports.GoogleAuthExceptionMessages = void 0;
     var child_process_1 = __require("child_process");
-    var fs10 = __require("fs");
+    var fs14 = __require("fs");
     var gaxios_1 = require_src2();
     var gcpMetadata = require_src4();
     var os5 = __require("os");
-    var path8 = __require("path");
+    var path10 = __require("path");
     var crypto_1 = require_crypto3();
     var computeclient_1 = require_computeclient();
     var idtokenclient_1 = require_idtokenclient();
@@ -43460,20 +43460,20 @@ var require_googleauth = __commonJS({
         if (!configDir) {
           if (this._isWindows()) {
             if (process.env["APPDATA"]) {
-              configDir = path8.join(process.env["APPDATA"], "gcloud");
+              configDir = path10.join(process.env["APPDATA"], "gcloud");
             }
           } else {
             const home = process.env["HOME"];
             if (home) {
-              configDir = path8.join(home, ".config", "gcloud");
+              configDir = path10.join(home, ".config", "gcloud");
             }
           }
         }
         if (!configDir) {
           return null;
         }
-        const location = path8.join(configDir, "application_default_credentials.json");
-        if (!fs10.existsSync(location)) {
+        const location = path10.join(configDir, "application_default_credentials.json");
+        if (!fs14.existsSync(location)) {
           return null;
         }
         const client = await this._getApplicationCredentialsFromFilePath(location, options);
@@ -43490,8 +43490,8 @@ var require_googleauth = __commonJS({
           throw new Error("The file path is invalid.");
         }
         try {
-          filePath = fs10.realpathSync(filePath);
-          if (!fs10.lstatSync(filePath).isFile()) {
+          filePath = fs14.realpathSync(filePath);
+          if (!fs14.lstatSync(filePath).isFile()) {
             throw new Error();
           }
         } catch (err) {
@@ -43500,7 +43500,7 @@ var require_googleauth = __commonJS({
           }
           throw err;
         }
-        const readStream = fs10.createReadStream(filePath);
+        const readStream = fs14.createReadStream(filePath);
         return this.fromStream(readStream, options);
       }
       /**
@@ -43827,8 +43827,8 @@ var require_googleauth = __commonJS({
         if (this.jsonContent) {
           return this._cacheClientFromJSON(this.jsonContent, this.clientOptions);
         } else if (this.keyFilename) {
-          const filePath = path8.resolve(this.keyFilename);
-          const stream = fs10.createReadStream(filePath);
+          const filePath = path10.resolve(this.keyFilename);
+          const stream = fs14.createReadStream(filePath);
           return await this.fromStreamAsync(stream, this.clientOptions);
         } else if (this.apiKey) {
           const client = await this.fromAPIKey(this.apiKey, this.clientOptions);
@@ -43941,24 +43941,24 @@ var require_googleauth = __commonJS({
           const signed = await client.sign(data);
           return signed.signedBlob;
         }
-        const crypto3 = (0, crypto_1.createCrypto)();
+        const crypto4 = (0, crypto_1.createCrypto)();
         if (client instanceof jwtclient_1.JWT && client.key) {
-          const sign = await crypto3.sign(client.key, data);
+          const sign = await crypto4.sign(client.key, data);
           return sign;
         }
         const creds = await this.getCredentials();
         if (!creds.client_email) {
           throw new Error("Cannot sign data without `client_email`.");
         }
-        return this.signBlob(crypto3, creds.client_email, data, endpoint);
+        return this.signBlob(crypto4, creds.client_email, data, endpoint);
       }
-      async signBlob(crypto3, emailOrUniqueId, data, endpoint) {
+      async signBlob(crypto4, emailOrUniqueId, data, endpoint) {
         const url = new URL(endpoint + `${emailOrUniqueId}:signBlob`);
         const res = await this.request({
           method: "POST",
           url: url.href,
           data: {
-            payload: crypto3.encodeBase64StringUtf8(data)
+            payload: crypto4.encodeBase64StringUtf8(data)
           },
           retry: true,
           retryConfig: {
@@ -44867,7 +44867,8 @@ function info(message) {
 }
 
 // src/action-entrypoint.ts
-import path7 from "node:path";
+import fs13 from "node:fs";
+import path9 from "node:path";
 
 // src/getSpreadSheetData.ts
 import fs8 from "node:fs";
@@ -46551,50 +46552,50 @@ function isDeepKey(key) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/get.mjs
-function get(object, path8, defaultValue) {
+function get(object, path10, defaultValue) {
   if (object == null) return defaultValue;
-  switch (typeof path8) {
+  switch (typeof path10) {
     case "string": {
-      if (isUnsafeProperty(path8)) return defaultValue;
-      const result = object[path8];
-      if (result === void 0) if (isDeepKey(path8)) return get(object, toPath(path8), defaultValue);
+      if (isUnsafeProperty(path10)) return defaultValue;
+      const result = object[path10];
+      if (result === void 0) if (isDeepKey(path10)) return get(object, toPath(path10), defaultValue);
       else return defaultValue;
       return result;
     }
     case "number":
     case "symbol": {
-      if (typeof path8 === "number") path8 = toKey(path8);
-      const result = object[path8];
+      if (typeof path10 === "number") path10 = toKey(path10);
+      const result = object[path10];
       if (result === void 0) return defaultValue;
       return result;
     }
     default: {
-      if (Array.isArray(path8)) return getWithPath(object, path8, defaultValue);
-      if (Object.is(path8?.valueOf(), -0)) path8 = "-0";
-      else path8 = String(path8);
-      if (isUnsafeProperty(path8)) return defaultValue;
-      const result = object[path8];
+      if (Array.isArray(path10)) return getWithPath(object, path10, defaultValue);
+      if (Object.is(path10?.valueOf(), -0)) path10 = "-0";
+      else path10 = String(path10);
+      if (isUnsafeProperty(path10)) return defaultValue;
+      const result = object[path10];
       if (result === void 0) return defaultValue;
       return result;
     }
   }
 }
-function getWithPath(object, path8, defaultValue) {
-  if (path8.length === 0) return defaultValue;
+function getWithPath(object, path10, defaultValue) {
+  if (path10.length === 0) return defaultValue;
   let current = object;
-  for (let index = 0; index < path8.length; index++) {
+  for (let index = 0; index < path10.length; index++) {
     if (current == null) return defaultValue;
-    if (isUnsafeProperty(path8[index])) return defaultValue;
-    current = current[path8[index]];
+    if (isUnsafeProperty(path10[index])) return defaultValue;
+    current = current[path10[index]];
   }
   if (current === void 0) return defaultValue;
   return current;
 }
 
 // node_modules/es-toolkit/dist/compat/object/property.mjs
-function property(path8) {
+function property(path10) {
   return function(object) {
-    return get(object, path8);
+    return get(object, path10);
   };
 }
 
@@ -46904,11 +46905,11 @@ function isIndex(value, length = Number.MAX_SAFE_INTEGER) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/has.mjs
-function has(object, path8) {
+function has(object, path10) {
   let resolvedPath;
-  if (Array.isArray(path8)) resolvedPath = path8;
-  else if (typeof path8 === "string" && isDeepKey(path8) && object?.[path8] == null) resolvedPath = toPath(path8);
-  else resolvedPath = [path8];
+  if (Array.isArray(path10)) resolvedPath = path10;
+  else if (typeof path10 === "string" && isDeepKey(path10) && object?.[path10] == null) resolvedPath = toPath(path10);
+  else resolvedPath = [path10];
   if (resolvedPath.length === 0) return false;
   let current = object;
   for (let i2 = 0; i2 < resolvedPath.length; i2++) {
@@ -47175,9 +47176,9 @@ function orderBy(collection, criteria, orders, guard) {
   if (criteria.length === 0) criteria = [null];
   if (!Array.isArray(orders)) orders = orders == null ? [] : [orders];
   orders = orders.map((order) => String(order));
-  const getValueByNestedPath = (object, path8) => {
+  const getValueByNestedPath = (object, path10) => {
     let target = object;
-    for (let i2 = 0; i2 < path8.length && target != null; ++i2) target = target[path8[i2]];
+    for (let i2 = 0; i2 < path10.length && target != null; ++i2) target = target[path10[i2]];
     return target;
   };
   const getValueByCriterion = (criterion, object) => {
@@ -47212,38 +47213,38 @@ function orderBy(collection, criteria, orders, guard) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/unset.mjs
-function unset(obj, path8) {
+function unset(obj, path10) {
   if (obj == null) return true;
-  switch (typeof path8) {
+  switch (typeof path10) {
     case "symbol":
     case "number":
     case "object":
-      if (Array.isArray(path8)) return unsetWithPath(obj, path8);
-      if (typeof path8 === "number") path8 = toKey(path8);
-      else if (typeof path8 === "object") if (Object.is(path8?.valueOf(), -0)) path8 = "-0";
-      else path8 = String(path8);
-      if (isUnsafeProperty(path8)) return false;
-      if (obj?.[path8] === void 0) return true;
+      if (Array.isArray(path10)) return unsetWithPath(obj, path10);
+      if (typeof path10 === "number") path10 = toKey(path10);
+      else if (typeof path10 === "object") if (Object.is(path10?.valueOf(), -0)) path10 = "-0";
+      else path10 = String(path10);
+      if (isUnsafeProperty(path10)) return false;
+      if (obj?.[path10] === void 0) return true;
       try {
-        delete obj[path8];
+        delete obj[path10];
         return true;
       } catch {
         return false;
       }
     case "string":
-      if (obj?.[path8] === void 0 && isDeepKey(path8)) return unsetWithPath(obj, toPath(path8));
-      if (isUnsafeProperty(path8)) return false;
+      if (obj?.[path10] === void 0 && isDeepKey(path10)) return unsetWithPath(obj, toPath(path10));
+      if (isUnsafeProperty(path10)) return false;
       try {
-        delete obj[path8];
+        delete obj[path10];
         return true;
       } catch {
         return false;
       }
   }
 }
-function unsetWithPath(obj, path8) {
-  const parent = path8.length === 1 ? obj : get(obj, path8.slice(0, -1));
-  const lastKey = path8[path8.length - 1];
+function unsetWithPath(obj, path10) {
+  const parent = path10.length === 1 ? obj : get(obj, path10.slice(0, -1));
+  const lastKey = path10[path10.length - 1];
   if (parent?.[lastKey] === void 0) return true;
   if (isUnsafeProperty(lastKey)) return false;
   try {
@@ -47330,12 +47331,12 @@ var assignValue = (object, key, value) => {
 };
 
 // node_modules/es-toolkit/dist/compat/object/updateWith.mjs
-function updateWith(obj, path8, updater, customizer) {
+function updateWith(obj, path10, updater, customizer) {
   if (obj == null && !isObject2(obj)) return obj;
   let resolvedPath;
-  if (isKey(path8, obj)) resolvedPath = [path8];
-  else if (Array.isArray(path8)) resolvedPath = path8;
-  else resolvedPath = toPath(path8);
+  if (isKey(path10, obj)) resolvedPath = [path10];
+  else if (Array.isArray(path10)) resolvedPath = path10;
+  else resolvedPath = toPath(path10);
   const updateValue = updater(get(obj, resolvedPath));
   let current = obj;
   for (let i2 = 0; i2 < resolvedPath.length && current != null; i2++) {
@@ -47355,8 +47356,8 @@ function updateWith(obj, path8, updater, customizer) {
 }
 
 // node_modules/es-toolkit/dist/compat/object/set.mjs
-function set(obj, path8, value) {
-  return updateWith(obj, path8, () => value, () => void 0);
+function set(obj, path10, value) {
+  return updateWith(obj, path10, () => value, () => void 0);
 }
 
 // node_modules/es-toolkit/dist/compat/predicate/isTypedArray.mjs
@@ -49505,6 +49506,73 @@ function normalizeConfig(options = {}) {
   };
 }
 
+// src/core/rowTransformer.ts
+function transformRowsToSheetData(rows, sheetTitle, deps) {
+  const logger = deps.logger ?? console;
+  const result = {
+    translations: {},
+    locales: [],
+    localeMapping: {},
+    originalMapping: {},
+    success: false
+  };
+  try {
+    if (!rows || rows.length === 0) {
+      logger.warn(`No rows found in sheet "${sheetTitle}"`);
+      return result;
+    }
+    const headerRow = Object.keys(rows[0]).map((key) => key.toLowerCase());
+    logger.log(`Header row for sheet "${sheetTitle}":`, headerRow);
+    const keyColumn = headerRow[0];
+    const validLocales = deps.filterValidLocales(headerRow, keyColumn);
+    if (validLocales.length === 0) {
+      logger.warn(`No valid locale columns found in sheet "${sheetTitle}"`);
+      return result;
+    }
+    const originalHeaders = Object.keys(rows[0]);
+    const { normalizedLocales, localeMapping, originalMapping } = deps.createLocaleMapping(
+      originalHeaders,
+      keyColumn
+    );
+    result.localeMapping = localeMapping;
+    result.originalMapping = originalMapping;
+    for (const normalizedLocale of normalizedLocales) {
+      const originalHeader = localeMapping[normalizedLocale];
+      if (!originalHeader) continue;
+      const languageCells = rows.map((row) => {
+        const keyField = Object.keys(row).find((k) => k.toLowerCase() === keyColumn);
+        if (!keyField || !row[keyField] || !row[originalHeader]) {
+          return {};
+        }
+        const rowLocal = {};
+        rowLocal[row[keyField].toString().toLowerCase()] = row[originalHeader];
+        return rowLocal;
+      });
+      const nonEmptyLanguageCells = languageCells.filter(
+        (cell) => Object.keys(cell).length > 0
+      );
+      const prepareObj = {};
+      prepareObj[sheetTitle] = nonEmptyLanguageCells.reduce(
+        (acc, cell) => Object.assign(acc, cell),
+        {}
+      );
+      if (result.translations[normalizedLocale]) {
+        result.translations[normalizedLocale] = {
+          ...result.translations[normalizedLocale],
+          ...prepareObj
+        };
+      } else {
+        result.translations[normalizedLocale] = { ...prepareObj };
+      }
+    }
+    result.locales = normalizedLocales;
+    result.success = true;
+  } catch (error2) {
+    logger.error(`Error processing sheet "${sheetTitle}":`, error2);
+  }
+  return result;
+}
+
 // src/utils/rateLimiter.ts
 import { setTimeout as delay2 } from "node:timers/promises";
 var DEFAULT_RETRIES = 3;
@@ -49697,68 +49765,11 @@ function resolveLocaleWithFallback(locale, availableLocales) {
 
 // src/utils/sheetProcessor.ts
 async function processRawRows(rows, sheetTitle) {
-  const result = {
-    translations: {},
-    locales: [],
-    localeMapping: {},
-    originalMapping: {},
-    success: false
-  };
-  try {
-    if (!rows || rows.length === 0) {
-      console.warn(`No rows found in sheet "${sheetTitle}"`);
-      return result;
-    }
-    const headerRow = Object.keys(rows[0]).map((key) => key.toLowerCase());
-    console.log(`Header row for sheet "${sheetTitle}":`, headerRow);
-    const keyColumn = headerRow[0];
-    const validLocales = filterValidLocales(headerRow, keyColumn);
-    if (validLocales.length === 0) {
-      console.warn(`No valid locale columns found in sheet "${sheetTitle}"`);
-      return result;
-    }
-    const originalHeaders = Object.keys(rows[0]);
-    const { normalizedLocales, localeMapping, originalMapping } = createLocaleMapping(
-      originalHeaders,
-      keyColumn
-    );
-    result.localeMapping = localeMapping;
-    result.originalMapping = originalMapping;
-    for (const normalizedLocale of normalizedLocales) {
-      const originalHeader = localeMapping[normalizedLocale];
-      if (!originalHeader) continue;
-      const languageCells = rows.map((row) => {
-        const keyField = Object.keys(row).find((k) => k.toLowerCase() === keyColumn);
-        if (!keyField || !row[keyField] || !row[originalHeader]) {
-          return {};
-        }
-        const rowLocal = {};
-        rowLocal[row[keyField].toString().toLowerCase()] = row[originalHeader];
-        return rowLocal;
-      });
-      const nonEmptyLanguageCells = languageCells.filter(
-        (cell) => Object.keys(cell).length > 0
-      );
-      const prepareObj = {};
-      prepareObj[sheetTitle] = nonEmptyLanguageCells.reduce(
-        (acc, cell) => Object.assign(acc, cell),
-        {}
-      );
-      if (result.translations[normalizedLocale]) {
-        result.translations[normalizedLocale] = {
-          ...result.translations[normalizedLocale],
-          ...prepareObj
-        };
-      } else {
-        result.translations[normalizedLocale] = { ...prepareObj };
-      }
-    }
-    result.locales = normalizedLocales;
-    result.success = true;
-  } catch (error2) {
-    console.error(`Error processing sheet "${sheetTitle}":`, error2);
-  }
-  return result;
+  return transformRowsToSheetData(rows, sheetTitle, {
+    filterValidLocales,
+    createLocaleMapping,
+    logger: console
+  });
 }
 async function processSheet(sheet, sheetTitle, rowLimit, baseDelayMs = 1e3) {
   const emptyResult = {
@@ -51646,9 +51657,2567 @@ async function manageDriveTranslations(options) {
   return { translations, spreadsheetIds: filteredIds, imageSync, manifest, docIngestResults };
 }
 
+// src/providers/capabilities.ts
+var EMPTY_PROVIDER_CAPABILITIES = {
+  readTables: false,
+  writeTables: false,
+  syncBack: false,
+  readAssets: false,
+  writeAssets: false,
+  autoTranslateFormula: false,
+  discoverByFolder: false,
+  assetSync: false,
+  publicReadNoAuth: false
+};
+var OPERATION_CAPABILITY_REQUIREMENTS = {
+  "read-input": ["readTables"],
+  "write-output": ["writeTables"],
+  "sync-back": ["syncBack"],
+  "read-assets": ["readAssets"],
+  "write-assets": ["writeAssets"],
+  "discover-sources": ["discoverByFolder"],
+  "sync-assets": ["assetSync"],
+  "public-read": ["readTables", "publicReadNoAuth"]
+};
+function createCapabilitySet(overrides = {}) {
+  return {
+    ...EMPTY_PROVIDER_CAPABILITIES,
+    ...overrides
+  };
+}
+function missingCapabilities(capabilities, required) {
+  return required.filter((capability) => !capabilities[capability]);
+}
+function assertRequiredCapabilities(providerName, capabilities, required, operation) {
+  const missing = missingCapabilities(capabilities, required);
+  if (missing.length === 0) return;
+  const operationPart = operation ? ` for operation "${operation}"` : "";
+  throw new Error(
+    `Provider "${providerName}" is missing required capabilities${operationPart}: ${missing.join(", ")}`
+  );
+}
+function assertOperationCapabilities(providerName, capabilities, operation) {
+  assertRequiredCapabilities(
+    providerName,
+    capabilities,
+    OPERATION_CAPABILITY_REQUIREMENTS[operation],
+    operation
+  );
+}
+
+// src/providers/google/providers.ts
+var INPUT_CAPABILITIES = createCapabilitySet({
+  readTables: true,
+  publicReadNoAuth: true,
+  discoverByFolder: true
+});
+var OUTPUT_CAPABILITIES = createCapabilitySet({
+  writeTables: true,
+  autoTranslateFormula: true
+});
+var SYNC_CAPABILITIES = createCapabilitySet({
+  syncBack: true,
+  writeTables: true,
+  autoTranslateFormula: true
+});
+function createDefaultDeps() {
+  return {
+    createAuthClient,
+    createSpreadsheetClient: (spreadsheetId, authClient) => new GoogleSpreadsheet(spreadsheetId, authClient),
+    readPublicSheet,
+    withRetry,
+    updateSpreadsheetWithLocalChanges,
+    findLocalChanges,
+    logger: console
+  };
+}
+function resolveSpreadsheetId(spreadsheetId) {
+  const resolved = spreadsheetId ?? process.env.GOOGLE_SPREADSHEET_ID;
+  if (!resolved) {
+    throw new Error(
+      "No spreadsheet ID provided. Set GOOGLE_SPREADSHEET_ID or pass spreadsheetId in provider options."
+    );
+  }
+  return resolved;
+}
+function getWaitSeconds(waitSeconds) {
+  return waitSeconds ?? DEFAULT_WAIT_SECONDS;
+}
+function countTranslationLeafKeys(data) {
+  return Object.values(data).flatMap((localeData) => Object.values(localeData)).reduce((total, sheetData) => total + Object.keys(sheetData).length, 0);
+}
+function hasAnyChanges(data) {
+  return Object.keys(data).length > 0 && Object.values(data).some((l) => Object.keys(l).length > 0);
+}
+function createGoogleSheetsInputProvider(options = {}, depsOverrides = {}) {
+  const deps = { ...createDefaultDeps(), ...depsOverrides };
+  return {
+    kind: "input",
+    providerId: options.providerId ?? "google-sheets",
+    displayName: options.displayName ?? "Google Sheets Input",
+    capabilities: INPUT_CAPABILITIES,
+    async readTables(request) {
+      const tableNames = (request.tableNames ?? []).filter(Boolean);
+      if (tableNames.length === 0) {
+        return { tables: [] };
+      }
+      const spreadsheetId = resolveSpreadsheetId(options.spreadsheetId);
+      const baseDelayMs = getWaitSeconds(options.waitSeconds) * 1e3;
+      if (options.publicSheet) {
+        const tables2 = await Promise.all(
+          tableNames.map(async (tableName) => {
+            const rows = await deps.withRetry(
+              () => deps.readPublicSheet(spreadsheetId, tableName),
+              `readPublicSheet: ${tableName}`,
+              baseDelayMs
+            );
+            return {
+              tableId: `${spreadsheetId}:${tableName}`,
+              tableName,
+              rows,
+              metadata: { sourceMode: "public" }
+            };
+          })
+        );
+        return {
+          tables: tables2,
+          metadata: { spreadsheetId, sourceMode: "public" }
+        };
+      }
+      const authClient = deps.createAuthClient();
+      const doc = deps.createSpreadsheetClient(spreadsheetId, authClient);
+      await deps.withRetry(() => doc.loadInfo(true), "loadInfo", baseDelayMs);
+      const tables = [];
+      for (const tableName of tableNames) {
+        const sheet = doc.sheetsByTitle[tableName];
+        if (!sheet) {
+          deps.logger.warn(`Sheet "${tableName}" not found in the document`);
+          continue;
+        }
+        const googleRows = await deps.withRetry(
+          () => sheet.getRows({ limit: options.rowLimit ?? 100 }),
+          `getRows: ${tableName}`,
+          baseDelayMs
+        );
+        tables.push({
+          tableId: `${spreadsheetId}:${tableName}`,
+          tableName,
+          rows: googleRows.map((row) => row.toObject()),
+          metadata: { sourceMode: "authenticated" }
+        });
+      }
+      return {
+        tables,
+        metadata: { spreadsheetId, sourceMode: "authenticated" }
+      };
+    }
+  };
+}
+function createGoogleSheetsOutputProvider(options = {}, depsOverrides = {}) {
+  const deps = { ...createDefaultDeps(), ...depsOverrides };
+  return {
+    kind: "output",
+    providerId: options.providerId ?? "google-sheets",
+    displayName: options.displayName ?? "Google Sheets Output",
+    capabilities: OUTPUT_CAPABILITIES,
+    async writeTranslations(payload) {
+      const spreadsheetId = resolveSpreadsheetId(options.spreadsheetId);
+      const authClient = deps.createAuthClient();
+      const doc = deps.createSpreadsheetClient(spreadsheetId, authClient);
+      await deps.withRetry(
+        () => doc.loadInfo(true),
+        "loadInfo",
+        getWaitSeconds(options.waitSeconds) * 1e3
+      );
+      await deps.updateSpreadsheetWithLocalChanges(
+        doc,
+        payload.translations,
+        getWaitSeconds(options.waitSeconds),
+        options.autoTranslate ?? false,
+        options.localeMapping ?? payload.localeMapping ?? {},
+        options.override ?? false
+      );
+      const updatedSheets = new Set(
+        Object.values(payload.translations).flatMap((localeData) => Object.keys(localeData))
+      );
+      return {
+        wroteFiles: [],
+        metadata: {
+          spreadsheetId,
+          updatedSheets: Array.from(updatedSheets),
+          estimatedUpdatedKeys: countTranslationLeafKeys(payload.translations)
+        }
+      };
+    }
+  };
+}
+function createGoogleSheetsSyncProvider(options = {}, depsOverrides = {}) {
+  const deps = { ...createDefaultDeps(), ...depsOverrides };
+  return {
+    kind: "sync",
+    providerId: options.providerId ?? "google-sheets",
+    displayName: options.displayName ?? "Google Sheets Sync",
+    capabilities: SYNC_CAPABILITIES,
+    async syncTranslations(payload) {
+      const changes = deps.findLocalChanges(
+        payload.localTranslations,
+        payload.remoteTranslations
+      );
+      if (!hasAnyChanges(changes)) {
+        return {
+          changedKeys: 0,
+          skippedKeys: 0,
+          metadata: { reason: "no-local-diff" }
+        };
+      }
+      const spreadsheetId = resolveSpreadsheetId(options.spreadsheetId);
+      const authClient = deps.createAuthClient();
+      const doc = deps.createSpreadsheetClient(spreadsheetId, authClient);
+      await deps.withRetry(
+        () => doc.loadInfo(true),
+        "loadInfo",
+        getWaitSeconds(options.waitSeconds) * 1e3
+      );
+      await deps.updateSpreadsheetWithLocalChanges(
+        doc,
+        changes,
+        getWaitSeconds(options.waitSeconds),
+        options.autoTranslate ?? false,
+        options.localeMapping ?? {},
+        options.override ?? false
+      );
+      return {
+        changedKeys: countTranslationLeafKeys(changes),
+        skippedKeys: 0,
+        metadata: { spreadsheetId }
+      };
+    }
+  };
+}
+
+// src/providers/cryptpad/provider.ts
+import fs10 from "node:fs/promises";
+
+// node_modules/csv-parse/lib/api/CsvError.js
+var CsvError = class _CsvError extends Error {
+  constructor(code, message, options, ...contexts) {
+    if (Array.isArray(message)) message = message.join(" ").trim();
+    super(message);
+    if (Error.captureStackTrace !== void 0) {
+      Error.captureStackTrace(this, _CsvError);
+    }
+    this.code = code;
+    for (const context of contexts) {
+      for (const key in context) {
+        const value = context[key];
+        this[key] = Buffer.isBuffer(value) ? value.toString(options.encoding) : value == null ? value : JSON.parse(JSON.stringify(value));
+      }
+    }
+  }
+};
+
+// node_modules/csv-parse/lib/utils/is_object.js
+var is_object = function(obj) {
+  return typeof obj === "object" && obj !== null && !Array.isArray(obj);
+};
+
+// node_modules/csv-parse/lib/api/normalize_columns_array.js
+var normalize_columns_array = function(columns) {
+  const normalizedColumns = [];
+  for (let i2 = 0, l = columns.length; i2 < l; i2++) {
+    const column = columns[i2];
+    if (column === void 0 || column === null || column === false) {
+      normalizedColumns[i2] = { disabled: true };
+    } else if (typeof column === "string" || typeof column === "number") {
+      normalizedColumns[i2] = { name: `${column}` };
+    } else if (is_object(column)) {
+      if (typeof column.name !== "string") {
+        throw new CsvError("CSV_OPTION_COLUMNS_MISSING_NAME", [
+          "Option columns missing name:",
+          `property "name" is required at position ${i2}`,
+          "when column is an object literal"
+        ]);
+      }
+      normalizedColumns[i2] = column;
+    } else {
+      throw new CsvError("CSV_INVALID_COLUMN_DEFINITION", [
+        "Invalid column definition:",
+        "expect a string or a literal object,",
+        `got ${JSON.stringify(column)} at position ${i2}`
+      ]);
+    }
+  }
+  return normalizedColumns;
+};
+
+// node_modules/csv-parse/lib/utils/ResizeableBuffer.js
+var ResizeableBuffer = class {
+  constructor(size = 100) {
+    this.size = size;
+    this.length = 0;
+    this.buf = Buffer.allocUnsafe(size);
+  }
+  prepend(val) {
+    if (Buffer.isBuffer(val)) {
+      const length = this.length + val.length;
+      if (length >= this.size) {
+        this.resize();
+        if (length >= this.size) {
+          throw Error("INVALID_BUFFER_STATE");
+        }
+      }
+      const buf = this.buf;
+      this.buf = Buffer.allocUnsafe(this.size);
+      val.copy(this.buf, 0);
+      buf.copy(this.buf, val.length);
+      this.length += val.length;
+    } else {
+      const length = this.length++;
+      if (length === this.size) {
+        this.resize();
+      }
+      const buf = this.clone();
+      this.buf[0] = val;
+      buf.copy(this.buf, 1, 0, length);
+    }
+  }
+  append(val) {
+    const length = this.length++;
+    if (length === this.size) {
+      this.resize();
+    }
+    this.buf[length] = val;
+  }
+  clone() {
+    return Buffer.from(this.buf.slice(0, this.length));
+  }
+  resize() {
+    const length = this.length;
+    this.size = this.size * 2;
+    const buf = Buffer.allocUnsafe(this.size);
+    this.buf.copy(buf, 0, 0, length);
+    this.buf = buf;
+  }
+  toString(encoding) {
+    if (encoding) {
+      return this.buf.slice(0, this.length).toString(encoding);
+    } else {
+      return Uint8Array.prototype.slice.call(this.buf.slice(0, this.length));
+    }
+  }
+  toJSON() {
+    return this.toString("utf8");
+  }
+  reset() {
+    this.length = 0;
+  }
+};
+var ResizeableBuffer_default = ResizeableBuffer;
+
+// node_modules/csv-parse/lib/api/init_state.js
+var np = 12;
+var cr = 13;
+var nl = 10;
+var space = 32;
+var tab = 9;
+var init_state = function(options) {
+  return {
+    bomSkipped: false,
+    bufBytesStart: 0,
+    castField: options.cast_function,
+    commenting: false,
+    // Current error encountered by a record
+    error: void 0,
+    enabled: options.from_line === 1,
+    escaping: false,
+    escapeIsQuote: Buffer.isBuffer(options.escape) && Buffer.isBuffer(options.quote) && Buffer.compare(options.escape, options.quote) === 0,
+    // columns can be `false`, `true`, `Array`
+    expectedRecordLength: Array.isArray(options.columns) ? options.columns.length : void 0,
+    field: new ResizeableBuffer_default(20),
+    firstLineToHeaders: options.cast_first_line_to_header,
+    needMoreDataSize: Math.max(
+      // Skip if the remaining buffer smaller than comment
+      options.comment !== null ? options.comment.length : 0,
+      ...options.delimiter.map((delimiter) => delimiter.length),
+      // Skip if the remaining buffer can be escape sequence
+      options.quote !== null ? options.quote.length : 0
+    ),
+    previousBuf: void 0,
+    quoting: false,
+    stop: false,
+    rawBuffer: new ResizeableBuffer_default(100),
+    record: [],
+    recordHasError: false,
+    record_length: 0,
+    recordDelimiterMaxLength: options.record_delimiter.length === 0 ? 0 : Math.max(...options.record_delimiter.map((v) => v.length)),
+    trimChars: [
+      Buffer.from(" ", options.encoding)[0],
+      Buffer.from("	", options.encoding)[0]
+    ],
+    wasQuoting: false,
+    wasRowDelimiter: false,
+    timchars: [
+      Buffer.from(Buffer.from([cr], "utf8").toString(), options.encoding),
+      Buffer.from(Buffer.from([nl], "utf8").toString(), options.encoding),
+      Buffer.from(Buffer.from([np], "utf8").toString(), options.encoding),
+      Buffer.from(Buffer.from([space], "utf8").toString(), options.encoding),
+      Buffer.from(Buffer.from([tab], "utf8").toString(), options.encoding)
+    ]
+  };
+};
+
+// node_modules/csv-parse/lib/utils/underscore.js
+var underscore = function(str) {
+  return str.replace(/([A-Z])/g, function(_, match) {
+    return "_" + match.toLowerCase();
+  });
+};
+
+// node_modules/csv-parse/lib/api/normalize_options.js
+var normalize_options = function(opts) {
+  const options = {};
+  for (const opt in opts) {
+    options[underscore(opt)] = opts[opt];
+  }
+  if (options.encoding === void 0 || options.encoding === true) {
+    options.encoding = "utf8";
+  } else if (options.encoding === null || options.encoding === false) {
+    options.encoding = null;
+  } else if (typeof options.encoding !== "string" && options.encoding !== null) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_ENCODING",
+      [
+        "Invalid option encoding:",
+        "encoding must be a string or null to return a buffer,",
+        `got ${JSON.stringify(options.encoding)}`
+      ],
+      options
+    );
+  }
+  if (options.bom === void 0 || options.bom === null || options.bom === false) {
+    options.bom = false;
+  } else if (options.bom !== true) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_BOM",
+      [
+        "Invalid option bom:",
+        "bom must be true,",
+        `got ${JSON.stringify(options.bom)}`
+      ],
+      options
+    );
+  }
+  options.cast_function = null;
+  if (options.cast === void 0 || options.cast === null || options.cast === false || options.cast === "") {
+    options.cast = void 0;
+  } else if (typeof options.cast === "function") {
+    options.cast_function = options.cast;
+    options.cast = true;
+  } else if (options.cast !== true) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_CAST",
+      [
+        "Invalid option cast:",
+        "cast must be true or a function,",
+        `got ${JSON.stringify(options.cast)}`
+      ],
+      options
+    );
+  }
+  if (options.cast_date === void 0 || options.cast_date === null || options.cast_date === false || options.cast_date === "") {
+    options.cast_date = false;
+  } else if (options.cast_date === true) {
+    options.cast_date = function(value) {
+      const date = Date.parse(value);
+      return !isNaN(date) ? new Date(date) : value;
+    };
+  } else if (typeof options.cast_date !== "function") {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_CAST_DATE",
+      [
+        "Invalid option cast_date:",
+        "cast_date must be true or a function,",
+        `got ${JSON.stringify(options.cast_date)}`
+      ],
+      options
+    );
+  }
+  options.cast_first_line_to_header = void 0;
+  if (options.columns === true) {
+    options.cast_first_line_to_header = void 0;
+  } else if (typeof options.columns === "function") {
+    options.cast_first_line_to_header = options.columns;
+    options.columns = true;
+  } else if (Array.isArray(options.columns)) {
+    options.columns = normalize_columns_array(options.columns);
+  } else if (options.columns === void 0 || options.columns === null || options.columns === false) {
+    options.columns = false;
+  } else {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_COLUMNS",
+      [
+        "Invalid option columns:",
+        "expect an array, a function or true,",
+        `got ${JSON.stringify(options.columns)}`
+      ],
+      options
+    );
+  }
+  if (options.group_columns_by_name === void 0 || options.group_columns_by_name === null || options.group_columns_by_name === false) {
+    options.group_columns_by_name = false;
+  } else if (options.group_columns_by_name !== true) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_GROUP_COLUMNS_BY_NAME",
+      [
+        "Invalid option group_columns_by_name:",
+        "expect an boolean,",
+        `got ${JSON.stringify(options.group_columns_by_name)}`
+      ],
+      options
+    );
+  } else if (options.columns === false) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_GROUP_COLUMNS_BY_NAME",
+      [
+        "Invalid option group_columns_by_name:",
+        "the `columns` mode must be activated."
+      ],
+      options
+    );
+  }
+  if (options.comment === void 0 || options.comment === null || options.comment === false || options.comment === "") {
+    options.comment = null;
+  } else {
+    if (typeof options.comment === "string") {
+      options.comment = Buffer.from(options.comment, options.encoding);
+    }
+    if (!Buffer.isBuffer(options.comment)) {
+      throw new CsvError(
+        "CSV_INVALID_OPTION_COMMENT",
+        [
+          "Invalid option comment:",
+          "comment must be a buffer or a string,",
+          `got ${JSON.stringify(options.comment)}`
+        ],
+        options
+      );
+    }
+  }
+  if (options.comment_no_infix === void 0 || options.comment_no_infix === null || options.comment_no_infix === false) {
+    options.comment_no_infix = false;
+  } else if (options.comment_no_infix !== true) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_COMMENT",
+      [
+        "Invalid option comment_no_infix:",
+        "value must be a boolean,",
+        `got ${JSON.stringify(options.comment_no_infix)}`
+      ],
+      options
+    );
+  }
+  const delimiter_json = JSON.stringify(options.delimiter);
+  if (!Array.isArray(options.delimiter))
+    options.delimiter = [options.delimiter];
+  if (options.delimiter.length === 0) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_DELIMITER",
+      [
+        "Invalid option delimiter:",
+        "delimiter must be a non empty string or buffer or array of string|buffer,",
+        `got ${delimiter_json}`
+      ],
+      options
+    );
+  }
+  options.delimiter = options.delimiter.map(function(delimiter) {
+    if (delimiter === void 0 || delimiter === null || delimiter === false) {
+      return Buffer.from(",", options.encoding);
+    }
+    if (typeof delimiter === "string") {
+      delimiter = Buffer.from(delimiter, options.encoding);
+    }
+    if (!Buffer.isBuffer(delimiter) || delimiter.length === 0) {
+      throw new CsvError(
+        "CSV_INVALID_OPTION_DELIMITER",
+        [
+          "Invalid option delimiter:",
+          "delimiter must be a non empty string or buffer or array of string|buffer,",
+          `got ${delimiter_json}`
+        ],
+        options
+      );
+    }
+    return delimiter;
+  });
+  if (options.escape === void 0 || options.escape === true) {
+    options.escape = Buffer.from('"', options.encoding);
+  } else if (typeof options.escape === "string") {
+    options.escape = Buffer.from(options.escape, options.encoding);
+  } else if (options.escape === null || options.escape === false) {
+    options.escape = null;
+  }
+  if (options.escape !== null) {
+    if (!Buffer.isBuffer(options.escape)) {
+      throw new Error(
+        `Invalid Option: escape must be a buffer, a string or a boolean, got ${JSON.stringify(options.escape)}`
+      );
+    }
+  }
+  if (options.from === void 0 || options.from === null) {
+    options.from = 1;
+  } else {
+    if (typeof options.from === "string" && /\d+/.test(options.from)) {
+      options.from = parseInt(options.from);
+    }
+    if (Number.isInteger(options.from)) {
+      if (options.from < 0) {
+        throw new Error(
+          `Invalid Option: from must be a positive integer, got ${JSON.stringify(opts.from)}`
+        );
+      }
+    } else {
+      throw new Error(
+        `Invalid Option: from must be an integer, got ${JSON.stringify(options.from)}`
+      );
+    }
+  }
+  if (options.from_line === void 0 || options.from_line === null) {
+    options.from_line = 1;
+  } else {
+    if (typeof options.from_line === "string" && /\d+/.test(options.from_line)) {
+      options.from_line = parseInt(options.from_line);
+    }
+    if (Number.isInteger(options.from_line)) {
+      if (options.from_line <= 0) {
+        throw new Error(
+          `Invalid Option: from_line must be a positive integer greater than 0, got ${JSON.stringify(opts.from_line)}`
+        );
+      }
+    } else {
+      throw new Error(
+        `Invalid Option: from_line must be an integer, got ${JSON.stringify(opts.from_line)}`
+      );
+    }
+  }
+  if (options.ignore_last_delimiters === void 0 || options.ignore_last_delimiters === null) {
+    options.ignore_last_delimiters = false;
+  } else if (typeof options.ignore_last_delimiters === "number") {
+    options.ignore_last_delimiters = Math.floor(options.ignore_last_delimiters);
+    if (options.ignore_last_delimiters === 0) {
+      options.ignore_last_delimiters = false;
+    }
+  } else if (typeof options.ignore_last_delimiters !== "boolean") {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_IGNORE_LAST_DELIMITERS",
+      [
+        "Invalid option `ignore_last_delimiters`:",
+        "the value must be a boolean value or an integer,",
+        `got ${JSON.stringify(options.ignore_last_delimiters)}`
+      ],
+      options
+    );
+  }
+  if (options.ignore_last_delimiters === true && options.columns === false) {
+    throw new CsvError(
+      "CSV_IGNORE_LAST_DELIMITERS_REQUIRES_COLUMNS",
+      [
+        "The option `ignore_last_delimiters`",
+        "requires the activation of the `columns` option"
+      ],
+      options
+    );
+  }
+  if (options.info === void 0 || options.info === null || options.info === false) {
+    options.info = false;
+  } else if (options.info !== true) {
+    throw new Error(
+      `Invalid Option: info must be true, got ${JSON.stringify(options.info)}`
+    );
+  }
+  if (options.max_record_size === void 0 || options.max_record_size === null || options.max_record_size === false) {
+    options.max_record_size = 0;
+  } else if (Number.isInteger(options.max_record_size) && options.max_record_size >= 0) {
+  } else if (typeof options.max_record_size === "string" && /\d+/.test(options.max_record_size)) {
+    options.max_record_size = parseInt(options.max_record_size);
+  } else {
+    throw new Error(
+      `Invalid Option: max_record_size must be a positive integer, got ${JSON.stringify(options.max_record_size)}`
+    );
+  }
+  if (options.objname === void 0 || options.objname === null || options.objname === false) {
+    options.objname = void 0;
+  } else if (Buffer.isBuffer(options.objname)) {
+    if (options.objname.length === 0) {
+      throw new Error(`Invalid Option: objname must be a non empty buffer`);
+    }
+    if (options.encoding === null) {
+    } else {
+      options.objname = options.objname.toString(options.encoding);
+    }
+  } else if (typeof options.objname === "string") {
+    if (options.objname.length === 0) {
+      throw new Error(`Invalid Option: objname must be a non empty string`);
+    }
+  } else if (typeof options.objname === "number") {
+  } else {
+    throw new Error(
+      `Invalid Option: objname must be a string or a buffer, got ${options.objname}`
+    );
+  }
+  if (options.objname !== void 0) {
+    if (typeof options.objname === "number") {
+      if (options.columns !== false) {
+        throw Error(
+          "Invalid Option: objname index cannot be combined with columns or be defined as a field"
+        );
+      }
+    } else {
+      if (options.columns === false) {
+        throw Error(
+          "Invalid Option: objname field must be combined with columns or be defined as an index"
+        );
+      }
+    }
+  }
+  if (options.on_record === void 0 || options.on_record === null) {
+    options.on_record = void 0;
+  } else if (typeof options.on_record !== "function") {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_ON_RECORD",
+      [
+        "Invalid option `on_record`:",
+        "expect a function,",
+        `got ${JSON.stringify(options.on_record)}`
+      ],
+      options
+    );
+  }
+  if (options.on_skip !== void 0 && options.on_skip !== null && typeof options.on_skip !== "function") {
+    throw new Error(
+      `Invalid Option: on_skip must be a function, got ${JSON.stringify(options.on_skip)}`
+    );
+  }
+  if (options.quote === null || options.quote === false || options.quote === "") {
+    options.quote = null;
+  } else {
+    if (options.quote === void 0 || options.quote === true) {
+      options.quote = Buffer.from('"', options.encoding);
+    } else if (typeof options.quote === "string") {
+      options.quote = Buffer.from(options.quote, options.encoding);
+    }
+    if (!Buffer.isBuffer(options.quote)) {
+      throw new Error(
+        `Invalid Option: quote must be a buffer or a string, got ${JSON.stringify(options.quote)}`
+      );
+    }
+  }
+  if (options.raw === void 0 || options.raw === null || options.raw === false) {
+    options.raw = false;
+  } else if (options.raw !== true) {
+    throw new Error(
+      `Invalid Option: raw must be true, got ${JSON.stringify(options.raw)}`
+    );
+  }
+  if (options.record_delimiter === void 0) {
+    options.record_delimiter = [];
+  } else if (typeof options.record_delimiter === "string" || Buffer.isBuffer(options.record_delimiter)) {
+    if (options.record_delimiter.length === 0) {
+      throw new CsvError(
+        "CSV_INVALID_OPTION_RECORD_DELIMITER",
+        [
+          "Invalid option `record_delimiter`:",
+          "value must be a non empty string or buffer,",
+          `got ${JSON.stringify(options.record_delimiter)}`
+        ],
+        options
+      );
+    }
+    options.record_delimiter = [options.record_delimiter];
+  } else if (!Array.isArray(options.record_delimiter)) {
+    throw new CsvError(
+      "CSV_INVALID_OPTION_RECORD_DELIMITER",
+      [
+        "Invalid option `record_delimiter`:",
+        "value must be a string, a buffer or array of string|buffer,",
+        `got ${JSON.stringify(options.record_delimiter)}`
+      ],
+      options
+    );
+  }
+  options.record_delimiter = options.record_delimiter.map(function(rd, i2) {
+    if (typeof rd !== "string" && !Buffer.isBuffer(rd)) {
+      throw new CsvError(
+        "CSV_INVALID_OPTION_RECORD_DELIMITER",
+        [
+          "Invalid option `record_delimiter`:",
+          "value must be a string, a buffer or array of string|buffer",
+          `at index ${i2},`,
+          `got ${JSON.stringify(rd)}`
+        ],
+        options
+      );
+    } else if (rd.length === 0) {
+      throw new CsvError(
+        "CSV_INVALID_OPTION_RECORD_DELIMITER",
+        [
+          "Invalid option `record_delimiter`:",
+          "value must be a non empty string or buffer",
+          `at index ${i2},`,
+          `got ${JSON.stringify(rd)}`
+        ],
+        options
+      );
+    }
+    if (typeof rd === "string") {
+      rd = Buffer.from(rd, options.encoding);
+    }
+    return rd;
+  });
+  if (typeof options.relax_column_count === "boolean") {
+  } else if (options.relax_column_count === void 0 || options.relax_column_count === null) {
+    options.relax_column_count = false;
+  } else {
+    throw new Error(
+      `Invalid Option: relax_column_count must be a boolean, got ${JSON.stringify(options.relax_column_count)}`
+    );
+  }
+  if (typeof options.relax_column_count_less === "boolean") {
+  } else if (options.relax_column_count_less === void 0 || options.relax_column_count_less === null) {
+    options.relax_column_count_less = false;
+  } else {
+    throw new Error(
+      `Invalid Option: relax_column_count_less must be a boolean, got ${JSON.stringify(options.relax_column_count_less)}`
+    );
+  }
+  if (typeof options.relax_column_count_more === "boolean") {
+  } else if (options.relax_column_count_more === void 0 || options.relax_column_count_more === null) {
+    options.relax_column_count_more = false;
+  } else {
+    throw new Error(
+      `Invalid Option: relax_column_count_more must be a boolean, got ${JSON.stringify(options.relax_column_count_more)}`
+    );
+  }
+  if (typeof options.relax_quotes === "boolean") {
+  } else if (options.relax_quotes === void 0 || options.relax_quotes === null) {
+    options.relax_quotes = false;
+  } else {
+    throw new Error(
+      `Invalid Option: relax_quotes must be a boolean, got ${JSON.stringify(options.relax_quotes)}`
+    );
+  }
+  if (typeof options.skip_empty_lines === "boolean") {
+  } else if (options.skip_empty_lines === void 0 || options.skip_empty_lines === null) {
+    options.skip_empty_lines = false;
+  } else {
+    throw new Error(
+      `Invalid Option: skip_empty_lines must be a boolean, got ${JSON.stringify(options.skip_empty_lines)}`
+    );
+  }
+  if (typeof options.skip_records_with_empty_values === "boolean") {
+  } else if (options.skip_records_with_empty_values === void 0 || options.skip_records_with_empty_values === null) {
+    options.skip_records_with_empty_values = false;
+  } else {
+    throw new Error(
+      `Invalid Option: skip_records_with_empty_values must be a boolean, got ${JSON.stringify(options.skip_records_with_empty_values)}`
+    );
+  }
+  if (typeof options.skip_records_with_error === "boolean") {
+  } else if (options.skip_records_with_error === void 0 || options.skip_records_with_error === null) {
+    options.skip_records_with_error = false;
+  } else {
+    throw new Error(
+      `Invalid Option: skip_records_with_error must be a boolean, got ${JSON.stringify(options.skip_records_with_error)}`
+    );
+  }
+  if (options.rtrim === void 0 || options.rtrim === null || options.rtrim === false) {
+    options.rtrim = false;
+  } else if (options.rtrim !== true) {
+    throw new Error(
+      `Invalid Option: rtrim must be a boolean, got ${JSON.stringify(options.rtrim)}`
+    );
+  }
+  if (options.ltrim === void 0 || options.ltrim === null || options.ltrim === false) {
+    options.ltrim = false;
+  } else if (options.ltrim !== true) {
+    throw new Error(
+      `Invalid Option: ltrim must be a boolean, got ${JSON.stringify(options.ltrim)}`
+    );
+  }
+  if (options.trim === void 0 || options.trim === null || options.trim === false) {
+    options.trim = false;
+  } else if (options.trim !== true) {
+    throw new Error(
+      `Invalid Option: trim must be a boolean, got ${JSON.stringify(options.trim)}`
+    );
+  }
+  if (options.trim === true && opts.ltrim !== false) {
+    options.ltrim = true;
+  } else if (options.ltrim !== true) {
+    options.ltrim = false;
+  }
+  if (options.trim === true && opts.rtrim !== false) {
+    options.rtrim = true;
+  } else if (options.rtrim !== true) {
+    options.rtrim = false;
+  }
+  if (options.to === void 0 || options.to === null) {
+    options.to = -1;
+  } else if (options.to !== -1) {
+    if (typeof options.to === "string" && /\d+/.test(options.to)) {
+      options.to = parseInt(options.to);
+    }
+    if (Number.isInteger(options.to)) {
+      if (options.to <= 0) {
+        throw new Error(
+          `Invalid Option: to must be a positive integer greater than 0, got ${JSON.stringify(opts.to)}`
+        );
+      }
+    } else {
+      throw new Error(
+        `Invalid Option: to must be an integer, got ${JSON.stringify(opts.to)}`
+      );
+    }
+  }
+  if (options.to_line === void 0 || options.to_line === null) {
+    options.to_line = -1;
+  } else if (options.to_line !== -1) {
+    if (typeof options.to_line === "string" && /\d+/.test(options.to_line)) {
+      options.to_line = parseInt(options.to_line);
+    }
+    if (Number.isInteger(options.to_line)) {
+      if (options.to_line <= 0) {
+        throw new Error(
+          `Invalid Option: to_line must be a positive integer greater than 0, got ${JSON.stringify(opts.to_line)}`
+        );
+      }
+    } else {
+      throw new Error(
+        `Invalid Option: to_line must be an integer, got ${JSON.stringify(opts.to_line)}`
+      );
+    }
+  }
+  return options;
+};
+
+// node_modules/csv-parse/lib/api/index.js
+var isRecordEmpty = function(record) {
+  return record.every(
+    (field) => field == null || field.toString && field.toString().trim() === ""
+  );
+};
+var cr2 = 13;
+var nl2 = 10;
+var boms = {
+  // Note, the following are equals:
+  // Buffer.from("\ufeff")
+  // Buffer.from([239, 187, 191])
+  // Buffer.from('EFBBBF', 'hex')
+  utf8: Buffer.from([239, 187, 191]),
+  // Note, the following are equals:
+  // Buffer.from "\ufeff", 'utf16le
+  // Buffer.from([255, 254])
+  utf16le: Buffer.from([255, 254])
+};
+var transform = function(original_options = {}) {
+  const info2 = {
+    bytes: 0,
+    bytes_records: 0,
+    comment_lines: 0,
+    empty_lines: 0,
+    invalid_field_length: 0,
+    lines: 1,
+    records: 0
+  };
+  const options = normalize_options(original_options);
+  return {
+    info: info2,
+    original_options,
+    options,
+    state: init_state(options),
+    __needMoreData: function(i2, bufLen, end) {
+      if (end) return false;
+      const { encoding, escape, quote } = this.options;
+      const { quoting, needMoreDataSize, recordDelimiterMaxLength } = this.state;
+      const numOfCharLeft = bufLen - i2 - 1;
+      const requiredLength = Math.max(
+        needMoreDataSize,
+        // Skip if the remaining buffer smaller than record delimiter
+        // If "record_delimiter" is yet to be discovered:
+        // 1. It is equals to `[]` and "recordDelimiterMaxLength" equals `0`
+        // 2. We set the length to windows line ending in the current encoding
+        // Note, that encoding is known from user or bom discovery at that point
+        // recordDelimiterMaxLength,
+        recordDelimiterMaxLength === 0 ? Buffer.from("\r\n", encoding).length : recordDelimiterMaxLength,
+        // Skip if remaining buffer can be an escaped quote
+        quoting ? (escape === null ? 0 : escape.length) + quote.length : 0,
+        // Skip if remaining buffer can be record delimiter following the closing quote
+        quoting ? quote.length + recordDelimiterMaxLength : 0
+      );
+      return numOfCharLeft < requiredLength;
+    },
+    // Central parser implementation
+    parse: function(nextBuf, end, push, close) {
+      const {
+        bom,
+        comment_no_infix,
+        encoding,
+        from_line,
+        ltrim,
+        max_record_size,
+        raw,
+        relax_quotes,
+        rtrim,
+        skip_empty_lines,
+        to,
+        to_line
+      } = this.options;
+      let { comment, escape, quote, record_delimiter } = this.options;
+      const { bomSkipped, previousBuf, rawBuffer, escapeIsQuote } = this.state;
+      let buf;
+      if (previousBuf === void 0) {
+        if (nextBuf === void 0) {
+          close();
+          return;
+        } else {
+          buf = nextBuf;
+        }
+      } else if (previousBuf !== void 0 && nextBuf === void 0) {
+        buf = previousBuf;
+      } else {
+        buf = Buffer.concat([previousBuf, nextBuf]);
+      }
+      if (bomSkipped === false) {
+        if (bom === false) {
+          this.state.bomSkipped = true;
+        } else if (buf.length < 3) {
+          if (end === false) {
+            this.state.previousBuf = buf;
+            return;
+          }
+        } else {
+          for (const encoding2 in boms) {
+            if (boms[encoding2].compare(buf, 0, boms[encoding2].length) === 0) {
+              const bomLength = boms[encoding2].length;
+              this.state.bufBytesStart += bomLength;
+              buf = buf.slice(bomLength);
+              const options2 = normalize_options({
+                ...this.original_options,
+                encoding: encoding2
+              });
+              for (const key in options2) {
+                this.options[key] = options2[key];
+              }
+              ({ comment, escape, quote } = this.options);
+              break;
+            }
+          }
+          this.state.bomSkipped = true;
+        }
+      }
+      const bufLen = buf.length;
+      let pos;
+      for (pos = 0; pos < bufLen; pos++) {
+        if (this.__needMoreData(pos, bufLen, end)) {
+          break;
+        }
+        if (this.state.wasRowDelimiter === true) {
+          this.info.lines++;
+          this.state.wasRowDelimiter = false;
+        }
+        if (to_line !== -1 && this.info.lines > to_line) {
+          this.state.stop = true;
+          close();
+          return;
+        }
+        if (this.state.quoting === false && record_delimiter.length === 0) {
+          const record_delimiterCount = this.__autoDiscoverRecordDelimiter(
+            buf,
+            pos
+          );
+          if (record_delimiterCount) {
+            record_delimiter = this.options.record_delimiter;
+          }
+        }
+        const chr = buf[pos];
+        if (raw === true) {
+          rawBuffer.append(chr);
+        }
+        if ((chr === cr2 || chr === nl2) && this.state.wasRowDelimiter === false) {
+          this.state.wasRowDelimiter = true;
+        }
+        if (this.state.escaping === true) {
+          this.state.escaping = false;
+        } else {
+          if (escape !== null && this.state.quoting === true && this.__isEscape(buf, pos, chr) && pos + escape.length < bufLen) {
+            if (escapeIsQuote) {
+              if (this.__isQuote(buf, pos + escape.length)) {
+                this.state.escaping = true;
+                pos += escape.length - 1;
+                continue;
+              }
+            } else {
+              this.state.escaping = true;
+              pos += escape.length - 1;
+              continue;
+            }
+          }
+          if (this.state.commenting === false && this.__isQuote(buf, pos)) {
+            if (this.state.quoting === true) {
+              const nextChr = buf[pos + quote.length];
+              const isNextChrTrimable = rtrim && this.__isCharTrimable(buf, pos + quote.length);
+              const isNextChrComment = comment !== null && this.__compareBytes(comment, buf, pos + quote.length, nextChr);
+              const isNextChrDelimiter = this.__isDelimiter(
+                buf,
+                pos + quote.length,
+                nextChr
+              );
+              const isNextChrRecordDelimiter = record_delimiter.length === 0 ? this.__autoDiscoverRecordDelimiter(buf, pos + quote.length) : this.__isRecordDelimiter(nextChr, buf, pos + quote.length);
+              if (escape !== null && this.__isEscape(buf, pos, chr) && this.__isQuote(buf, pos + escape.length)) {
+                pos += escape.length - 1;
+              } else if (!nextChr || isNextChrDelimiter || isNextChrRecordDelimiter || isNextChrComment || isNextChrTrimable) {
+                this.state.quoting = false;
+                this.state.wasQuoting = true;
+                pos += quote.length - 1;
+                continue;
+              } else if (relax_quotes === false) {
+                const err = this.__error(
+                  new CsvError(
+                    "CSV_INVALID_CLOSING_QUOTE",
+                    [
+                      "Invalid Closing Quote:",
+                      `got "${String.fromCharCode(nextChr)}"`,
+                      `at line ${this.info.lines}`,
+                      "instead of delimiter, record delimiter, trimable character",
+                      "(if activated) or comment"
+                    ],
+                    this.options,
+                    this.__infoField()
+                  )
+                );
+                if (err !== void 0) return err;
+              } else {
+                this.state.quoting = false;
+                this.state.wasQuoting = true;
+                this.state.field.prepend(quote);
+                pos += quote.length - 1;
+              }
+            } else {
+              if (this.state.field.length !== 0) {
+                if (relax_quotes === false) {
+                  const info3 = this.__infoField();
+                  const bom2 = Object.keys(boms).map(
+                    (b) => boms[b].equals(this.state.field.toString()) ? b : false
+                  ).filter(Boolean)[0];
+                  const err = this.__error(
+                    new CsvError(
+                      "INVALID_OPENING_QUOTE",
+                      [
+                        "Invalid Opening Quote:",
+                        `a quote is found on field ${JSON.stringify(info3.column)} at line ${info3.lines}, value is ${JSON.stringify(this.state.field.toString(encoding))}`,
+                        bom2 ? `(${bom2} bom)` : void 0
+                      ],
+                      this.options,
+                      info3,
+                      {
+                        field: this.state.field
+                      }
+                    )
+                  );
+                  if (err !== void 0) return err;
+                }
+              } else {
+                this.state.quoting = true;
+                pos += quote.length - 1;
+                continue;
+              }
+            }
+          }
+          if (this.state.quoting === false) {
+            const recordDelimiterLength = this.__isRecordDelimiter(
+              chr,
+              buf,
+              pos
+            );
+            if (recordDelimiterLength !== 0) {
+              const skipCommentLine = this.state.commenting && this.state.wasQuoting === false && this.state.record.length === 0 && this.state.field.length === 0;
+              if (skipCommentLine) {
+                this.info.comment_lines++;
+              } else {
+                if (this.state.enabled === false && this.info.lines + (this.state.wasRowDelimiter === true ? 1 : 0) >= from_line) {
+                  this.state.enabled = true;
+                  this.__resetField();
+                  this.__resetRecord();
+                  pos += recordDelimiterLength - 1;
+                  continue;
+                }
+                if (skip_empty_lines === true && this.state.wasQuoting === false && this.state.record.length === 0 && this.state.field.length === 0) {
+                  this.info.empty_lines++;
+                  pos += recordDelimiterLength - 1;
+                  continue;
+                }
+                this.info.bytes = this.state.bufBytesStart + pos;
+                const errField = this.__onField();
+                if (errField !== void 0) return errField;
+                this.info.bytes = this.state.bufBytesStart + pos + recordDelimiterLength;
+                const errRecord = this.__onRecord(push);
+                if (errRecord !== void 0) return errRecord;
+                if (to !== -1 && this.info.records >= to) {
+                  this.state.stop = true;
+                  close();
+                  return;
+                }
+              }
+              this.state.commenting = false;
+              pos += recordDelimiterLength - 1;
+              continue;
+            }
+            if (this.state.commenting) {
+              continue;
+            }
+            if (comment !== null && (comment_no_infix === false || this.state.record.length === 0 && this.state.field.length === 0)) {
+              const commentCount = this.__compareBytes(comment, buf, pos, chr);
+              if (commentCount !== 0) {
+                this.state.commenting = true;
+                continue;
+              }
+            }
+            const delimiterLength = this.__isDelimiter(buf, pos, chr);
+            if (delimiterLength !== 0) {
+              this.info.bytes = this.state.bufBytesStart + pos;
+              const errField = this.__onField();
+              if (errField !== void 0) return errField;
+              pos += delimiterLength - 1;
+              continue;
+            }
+          }
+        }
+        if (this.state.commenting === false) {
+          if (max_record_size !== 0 && this.state.record_length + this.state.field.length > max_record_size) {
+            return this.__error(
+              new CsvError(
+                "CSV_MAX_RECORD_SIZE",
+                [
+                  "Max Record Size:",
+                  "record exceed the maximum number of tolerated bytes",
+                  `of ${max_record_size}`,
+                  `at line ${this.info.lines}`
+                ],
+                this.options,
+                this.__infoField()
+              )
+            );
+          }
+        }
+        const lappend = ltrim === false || this.state.quoting === true || this.state.field.length !== 0 || !this.__isCharTrimable(buf, pos);
+        const rappend = rtrim === false || this.state.wasQuoting === false;
+        if (lappend === true && rappend === true) {
+          this.state.field.append(chr);
+        } else if (rtrim === true && !this.__isCharTrimable(buf, pos)) {
+          return this.__error(
+            new CsvError(
+              "CSV_NON_TRIMABLE_CHAR_AFTER_CLOSING_QUOTE",
+              [
+                "Invalid Closing Quote:",
+                "found non trimable byte after quote",
+                `at line ${this.info.lines}`
+              ],
+              this.options,
+              this.__infoField()
+            )
+          );
+        } else {
+          if (lappend === false) {
+            pos += this.__isCharTrimable(buf, pos) - 1;
+          }
+          continue;
+        }
+      }
+      if (end === true) {
+        if (this.state.quoting === true) {
+          const err = this.__error(
+            new CsvError(
+              "CSV_QUOTE_NOT_CLOSED",
+              [
+                "Quote Not Closed:",
+                `the parsing is finished with an opening quote at line ${this.info.lines}`
+              ],
+              this.options,
+              this.__infoField()
+            )
+          );
+          if (err !== void 0) return err;
+        } else {
+          if (this.state.wasQuoting === true || this.state.record.length !== 0 || this.state.field.length !== 0) {
+            this.info.bytes = this.state.bufBytesStart + pos;
+            const errField = this.__onField();
+            if (errField !== void 0) return errField;
+            const errRecord = this.__onRecord(push);
+            if (errRecord !== void 0) return errRecord;
+          } else if (this.state.wasRowDelimiter === true) {
+            this.info.empty_lines++;
+          } else if (this.state.commenting === true) {
+            this.info.comment_lines++;
+          }
+        }
+      } else {
+        this.state.bufBytesStart += pos;
+        this.state.previousBuf = buf.slice(pos);
+      }
+      if (this.state.wasRowDelimiter === true) {
+        this.info.lines++;
+        this.state.wasRowDelimiter = false;
+      }
+    },
+    __onRecord: function(push) {
+      const {
+        columns,
+        group_columns_by_name,
+        encoding,
+        info: info3,
+        from,
+        relax_column_count,
+        relax_column_count_less,
+        relax_column_count_more,
+        raw,
+        skip_records_with_empty_values
+      } = this.options;
+      const { enabled, record } = this.state;
+      if (enabled === false) {
+        return this.__resetRecord();
+      }
+      const recordLength = record.length;
+      if (columns === true) {
+        if (skip_records_with_empty_values === true && isRecordEmpty(record)) {
+          this.__resetRecord();
+          return;
+        }
+        return this.__firstLineToColumns(record);
+      }
+      if (columns === false && this.info.records === 0) {
+        this.state.expectedRecordLength = recordLength;
+      }
+      if (recordLength !== this.state.expectedRecordLength) {
+        const err = columns === false ? new CsvError(
+          "CSV_RECORD_INCONSISTENT_FIELDS_LENGTH",
+          [
+            "Invalid Record Length:",
+            `expect ${this.state.expectedRecordLength},`,
+            `got ${recordLength} on line ${this.info.lines}`
+          ],
+          this.options,
+          this.__infoField(),
+          {
+            record
+          }
+        ) : new CsvError(
+          "CSV_RECORD_INCONSISTENT_COLUMNS",
+          [
+            "Invalid Record Length:",
+            `columns length is ${columns.length},`,
+            // rename columns
+            `got ${recordLength} on line ${this.info.lines}`
+          ],
+          this.options,
+          this.__infoField(),
+          {
+            record
+          }
+        );
+        if (relax_column_count === true || relax_column_count_less === true && recordLength < this.state.expectedRecordLength || relax_column_count_more === true && recordLength > this.state.expectedRecordLength) {
+          this.info.invalid_field_length++;
+          this.state.error = err;
+        } else {
+          const finalErr = this.__error(err);
+          if (finalErr) return finalErr;
+        }
+      }
+      if (skip_records_with_empty_values === true && isRecordEmpty(record)) {
+        this.__resetRecord();
+        return;
+      }
+      if (this.state.recordHasError === true) {
+        this.__resetRecord();
+        this.state.recordHasError = false;
+        return;
+      }
+      this.info.records++;
+      if (from === 1 || this.info.records >= from) {
+        const { objname } = this.options;
+        if (columns !== false) {
+          const obj = {};
+          for (let i2 = 0, l = record.length; i2 < l; i2++) {
+            if (columns[i2] === void 0 || columns[i2].disabled) continue;
+            if (group_columns_by_name === true && obj[columns[i2].name] !== void 0) {
+              if (Array.isArray(obj[columns[i2].name])) {
+                obj[columns[i2].name] = obj[columns[i2].name].concat(record[i2]);
+              } else {
+                obj[columns[i2].name] = [obj[columns[i2].name], record[i2]];
+              }
+            } else {
+              obj[columns[i2].name] = record[i2];
+            }
+          }
+          if (raw === true || info3 === true) {
+            const extRecord = Object.assign(
+              { record: obj },
+              raw === true ? { raw: this.state.rawBuffer.toString(encoding) } : {},
+              info3 === true ? { info: this.__infoRecord() } : {}
+            );
+            const err = this.__push(
+              objname === void 0 ? extRecord : [obj[objname], extRecord],
+              push
+            );
+            if (err) {
+              return err;
+            }
+          } else {
+            const err = this.__push(
+              objname === void 0 ? obj : [obj[objname], obj],
+              push
+            );
+            if (err) {
+              return err;
+            }
+          }
+        } else {
+          if (raw === true || info3 === true) {
+            const extRecord = Object.assign(
+              { record },
+              raw === true ? { raw: this.state.rawBuffer.toString(encoding) } : {},
+              info3 === true ? { info: this.__infoRecord() } : {}
+            );
+            const err = this.__push(
+              objname === void 0 ? extRecord : [record[objname], extRecord],
+              push
+            );
+            if (err) {
+              return err;
+            }
+          } else {
+            const err = this.__push(
+              objname === void 0 ? record : [record[objname], record],
+              push
+            );
+            if (err) {
+              return err;
+            }
+          }
+        }
+      }
+      this.__resetRecord();
+    },
+    __firstLineToColumns: function(record) {
+      const { firstLineToHeaders } = this.state;
+      try {
+        const headers = firstLineToHeaders === void 0 ? record : firstLineToHeaders.call(null, record);
+        if (!Array.isArray(headers)) {
+          return this.__error(
+            new CsvError(
+              "CSV_INVALID_COLUMN_MAPPING",
+              [
+                "Invalid Column Mapping:",
+                "expect an array from column function,",
+                `got ${JSON.stringify(headers)}`
+              ],
+              this.options,
+              this.__infoField(),
+              {
+                headers
+              }
+            )
+          );
+        }
+        const normalizedHeaders = normalize_columns_array(headers);
+        this.state.expectedRecordLength = normalizedHeaders.length;
+        this.options.columns = normalizedHeaders;
+        this.__resetRecord();
+        return;
+      } catch (err) {
+        return err;
+      }
+    },
+    __resetRecord: function() {
+      if (this.options.raw === true) {
+        this.state.rawBuffer.reset();
+      }
+      this.state.error = void 0;
+      this.state.record = [];
+      this.state.record_length = 0;
+    },
+    __onField: function() {
+      const { cast, encoding, rtrim, max_record_size } = this.options;
+      const { enabled, wasQuoting } = this.state;
+      if (enabled === false) {
+        return this.__resetField();
+      }
+      let field = this.state.field.toString(encoding);
+      if (rtrim === true && wasQuoting === false) {
+        field = field.trimRight();
+      }
+      if (cast === true) {
+        const [err, f3] = this.__cast(field);
+        if (err !== void 0) return err;
+        field = f3;
+      }
+      this.state.record.push(field);
+      if (max_record_size !== 0 && typeof field === "string") {
+        this.state.record_length += field.length;
+      }
+      this.__resetField();
+    },
+    __resetField: function() {
+      this.state.field.reset();
+      this.state.wasQuoting = false;
+    },
+    __push: function(record, push) {
+      const { on_record } = this.options;
+      if (on_record !== void 0) {
+        const info3 = this.__infoRecord();
+        try {
+          record = on_record.call(null, record, info3);
+        } catch (err) {
+          return err;
+        }
+        if (record === void 0 || record === null) {
+          return;
+        }
+      }
+      this.info.bytes_records += this.info.bytes;
+      push(record);
+    },
+    // Return a tuple with the error and the casted value
+    __cast: function(field) {
+      const { columns, relax_column_count } = this.options;
+      const isColumns = Array.isArray(columns);
+      if (isColumns === true && relax_column_count && this.options.columns.length <= this.state.record.length) {
+        return [void 0, void 0];
+      }
+      if (this.state.castField !== null) {
+        try {
+          const info3 = this.__infoField();
+          return [void 0, this.state.castField.call(null, field, info3)];
+        } catch (err) {
+          return [err];
+        }
+      }
+      if (this.__isFloat(field)) {
+        return [void 0, parseFloat(field)];
+      } else if (this.options.cast_date !== false) {
+        const info3 = this.__infoField();
+        return [void 0, this.options.cast_date.call(null, field, info3)];
+      }
+      return [void 0, field];
+    },
+    // Helper to test if a character is a space or a line delimiter
+    __isCharTrimable: function(buf, pos) {
+      const isTrim = (buf2, pos2) => {
+        const { timchars } = this.state;
+        loop1: for (let i2 = 0; i2 < timchars.length; i2++) {
+          const timchar = timchars[i2];
+          for (let j = 0; j < timchar.length; j++) {
+            if (timchar[j] !== buf2[pos2 + j]) continue loop1;
+          }
+          return timchar.length;
+        }
+        return 0;
+      };
+      return isTrim(buf, pos);
+    },
+    // Keep it in case we implement the `cast_int` option
+    // __isInt(value){
+    //   // return Number.isInteger(parseInt(value))
+    //   // return !isNaN( parseInt( obj ) );
+    //   return /^(\-|\+)?[1-9][0-9]*$/.test(value)
+    // }
+    __isFloat: function(value) {
+      return value - parseFloat(value) + 1 >= 0;
+    },
+    __compareBytes: function(sourceBuf, targetBuf, targetPos, firstByte) {
+      if (sourceBuf[0] !== firstByte) return 0;
+      const sourceLength = sourceBuf.length;
+      for (let i2 = 1; i2 < sourceLength; i2++) {
+        if (sourceBuf[i2] !== targetBuf[targetPos + i2]) return 0;
+      }
+      return sourceLength;
+    },
+    __isDelimiter: function(buf, pos, chr) {
+      const { delimiter, ignore_last_delimiters } = this.options;
+      if (ignore_last_delimiters === true && this.state.record.length === this.options.columns.length - 1) {
+        return 0;
+      } else if (ignore_last_delimiters !== false && typeof ignore_last_delimiters === "number" && this.state.record.length === ignore_last_delimiters - 1) {
+        return 0;
+      }
+      loop1: for (let i2 = 0; i2 < delimiter.length; i2++) {
+        const del = delimiter[i2];
+        if (del[0] === chr) {
+          for (let j = 1; j < del.length; j++) {
+            if (del[j] !== buf[pos + j]) continue loop1;
+          }
+          return del.length;
+        }
+      }
+      return 0;
+    },
+    __isRecordDelimiter: function(chr, buf, pos) {
+      const { record_delimiter } = this.options;
+      const recordDelimiterLength = record_delimiter.length;
+      loop1: for (let i2 = 0; i2 < recordDelimiterLength; i2++) {
+        const rd = record_delimiter[i2];
+        const rdLength = rd.length;
+        if (rd[0] !== chr) {
+          continue;
+        }
+        for (let j = 1; j < rdLength; j++) {
+          if (rd[j] !== buf[pos + j]) {
+            continue loop1;
+          }
+        }
+        return rd.length;
+      }
+      return 0;
+    },
+    __isEscape: function(buf, pos, chr) {
+      const { escape } = this.options;
+      if (escape === null) return false;
+      const l = escape.length;
+      if (escape[0] === chr) {
+        for (let i2 = 0; i2 < l; i2++) {
+          if (escape[i2] !== buf[pos + i2]) {
+            return false;
+          }
+        }
+        return true;
+      }
+      return false;
+    },
+    __isQuote: function(buf, pos) {
+      const { quote } = this.options;
+      if (quote === null) return false;
+      const l = quote.length;
+      for (let i2 = 0; i2 < l; i2++) {
+        if (quote[i2] !== buf[pos + i2]) {
+          return false;
+        }
+      }
+      return true;
+    },
+    __autoDiscoverRecordDelimiter: function(buf, pos) {
+      const { encoding } = this.options;
+      const rds = [
+        // Important, the windows line ending must be before mac os 9
+        Buffer.from("\r\n", encoding),
+        Buffer.from("\n", encoding),
+        Buffer.from("\r", encoding)
+      ];
+      loop: for (let i2 = 0; i2 < rds.length; i2++) {
+        const l = rds[i2].length;
+        for (let j = 0; j < l; j++) {
+          if (rds[i2][j] !== buf[pos + j]) {
+            continue loop;
+          }
+        }
+        this.options.record_delimiter.push(rds[i2]);
+        this.state.recordDelimiterMaxLength = rds[i2].length;
+        return rds[i2].length;
+      }
+      return 0;
+    },
+    __error: function(msg) {
+      const { encoding, raw, skip_records_with_error } = this.options;
+      const err = typeof msg === "string" ? new Error(msg) : msg;
+      if (skip_records_with_error) {
+        this.state.recordHasError = true;
+        if (this.options.on_skip !== void 0) {
+          try {
+            this.options.on_skip(
+              err,
+              raw ? this.state.rawBuffer.toString(encoding) : void 0
+            );
+          } catch (err2) {
+            return err2;
+          }
+        }
+        return void 0;
+      } else {
+        return err;
+      }
+    },
+    __infoDataSet: function() {
+      return {
+        ...this.info,
+        columns: this.options.columns
+      };
+    },
+    __infoRecord: function() {
+      const { columns, raw, encoding } = this.options;
+      return {
+        ...this.__infoDataSet(),
+        bytes_records: this.info.bytes,
+        error: this.state.error,
+        header: columns === true,
+        index: this.state.record.length,
+        raw: raw ? this.state.rawBuffer.toString(encoding) : void 0
+      };
+    },
+    __infoField: function() {
+      const { columns } = this.options;
+      const isColumns = Array.isArray(columns);
+      const bytes_records = this.info.bytes_records;
+      return {
+        ...this.__infoRecord(),
+        bytes_records,
+        column: isColumns === true ? columns.length > this.state.record.length ? columns[this.state.record.length].name : null : this.state.record.length,
+        quoting: this.state.wasQuoting
+      };
+    }
+  };
+};
+
+// node_modules/csv-parse/lib/sync.js
+var parse = function(data, opts = {}) {
+  if (typeof data === "string") {
+    data = Buffer.from(data);
+  }
+  const records = opts && opts.objname ? {} : [];
+  const parser = transform(opts);
+  const push = (record) => {
+    if (parser.options.objname === void 0) records.push(record);
+    else {
+      records[record[0]] = record[1];
+    }
+  };
+  const close = () => {
+  };
+  const error2 = parser.parse(data, true, push, close);
+  if (error2 !== void 0) throw error2;
+  return records;
+};
+
+// src/providers/cryptpad/provider.ts
+var CRYPTPAD_CSV_INPUT_CAPABILITIES = createCapabilitySet({
+  readTables: true,
+  publicReadNoAuth: true
+});
+function createDefaultDeps2() {
+  return {
+    async fetchCsv(url, signal) {
+      const response = await fetch(url, { signal });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch CSV from "${url}" (HTTP ${response.status})`);
+      }
+      return response.text();
+    },
+    async readCsvFile(filePath) {
+      return fs10.readFile(filePath, "utf8");
+    }
+  };
+}
+function sourceId(source) {
+  return source.tableId ?? source.filePath ?? source.url ?? source.tableName;
+}
+function parseCsvRows(csvText, delimiter) {
+  const records = parse(csvText, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+    bom: true,
+    relax_column_count: true,
+    delimiter
+  });
+  return records.map((record) => {
+    const row = {};
+    for (const [key, value] of Object.entries(record)) {
+      row[key] = value == null ? "" : String(value);
+    }
+    return row;
+  });
+}
+function createCryptPadCsvInputProvider(options, depsOverrides = {}) {
+  if (!options.sources || options.sources.length === 0) {
+    throw new Error("CryptPad CSV provider requires at least one source.");
+  }
+  const deps = { ...createDefaultDeps2(), ...depsOverrides };
+  return {
+    kind: "input",
+    providerId: options.providerId ?? "cryptpad-csv",
+    displayName: options.displayName ?? "CryptPad CSV Input",
+    capabilities: CRYPTPAD_CSV_INPUT_CAPABILITIES,
+    async readTables(request) {
+      const requested = new Set((request.tableNames ?? []).filter(Boolean));
+      const selectedSources = requested.size === 0 ? options.sources : options.sources.filter((source) => requested.has(source.tableName));
+      const tables = await Promise.all(
+        selectedSources.map(async (source) => {
+          const csvText = source.url ? await deps.fetchCsv(source.url, request.signal) : source.filePath ? await deps.readCsvFile(source.filePath) : "";
+          if (!csvText) {
+            throw new Error(
+              `Source "${source.tableName}" must define either url or filePath.`
+            );
+          }
+          return {
+            tableId: sourceId(source),
+            tableName: source.tableName,
+            rows: parseCsvRows(csvText, options.delimiter),
+            sourcePath: source.url ?? source.filePath,
+            metadata: {
+              sourceKind: source.url ? "url" : "file"
+            }
+          };
+        })
+      );
+      return {
+        tables,
+        metadata: {
+          provider: "cryptpad-csv",
+          sourceCount: selectedSources.length
+        }
+      };
+    }
+  };
+}
+
+// src/providers/cryptpad/fullProvider.ts
+import fs11 from "node:fs/promises";
+import path7 from "node:path";
+
+// src/providers/syncEngine.ts
+function pathKey(locale, sheet, key) {
+  return `${locale}::${sheet}::${key}`;
+}
+function splitPath(key) {
+  const [locale, sheet, nestedKey] = key.split("::");
+  return { locale, sheet, key: nestedKey };
+}
+function flattenTranslations(translations) {
+  const result = /* @__PURE__ */ new Map();
+  for (const [locale, sheets] of Object.entries(translations)) {
+    for (const [sheet, entries] of Object.entries(sheets)) {
+      for (const [key, rawValue] of Object.entries(entries)) {
+        result.set(pathKey(locale, sheet, key), {
+          locale,
+          sheet,
+          key,
+          value: String(rawValue ?? "")
+        });
+      }
+    }
+  }
+  return result;
+}
+function getChangeType(beforeValue, afterValue) {
+  if (beforeValue === void 0 && afterValue !== void 0) {
+    return "insert";
+  }
+  if (beforeValue !== void 0 && afterValue === void 0) {
+    return "delete";
+  }
+  return "update";
+}
+function diffChanges(base, next) {
+  const keys2 = /* @__PURE__ */ new Set([...base.keys(), ...next.keys()]);
+  const changes = [];
+  for (const key of keys2) {
+    const baseValue = base.get(key)?.value;
+    const nextValue = next.get(key)?.value;
+    if (baseValue === nextValue) continue;
+    const details = splitPath(key);
+    changes.push({
+      path: key,
+      locale: details.locale,
+      sheet: details.sheet,
+      key: details.key,
+      type: getChangeType(baseValue, nextValue),
+      before: baseValue,
+      after: nextValue
+    });
+  }
+  return changes.sort((a, b) => a.path.localeCompare(b.path));
+}
+function isConflict(baseValue, localValue, remoteValue) {
+  if (localValue === remoteValue) {
+    return void 0;
+  }
+  if (baseValue === localValue || baseValue === remoteValue) {
+    return void 0;
+  }
+  if (localValue === void 0 || remoteValue === void 0) {
+    return "delete-vs-update";
+  }
+  return "diverged-update";
+}
+function setValue(target, locale, sheet, key, value) {
+  if (value === void 0) {
+    if (!target[locale]?.[sheet]) return;
+    delete target[locale][sheet][key];
+    if (Object.keys(target[locale][sheet]).length === 0) {
+      delete target[locale][sheet];
+    }
+    if (Object.keys(target[locale]).length === 0) {
+      delete target[locale];
+    }
+    return;
+  }
+  if (!target[locale]) target[locale] = {};
+  if (!target[locale][sheet]) target[locale][sheet] = {};
+  target[locale][sheet][key] = value;
+}
+function cloneTranslations(input) {
+  return JSON.parse(JSON.stringify(input));
+}
+function buildSyncPlan(input) {
+  const base = flattenTranslations(input.baseTranslations);
+  const local = flattenTranslations(input.localTranslations);
+  const remote = flattenTranslations(input.remoteTranslations);
+  const localChanges = diffChanges(base, local);
+  const remoteChanges = diffChanges(base, remote);
+  const localChanged = new Map(localChanges.map((change) => [change.path, change]));
+  const remoteChanged = new Map(remoteChanges.map((change) => [change.path, change]));
+  const overlap = new Set([...localChanged.keys()].filter((path10) => remoteChanged.has(path10)));
+  const conflicts = [];
+  for (const path10 of overlap) {
+    const details = splitPath(path10);
+    const baseValue = base.get(path10)?.value;
+    const localValue = local.get(path10)?.value;
+    const remoteValue = remote.get(path10)?.value;
+    const reason = isConflict(baseValue, localValue, remoteValue);
+    if (!reason) continue;
+    conflicts.push({
+      path: path10,
+      locale: details.locale,
+      sheet: details.sheet,
+      key: details.key,
+      baseValue,
+      localValue,
+      remoteValue,
+      reason
+    });
+  }
+  return {
+    localChanges,
+    remoteChanges,
+    conflicts: conflicts.sort((a, b) => a.path.localeCompare(b.path))
+  };
+}
+function resolveSyncPlan(input, policy) {
+  const plan = buildSyncPlan(input);
+  const merged = cloneTranslations(input.remoteTranslations);
+  const conflictMap = new Map(plan.conflicts.map((conflict) => [conflict.path, conflict]));
+  let appliedLocalChanges = 0;
+  for (const change of plan.localChanges) {
+    const conflict = conflictMap.get(change.path);
+    if (conflict) {
+      if (policy === "remote-wins" || policy === "manual") {
+        continue;
+      }
+      setValue(merged, change.locale, change.sheet, change.key, change.after);
+      appliedLocalChanges++;
+      continue;
+    }
+    setValue(merged, change.locale, change.sheet, change.key, change.after);
+    appliedLocalChanges++;
+  }
+  if (policy === "local-wins") {
+    return {
+      policy,
+      mergedTranslations: merged,
+      appliedLocalChanges,
+      appliedRemoteChanges: 0,
+      skippedConflicts: 0
+    };
+  }
+  return {
+    policy,
+    mergedTranslations: merged,
+    appliedLocalChanges,
+    appliedRemoteChanges: 0,
+    skippedConflicts: policy === "manual" ? plan.conflicts.length : 0
+  };
+}
+
+// src/providers/cryptpad/fullProvider.ts
+var CRYPTPAD_WORKSPACE_OUTPUT_CAPABILITIES = createCapabilitySet({
+  writeTables: true
+});
+var CRYPTPAD_WORKSPACE_SYNC_CAPABILITIES = createCapabilitySet({
+  syncBack: true,
+  writeTables: true
+});
+function clone2(value) {
+  return JSON.parse(JSON.stringify(value));
+}
+function mergeTranslations(base, patch) {
+  const result = clone2(base);
+  for (const [locale, sheets] of Object.entries(patch)) {
+    if (!result[locale]) result[locale] = {};
+    for (const [sheet, keys2] of Object.entries(sheets)) {
+      if (!result[locale][sheet]) result[locale][sheet] = {};
+      for (const [key, value] of Object.entries(keys2)) {
+        result[locale][sheet][key] = value;
+      }
+    }
+  }
+  return result;
+}
+function countChangedKeys(data) {
+  return Object.values(data).flatMap((sheets) => Object.values(sheets)).reduce((count, keys2) => count + Object.keys(keys2).length, 0);
+}
+function normalizeRevision(value) {
+  return Number.isFinite(value) ? Number(value) : 0;
+}
+function createDefaultDeps3() {
+  return {
+    async readSnapshot(filePath) {
+      try {
+        const payload = await fs11.readFile(filePath, "utf8");
+        const parsed = JSON.parse(payload);
+        return {
+          revision: normalizeRevision(parsed.revision),
+          translations: parsed.translations ?? {},
+          metadata: parsed.metadata
+        };
+      } catch (error2) {
+        if (error2.code === "ENOENT") {
+          return { revision: 0, translations: {} };
+        }
+        throw error2;
+      }
+    },
+    async writeSnapshot(filePath, snapshot) {
+      await fs11.mkdir(path7.dirname(filePath), { recursive: true });
+      await fs11.writeFile(filePath, `${JSON.stringify(snapshot, null, 2)}
+`, "utf8");
+    }
+  };
+}
+function assertRevision(snapshot, expectedRevision) {
+  if (expectedRevision === void 0) return;
+  if (snapshot.revision !== expectedRevision) {
+    throw new Error(
+      `CryptPad revision mismatch: expected ${expectedRevision}, received ${snapshot.revision}.`
+    );
+  }
+}
+function createCryptPadWorkspaceOutputProvider(options, depsOverrides = {}) {
+  const deps = { ...createDefaultDeps3(), ...depsOverrides };
+  return {
+    kind: "output",
+    providerId: options.providerId ?? "cryptpad-workspace",
+    displayName: options.displayName ?? "CryptPad Workspace Output",
+    capabilities: CRYPTPAD_WORKSPACE_OUTPUT_CAPABILITIES,
+    async writeTranslations(payload) {
+      const snapshot = await deps.readSnapshot(options.filePath, options.authToken);
+      assertRevision(snapshot, options.expectedRevision);
+      const merged = mergeTranslations(snapshot.translations, payload.translations);
+      const nextRevision = snapshot.revision + 1;
+      await deps.writeSnapshot(
+        options.filePath,
+        {
+          revision: nextRevision,
+          translations: merged,
+          metadata: {
+            ...snapshot.metadata,
+            lastWriteProvider: "cryptpad-workspace-output"
+          }
+        },
+        options.authToken
+      );
+      return {
+        wroteFiles: [options.filePath],
+        metadata: {
+          revision: nextRevision,
+          changedKeys: countChangedKeys(payload.translations)
+        }
+      };
+    }
+  };
+}
+function buildSyncInput(payload) {
+  const base = payload.metadata?.baseTranslations ?? payload.remoteTranslations;
+  return {
+    baseTranslations: base,
+    localTranslations: payload.localTranslations,
+    remoteTranslations: payload.remoteTranslations
+  };
+}
+function createCryptPadWorkspaceSyncProvider(options, depsOverrides = {}) {
+  const deps = { ...createDefaultDeps3(), ...depsOverrides };
+  return {
+    kind: "sync",
+    providerId: options.providerId ?? "cryptpad-workspace",
+    displayName: options.displayName ?? "CryptPad Workspace Sync",
+    capabilities: CRYPTPAD_WORKSPACE_SYNC_CAPABILITIES,
+    async syncTranslations(payload) {
+      const snapshot = await deps.readSnapshot(options.filePath, options.authToken);
+      const expectedRevision = options.expectedRevision ?? (Number.isFinite(payload.metadata?.expectedRevision) ? Number(payload.metadata?.expectedRevision) : void 0);
+      assertRevision(snapshot, expectedRevision);
+      const resolution = resolveSyncPlan(
+        buildSyncInput(payload),
+        options.conflictPolicy ?? "manual"
+      );
+      const nextRevision = snapshot.revision + 1;
+      await deps.writeSnapshot(
+        options.filePath,
+        {
+          revision: nextRevision,
+          translations: resolution.mergedTranslations,
+          metadata: {
+            ...snapshot.metadata,
+            lastSyncProvider: "cryptpad-workspace-sync",
+            policy: resolution.policy
+          }
+        },
+        options.authToken
+      );
+      return {
+        changedKeys: resolution.appliedLocalChanges,
+        skippedKeys: resolution.skippedConflicts,
+        metadata: {
+          revision: nextRevision,
+          policy: resolution.policy
+        }
+      };
+    }
+  };
+}
+
+// src/providers/cryptpad/assetProvider.ts
+import fs12 from "node:fs";
+import fsp from "node:fs/promises";
+import path8 from "node:path";
+import crypto3 from "node:crypto";
+var CRYPTPAD_ASSET_SYNC_CAPABILITIES = createCapabilitySet({
+  assetSync: true,
+  discoverByFolder: true
+});
+function toSha256(content) {
+  return crypto3.createHash("sha256").update(content).digest("hex");
+}
+function isSafePath(targetDirectory, relativePath) {
+  const resolvedRoot = path8.resolve(targetDirectory);
+  const resolvedTarget = path8.resolve(targetDirectory, relativePath);
+  return resolvedTarget === resolvedRoot || resolvedTarget.startsWith(`${resolvedRoot}${path8.sep}`);
+}
+async function walkFiles(directory) {
+  if (!fs12.existsSync(directory)) {
+    return [];
+  }
+  const entries = await fsp.readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const fullPath = path8.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      files.push(...await walkFiles(fullPath));
+      continue;
+    }
+    files.push(fullPath);
+  }
+  return files;
+}
+function createDefaultDeps4() {
+  return {
+    async readManifest(manifestPath) {
+      const content = await fsp.readFile(manifestPath, "utf8");
+      const parsed = JSON.parse(content);
+      if (!Array.isArray(parsed)) {
+        throw new Error("CryptPad asset manifest must be a JSON array.");
+      }
+      return parsed;
+    },
+    async readAssetBuffer(asset, signal) {
+      if (asset.sourcePath) {
+        return fsp.readFile(asset.sourcePath);
+      }
+      if (asset.sourceUrl) {
+        const response = await fetch(asset.sourceUrl, { signal });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch asset from ${asset.sourceUrl} (HTTP ${response.status})`);
+        }
+        const buffer = Buffer.from(await response.arrayBuffer());
+        return buffer;
+      }
+      throw new Error(`Asset "${asset.assetId}" must define sourcePath or sourceUrl.`);
+    },
+    async fileExists(filePath) {
+      try {
+        await fsp.access(filePath);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    readFile: (filePath) => fsp.readFile(filePath),
+    async writeFile(filePath, content) {
+      await fsp.mkdir(path8.dirname(filePath), { recursive: true });
+      await fsp.writeFile(filePath, content);
+    },
+    listFiles: walkFiles,
+    deleteFile: (filePath) => fsp.unlink(filePath)
+  };
+}
+function createCryptPadAssetSyncProvider(options, depsOverrides = {}) {
+  const deps = { ...createDefaultDeps4(), ...depsOverrides };
+  return {
+    kind: "asset-sync",
+    providerId: options.providerId ?? "cryptpad-assets",
+    displayName: options.displayName ?? "CryptPad Asset Sync",
+    capabilities: CRYPTPAD_ASSET_SYNC_CAPABILITIES,
+    async syncAssets(request) {
+      const manifest = await deps.readManifest(options.manifestPath);
+      const downloaded = [];
+      const updated = [];
+      const skipped = [];
+      const deleted = [];
+      const desiredTargets = /* @__PURE__ */ new Set();
+      const hashCache = /* @__PURE__ */ new Map();
+      for (const asset of manifest) {
+        if (!isSafePath(request.targetDirectory, asset.relativePath)) {
+          throw new Error(`Unsafe asset path blocked: ${asset.relativePath}`);
+        }
+        const targetPath = path8.resolve(request.targetDirectory, asset.relativePath);
+        desiredTargets.add(targetPath);
+        let content;
+        if (asset.hash && hashCache.has(asset.hash)) {
+          content = hashCache.get(asset.hash);
+        } else {
+          content = await deps.readAssetBuffer(asset, request.signal);
+          const hash = asset.hash ?? toSha256(content);
+          hashCache.set(hash, content);
+        }
+        const exists2 = await deps.fileExists(targetPath);
+        if (exists2) {
+          const current = await deps.readFile(targetPath);
+          if (toSha256(current) === toSha256(content)) {
+            skipped.push(asset.relativePath);
+            continue;
+          }
+          await deps.writeFile(targetPath, content);
+          updated.push(asset.relativePath);
+          continue;
+        }
+        await deps.writeFile(targetPath, content);
+        downloaded.push(asset.relativePath);
+      }
+      if (request.deleteMissing) {
+        const existingFiles = await deps.listFiles(request.targetDirectory);
+        for (const existingFile of existingFiles) {
+          const resolved = path8.resolve(existingFile);
+          if (!desiredTargets.has(resolved)) {
+            await deps.deleteFile(resolved);
+            deleted.push(path8.relative(request.targetDirectory, resolved));
+          }
+        }
+      }
+      return {
+        manifestCount: manifest.length,
+        downloaded,
+        updated,
+        deleted,
+        skipped
+      };
+    }
+  };
+}
+
+// src/providers/orchestrator.ts
+function createDefaultDeps5() {
+  return {
+    transformRows: (rows, sheetTitle) => transformRowsToSheetData(rows, sheetTitle, {
+      filterValidLocales,
+      createLocaleMapping,
+      logger: console
+    }),
+    logger: console
+  };
+}
+function mergeTranslations2(target, next) {
+  for (const [locale, sheets] of Object.entries(next)) {
+    if (!target[locale]) {
+      target[locale] = {};
+    }
+    for (const [sheetName, keys2] of Object.entries(sheets)) {
+      if (!target[locale][sheetName]) {
+        target[locale][sheetName] = {};
+      }
+      target[locale][sheetName] = {
+        ...target[locale][sheetName],
+        ...keys2
+      };
+    }
+  }
+}
+async function runProviderPipeline(options, depsOverrides = {}) {
+  const deps = { ...createDefaultDeps5(), ...depsOverrides };
+  assertOperationCapabilities(
+    options.inputProvider.providerId,
+    options.inputProvider.capabilities,
+    "read-input"
+  );
+  const inputResult = await options.inputProvider.readTables({
+    tableNames: options.tableNames,
+    signal: options.signal
+  });
+  const mergedTranslations = {};
+  const localeSet = /* @__PURE__ */ new Set();
+  const localeMapping = {};
+  const originalLocaleMapping = {};
+  for (const table of inputResult.tables) {
+    const processed = deps.transformRows(table.rows, table.tableName);
+    if (!processed.success) {
+      deps.logger.warn(
+        `Skipping table "${table.tableName}" because transformation returned unsuccessful result.`
+      );
+      continue;
+    }
+    mergeTranslations2(mergedTranslations, processed.translations);
+    for (const locale of processed.locales) {
+      localeSet.add(locale);
+    }
+    for (const [normalized, original] of Object.entries(processed.localeMapping)) {
+      if (!localeMapping[normalized]) {
+        localeMapping[normalized] = original;
+      }
+    }
+    for (const [original, normalized] of Object.entries(processed.originalMapping)) {
+      if (!originalLocaleMapping[original]) {
+        originalLocaleMapping[original] = normalized;
+      }
+    }
+  }
+  let outputResult;
+  if (options.outputProvider) {
+    assertOperationCapabilities(
+      options.outputProvider.providerId,
+      options.outputProvider.capabilities,
+      "write-output"
+    );
+    outputResult = await options.outputProvider.writeTranslations({
+      translations: mergedTranslations,
+      locales: Array.from(localeSet),
+      localeMapping,
+      originalLocaleMapping,
+      metadata: inputResult.metadata
+    });
+  }
+  let syncResult;
+  if (options.syncProvider && options.localTranslationsForSync) {
+    assertOperationCapabilities(
+      options.syncProvider.providerId,
+      options.syncProvider.capabilities,
+      "sync-back"
+    );
+    syncResult = await options.syncProvider.syncTranslations({
+      localTranslations: options.localTranslationsForSync,
+      remoteTranslations: mergedTranslations,
+      metadata: inputResult.metadata
+    });
+  }
+  let assetSyncResult;
+  if (options.assetSyncProvider && options.assetSync) {
+    assertOperationCapabilities(
+      options.assetSyncProvider.providerId,
+      options.assetSyncProvider.capabilities,
+      "sync-assets"
+    );
+    assetSyncResult = await options.assetSyncProvider.syncAssets({
+      targetDirectory: options.assetSync.targetDirectory,
+      deleteMissing: options.assetSync.deleteMissing,
+      signal: options.signal
+    });
+  }
+  return {
+    translations: mergedTranslations,
+    locales: Array.from(localeSet),
+    localeMapping,
+    originalLocaleMapping,
+    inputTableCount: inputResult.tables.length,
+    outputResult,
+    syncResult,
+    assetSyncResult,
+    metadata: inputResult.metadata
+  };
+}
+
+// src/providers/config.ts
+function isObject3(value) {
+  return typeof value === "object" && value !== null;
+}
+function validateProviderRuntimeConfig(config) {
+  const errors = [];
+  if (!isObject3(config)) {
+    return {
+      valid: false,
+      errors: ["Provider config must be an object."]
+    };
+  }
+  const input = config.input;
+  if (!isObject3(input)) {
+    errors.push('Provider config must include an "input" provider object.');
+  } else if (typeof input.provider !== "string" || input.provider.trim().length === 0) {
+    errors.push('Input provider must define a non-empty "provider" string.');
+  }
+  const output = config.output;
+  if (output !== void 0) {
+    if (!isObject3(output)) {
+      errors.push("Output provider must be an object when provided.");
+    } else if (typeof output.provider !== "string" || output.provider.trim().length === 0) {
+      errors.push('Output provider must define a non-empty "provider" string.');
+    }
+  }
+  const sync = config.sync;
+  if (sync !== void 0) {
+    if (!isObject3(sync)) {
+      errors.push("Sync provider must be an object when provided.");
+    } else if (typeof sync.provider !== "string" || sync.provider.trim().length === 0) {
+      errors.push('Sync provider must define a non-empty "provider" string.');
+    }
+  }
+  const assetSync = config.assetSync;
+  if (assetSync !== void 0) {
+    if (!isObject3(assetSync)) {
+      errors.push("Asset sync provider must be an object when provided.");
+    } else if (typeof assetSync.provider !== "string" || assetSync.provider.trim().length === 0) {
+      errors.push('Asset sync provider must define a non-empty "provider" string.');
+    }
+  }
+  if (isObject3(input) && typeof input.provider === "string" && input.provider === "cryptpad-csv" && isObject3(sync) && typeof sync.provider === "string" && sync.provider !== "cryptpad-workspace") {
+    errors.push(
+      'Invalid provider combination: "cryptpad-csv" only supports sync mode via "cryptpad-workspace" (or use another sync-capable provider).'
+    );
+  }
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+function assertValidProviderRuntimeConfig(config) {
+  const validation = validateProviderRuntimeConfig(config);
+  if (!validation.valid) {
+    throw new Error(`Invalid provider configuration: ${validation.errors.join(" | ")}`);
+  }
+  return config;
+}
+
+// src/providers/runtime.ts
+function asRecord(value) {
+  if (!value || typeof value !== "object") {
+    return {};
+  }
+  return value;
+}
+function createInputProvider(providerId, options) {
+  switch (providerId) {
+    case "google-sheets":
+      return createGoogleSheetsInputProvider(options);
+    case "cryptpad-csv": {
+      const sources = options.sources;
+      if (!Array.isArray(sources)) {
+        throw new Error('cryptpad-csv input provider requires an array "sources" option.');
+      }
+      const typedOptions = {
+        sources,
+        delimiter: typeof options.delimiter === "string" ? options.delimiter : void 0,
+        providerId: typeof options.providerId === "string" ? options.providerId : void 0,
+        displayName: typeof options.displayName === "string" ? options.displayName : void 0
+      };
+      return createCryptPadCsvInputProvider(typedOptions);
+    }
+    default:
+      throw new Error(`Unsupported input provider: "${providerId}"`);
+  }
+}
+function createOutputProvider(providerId, options) {
+  switch (providerId) {
+    case "google-sheets":
+      return createGoogleSheetsOutputProvider(options);
+    case "cryptpad-workspace": {
+      if (typeof options.filePath !== "string" || options.filePath.trim().length === 0) {
+        throw new Error('cryptpad-workspace output provider requires a non-empty "filePath" option.');
+      }
+      const typedOptions = {
+        filePath: options.filePath,
+        authToken: typeof options.authToken === "string" ? options.authToken : void 0,
+        expectedRevision: typeof options.expectedRevision === "number" ? options.expectedRevision : void 0,
+        providerId: typeof options.providerId === "string" ? options.providerId : void 0,
+        displayName: typeof options.displayName === "string" ? options.displayName : void 0
+      };
+      return createCryptPadWorkspaceOutputProvider(typedOptions);
+    }
+    default:
+      throw new Error(`Unsupported output provider: "${providerId}"`);
+  }
+}
+function createSyncProvider(providerId, options) {
+  switch (providerId) {
+    case "google-sheets":
+      return createGoogleSheetsSyncProvider(options);
+    case "cryptpad-workspace": {
+      if (typeof options.filePath !== "string" || options.filePath.trim().length === 0) {
+        throw new Error('cryptpad-workspace sync provider requires a non-empty "filePath" option.');
+      }
+      const typedOptions = {
+        filePath: options.filePath,
+        authToken: typeof options.authToken === "string" ? options.authToken : void 0,
+        expectedRevision: typeof options.expectedRevision === "number" ? options.expectedRevision : void 0,
+        conflictPolicy: options.conflictPolicy === "remote-wins" || options.conflictPolicy === "local-wins" || options.conflictPolicy === "manual" ? options.conflictPolicy : void 0,
+        providerId: typeof options.providerId === "string" ? options.providerId : void 0,
+        displayName: typeof options.displayName === "string" ? options.displayName : void 0
+      };
+      return createCryptPadWorkspaceSyncProvider(typedOptions);
+    }
+    default:
+      throw new Error(`Unsupported sync provider: "${providerId}"`);
+  }
+}
+function createAssetSyncProvider(providerId, options) {
+  switch (providerId) {
+    case "cryptpad-assets": {
+      if (typeof options.manifestPath !== "string" || options.manifestPath.trim().length === 0) {
+        throw new Error('cryptpad-assets sync provider requires a non-empty "manifestPath" option.');
+      }
+      const typedOptions = {
+        manifestPath: options.manifestPath,
+        providerId: typeof options.providerId === "string" ? options.providerId : void 0,
+        displayName: typeof options.displayName === "string" ? options.displayName : void 0
+      };
+      return createCryptPadAssetSyncProvider(typedOptions);
+    }
+    default:
+      throw new Error(`Unsupported asset sync provider: "${providerId}"`);
+  }
+}
+function createProvidersFromRuntimeConfig(config) {
+  const inputProvider = createInputProvider(
+    config.input.provider,
+    asRecord(config.input.options)
+  );
+  const outputProvider = config.output ? createOutputProvider(config.output.provider, asRecord(config.output.options)) : void 0;
+  const syncProvider = config.sync ? createSyncProvider(config.sync.provider, asRecord(config.sync.options)) : void 0;
+  const assetSyncProvider = config.assetSync ? createAssetSyncProvider(config.assetSync.provider, asRecord(config.assetSync.options)) : void 0;
+  return {
+    inputProvider,
+    outputProvider,
+    syncProvider,
+    assetSyncProvider
+  };
+}
+function requiresGoogleAuthForRuntimeConfig(config) {
+  const inputProviderId = config.input.provider;
+  const inputOptions = asRecord(config.input.options);
+  const outputProviderId = config.output?.provider;
+  const syncProviderId = config.sync?.provider;
+  if (outputProviderId === "google-sheets" || syncProviderId === "google-sheets") {
+    return true;
+  }
+  if (inputProviderId !== "google-sheets") {
+    return false;
+  }
+  return inputOptions.publicSheet !== true;
+}
+
 // src/action-entrypoint.ts
 async function run() {
   try {
+    const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
     const clientEmail = getInput("google-client-email");
     const privateKey = getInput("google-private-key");
     if (clientEmail) {
@@ -51657,20 +54226,19 @@ async function run() {
     if (privateKey) {
       process.env.GOOGLE_PRIVATE_KEY = privateKey;
     }
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
-      throw new Error(
-        "Authentication required: provide either\n  (A) google-client-email + google-private-key inputs (classic service-account key), or\n  (B) a google-github-actions/auth step before this action (Workload Identity Federation)."
-      );
-    }
     const spreadsheetIdInput = getInput("google-spreadsheet-id");
     if (spreadsheetIdInput) {
       process.env.GOOGLE_SPREADSHEET_ID = spreadsheetIdInput;
     }
     const sheetTitles = getInput("sheet-titles", { required: true }).split(",").map((s2) => s2.trim()).filter(Boolean);
-    const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
     const translationsOutputDir = getInput("translations-output-dir") || "translations";
     const localesOutputPath = getInput("locales-output-path") || "src/i18n/locales.ts";
     const dataJsonPath = getInput("data-json-path") || "src/lib/languageData.json";
+    const providerConfigInput = getInput("provider-config")?.trim();
+    const providerConfigPathInput = getInput("provider-config-path")?.trim();
+    if (providerConfigInput && providerConfigPathInput) {
+      throw new Error("Use either provider-config or provider-config-path, not both.");
+    }
     const rowLimitInput = getInput("row-limit") || "100";
     const waitSecondsInput = getInput("wait-seconds") || "1";
     const rowLimitRaw = parseInt(rowLimitInput, 10);
@@ -51684,9 +54252,9 @@ async function run() {
     const options = {
       rowLimit: rowLimitRaw,
       waitSeconds: waitSecondsRaw,
-      translationsOutputDir: path7.resolve(workspaceDir, translationsOutputDir),
-      localesOutputPath: path7.resolve(workspaceDir, localesOutputPath),
-      dataJsonPath: path7.resolve(workspaceDir, dataJsonPath),
+      translationsOutputDir: path9.resolve(workspaceDir, translationsOutputDir),
+      localesOutputPath: path9.resolve(workspaceDir, localesOutputPath),
+      dataJsonPath: path9.resolve(workspaceDir, dataJsonPath),
       syncLocalChanges: getInput("sync-local-changes") !== "false",
       autoTranslate: getInput("auto-translate") === "true",
       override: getInput("override") === "true",
@@ -51703,25 +54271,87 @@ async function run() {
     const spreadsheetIds = spreadsheetIdsRaw ? spreadsheetIdsRaw.split(",").map((s2) => s2.trim()).filter(Boolean) : void 0;
     const syncImages = getInput("sync-images") === "true";
     const imageOutputPath = getInput("image-output-path") || "./public/remote-images";
+    const absTranslationsOutputDir = path9.resolve(workspaceDir, translationsOutputDir);
+    const absLocalesOutputPath = path9.resolve(workspaceDir, localesOutputPath);
+    const absDataJsonPath = path9.resolve(workspaceDir, dataJsonPath);
     let localeCount;
-    if (driveFolderId || spreadsheetIds && spreadsheetIds.length > 0) {
-      const driveResult = await manageDriveTranslations({
-        driveFolderId,
-        scanForSpreadsheets,
-        spreadsheetIds,
-        syncImages,
-        imageOutputPath: syncImages ? imageOutputPath : void 0,
-        docTitles: sheetTitles,
-        translationOptions: options
+    if (providerConfigInput || providerConfigPathInput) {
+      const rawConfig = providerConfigInput ? providerConfigInput : fs13.readFileSync(path9.resolve(workspaceDir, providerConfigPathInput), "utf8");
+      const providerConfig = assertValidProviderRuntimeConfig(JSON.parse(rawConfig));
+      if (requiresGoogleAuthForRuntimeConfig(providerConfig) && !process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
+        throw new Error(
+          "Authentication required for selected provider configuration: provide either\n  (A) google-client-email + google-private-key inputs (classic service-account key), or\n  (B) a google-github-actions/auth step before this action (Workload Identity Federation)."
+        );
+      }
+      const providers = createProvidersFromRuntimeConfig(providerConfig);
+      const localDataForSync = readDataJson(absDataJsonPath) ?? void 0;
+      const assetTargetDirInput = getInput("asset-target-dir")?.trim();
+      const configAssetTargetDir = typeof providerConfig.assetSync?.options?.targetDirectory === "string" && providerConfig.assetSync.options.targetDirectory.trim().length > 0 ? providerConfig.assetSync.options.targetDirectory.trim() : void 0;
+      const effectiveAssetTargetDir = assetTargetDirInput || configAssetTargetDir;
+      const assetDeleteMissingInput = getInput("asset-delete-missing")?.trim();
+      const effectiveAssetDeleteMissing = assetDeleteMissingInput ? assetDeleteMissingInput === "true" : Boolean(providerConfig.assetSync?.options?.deleteMissing);
+      const assetSync = effectiveAssetTargetDir ? {
+        targetDirectory: path9.resolve(workspaceDir, effectiveAssetTargetDir),
+        deleteMissing: effectiveAssetDeleteMissing
+      } : void 0;
+      const pipelineResult = await runProviderPipeline({
+        inputProvider: providers.inputProvider,
+        outputProvider: providers.outputProvider,
+        syncProvider: providers.syncProvider,
+        assetSyncProvider: providers.assetSyncProvider,
+        assetSync,
+        tableNames: sheetTitles,
+        localTranslationsForSync: localDataForSync
       });
-      localeCount = Object.keys(driveResult.translations).length;
+      writeTranslationFiles(
+        pipelineResult.translations,
+        pipelineResult.locales,
+        absTranslationsOutputDir
+      );
+      writeLocalesFile(
+        pipelineResult.locales,
+        pipelineResult.localeMapping,
+        absLocalesOutputPath
+      );
+      if (pipelineResult.locales.length > 0) {
+        writeLanguageDataFile(
+          pipelineResult.translations,
+          pipelineResult.locales,
+          absDataJsonPath
+        );
+      }
+      if (pipelineResult.assetSyncResult) {
+        const { manifestCount, downloaded, updated, deleted, skipped } = pipelineResult.assetSyncResult;
+        info(
+          `Asset sync completed: ${manifestCount} manifest entr${manifestCount === 1 ? "y" : "ies"}, ${downloaded.length} downloaded, ${updated.length} updated, ${deleted.length} deleted, ${skipped.length} skipped.`
+        );
+      }
+      localeCount = pipelineResult.locales.length;
     } else {
-      const translations = await getSpreadSheetData(sheetTitles, options);
-      localeCount = Object.keys(translations).length;
+      if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
+        throw new Error(
+          "Authentication required: provide either\n  (A) google-client-email + google-private-key inputs (classic service-account key), or\n  (B) a google-github-actions/auth step before this action (Workload Identity Federation)."
+        );
+      }
+      if (driveFolderId || spreadsheetIds && spreadsheetIds.length > 0) {
+        const driveResult = await manageDriveTranslations({
+          driveFolderId,
+          scanForSpreadsheets,
+          spreadsheetIds,
+          syncImages,
+          imageOutputPath: syncImages ? imageOutputPath : void 0,
+          docTitles: sheetTitles,
+          translationOptions: options
+        });
+        localeCount = Object.keys(driveResult.translations).length;
+      } else {
+        const translations = await getSpreadSheetData(sheetTitles, options);
+        localeCount = Object.keys(translations).length;
+      }
     }
-    setOutput("translations-dir", path7.resolve(workspaceDir, translationsOutputDir));
-    setOutput("locales-file", path7.resolve(workspaceDir, localesOutputPath));
-    setOutput("data-json-file", path7.resolve(workspaceDir, dataJsonPath));
+    setOutput("translations-dir", absTranslationsOutputDir);
+    setOutput("locales-file", absLocalesOutputPath);
+    setOutput("data-json-file", absDataJsonPath);
     info(`\u2705 Fetched translations for ${localeCount} locales`);
   } catch (error2) {
     setFailed(error2 instanceof Error ? error2.message : String(error2));

@@ -130,10 +130,32 @@ export async function run(): Promise<void> {
 			const providers = createProvidersFromRuntimeConfig(providerConfig);
 			const localDataForSync = readDataJson(absDataJsonPath) ?? undefined;
 
+			const assetTargetDirInput = core.getInput('asset-target-dir')?.trim();
+			const configAssetTargetDir =
+				typeof providerConfig.assetSync?.options?.targetDirectory === 'string' &&
+				providerConfig.assetSync.options.targetDirectory.trim().length > 0
+					? providerConfig.assetSync.options.targetDirectory.trim()
+					: undefined;
+			const effectiveAssetTargetDir = assetTargetDirInput || configAssetTargetDir;
+
+			const assetDeleteMissingInput = core.getInput('asset-delete-missing')?.trim();
+			const effectiveAssetDeleteMissing = assetDeleteMissingInput
+				? assetDeleteMissingInput === 'true'
+				: Boolean(providerConfig.assetSync?.options?.deleteMissing);
+
+			const assetSync = effectiveAssetTargetDir
+				? {
+						targetDirectory: path.resolve(workspaceDir, effectiveAssetTargetDir),
+						deleteMissing: effectiveAssetDeleteMissing,
+					}
+				: undefined;
+
 			const pipelineResult = await runProviderPipeline({
 				inputProvider: providers.inputProvider,
 				outputProvider: providers.outputProvider,
 				syncProvider: providers.syncProvider,
+				assetSyncProvider: providers.assetSyncProvider,
+				assetSync,
 				tableNames: sheetTitles,
 				localTranslationsForSync: localDataForSync,
 			});
@@ -154,6 +176,14 @@ export async function run(): Promise<void> {
 					pipelineResult.translations,
 					pipelineResult.locales,
 					absDataJsonPath,
+				);
+			}
+
+			if (pipelineResult.assetSyncResult) {
+				const { manifestCount, downloaded, updated, deleted, skipped } = pipelineResult.assetSyncResult;
+				core.info(
+					`Asset sync completed: ${manifestCount} manifest entr${manifestCount === 1 ? 'y' : 'ies'}, ` +
+						`${downloaded.length} downloaded, ${updated.length} updated, ${deleted.length} deleted, ${skipped.length} skipped.`,
 				);
 			}
 

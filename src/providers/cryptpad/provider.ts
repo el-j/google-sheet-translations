@@ -16,10 +16,17 @@ export interface CryptPadCsvSource {
   tableId?: string;
 }
 
+/**
+ * Options for configuring a CryptPad CSV input provider.
+ */
 export interface CryptPadCsvInputProviderOptions {
+  /** Array of CSV source definitions mapping tables to URLs or local files. */
   sources: CryptPadCsvSource[];
+  /** Optional CSV column delimiter (defaults to comma ','). */
   delimiter?: string;
+  /** Optional custom provider identifier. Defaults to 'cryptpad-csv'. */
   providerId?: string;
+  /** Optional custom provider display name. */
   displayName?: string;
 }
 

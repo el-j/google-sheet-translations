@@ -1,17 +1,32 @@
 import { GoogleAuth } from "google-auth-library";
 
+/**
+ * Represents a long-running Google Cloud Operation response.
+ */
 export interface GcpOperation {
+	/** Unique resource name of the operation. */
 	name: string;
+	/** True if the operation has finished executing. */
 	done?: boolean;
+	/** Error payload if operation terminated with an error. */
 	error?: { code: number; message: string };
 }
 
+/**
+ * Google Cloud IAM Policy object structure containing member role bindings.
+ */
 export interface IamPolicy {
+	/** Array of role-to-member associations. */
 	bindings?: Array<{ role: string; members: string[] }>;
+	/** Cryptographic etag used for optimistic concurrency control during updates. */
 	etag?: string;
+	/** Format version of the policy. */
 	version?: number;
 }
 
+/**
+ * Error thrown when a Google Cloud REST API request returns a non-2xx HTTP status code.
+ */
 export class GcpApiError extends Error {
 	constructor(
 		message: string,

@@ -157,6 +157,18 @@ inputs:
       runtime config. Mutually exclusive with provider-config.
     required: false
     default: ''
+  asset-target-dir:
+    description: >
+      Directory to write downloaded assets to when using v3 provider asset sync
+      (requires "assetSync" provider slot in provider config).
+    required: false
+    default: ''
+  asset-delete-missing:
+    description: >
+      When "true", deletes local files in asset-target-dir that are not present
+      in the asset manifest during v3 provider asset sync.
+    required: false
+    default: 'false'
 
 outputs:
   translations-dir:
