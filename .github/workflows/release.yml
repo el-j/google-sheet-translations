@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Checkout (full history required by semantic-release)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           fetch-depth: 0
