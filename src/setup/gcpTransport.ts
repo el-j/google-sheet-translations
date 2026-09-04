@@ -72,7 +72,9 @@ export async function gcpFetch(
 			Authorization: `Bearer ${token}`,
 			"Content-Type": "application/json",
 		},
-		body: body !== undefined ? JSON.stringify(body) : undefined,
+		...(method !== "GET" && method !== "HEAD" && body !== undefined
+			? { body: JSON.stringify(body) }
+			: {}),
 	});
 	const data = (await response.json()) as unknown;
 	if (!response.ok) {

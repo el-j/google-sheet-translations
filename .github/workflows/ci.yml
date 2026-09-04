@@ -35,7 +35,20 @@ jobs:
         run: npm ci
 
       - name: Audit dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          for i in 1 2 3; do
+            if npm audit --omit=dev --audit-level=high; then
+              exit 0
+            fi
+            echo "npm audit attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          # If still failing, check if it was due to registry service availability
+          if npm audit --omit=dev --audit-level=high 2>&1 | grep -qE "503 Service Unavailable|ENOTFOUND|ECONNRESET|ETIMEDOUT"; then
+            echo "::warning::npm registry audit endpoint unavailable (transient 5xx/network error); skipping audit failure."
+            exit 0
+          fi
+          exit 1
 
       - name: Lint
         run: npm run lint

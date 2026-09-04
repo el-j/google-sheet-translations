@@ -249,7 +249,7 @@ async function downloadFile(fileId: string, localPath: string, token: string): P
   await pipeline(Readable.fromWeb(response.body as Parameters<typeof Readable.fromWeb>[0]), dest);
 }
 
-function collectLocalFiles(dir: string, base: string): string[] {
+function collectLocalFiles(dir: string): string[] {
   const results: string[] = [];
   if (!existsSync(dir)) return results;
 
@@ -257,7 +257,7 @@ function collectLocalFiles(dir: string, base: string): string[] {
     const fullPath = join(dir, entry);
     const stat = statSync(fullPath);
     if (stat.isDirectory()) {
-      results.push(...collectLocalFiles(fullPath, base));
+      results.push(...collectLocalFiles(fullPath));
     } else {
       results.push(fullPath);
     }
@@ -370,7 +370,7 @@ export async function syncDriveImages(
   const deleted: string[] = [];
   if (cleanSync) {
     const driveLocalPaths = new Set(entries.map((e) => e.localPath));
-    const localFiles = collectLocalFiles(outputPath, outputPath);
+    const localFiles = collectLocalFiles(outputPath);
     for (const localFile of localFiles) {
       if (!driveLocalPaths.has(localFile)) {
         console.log(`[driveImageSync] Deleting (not in Drive): ${localFile}`);
