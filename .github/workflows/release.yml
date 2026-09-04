@@ -110,6 +110,7 @@ jobs:
       # never diverge and stay 100% conflict-free.
       - name: Sync main release commit back to develop
         if: steps.release.outcome == 'success' && (github.event.workflow_run.head_branch == 'main' || github.ref_name == 'main')
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -120,5 +121,10 @@ jobs:
 
           git fetch origin develop
           git checkout develop
-          git merge main -m "chore(sync): back-merge release v${VERSION} into develop [skip ci]"
+          git merge main -m "chore(sync): back-merge release v${VERSION} into develop [skip ci]" || {
+            echo "Merge conflict detected during back-merge. Resolving using main changes for release artifacts..."
+            git checkout --theirs CHANGELOG.md package.json package-lock.json 2>/dev/null || true
+            git add CHANGELOG.md package.json package-lock.json 2>/dev/null || true
+            git commit -m "chore(sync): back-merge release v${VERSION} into develop (resolved) [skip ci]" || true
+          }
           git push origin develop || echo "Skipping push if develop is already up to date"
