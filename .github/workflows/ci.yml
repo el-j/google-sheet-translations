@@ -35,10 +35,26 @@ jobs:
         run: npm ci
 
       - name: Audit dependencies
-        run: npm audit --omit=dev --audit-level=high
+        run: |
+          for i in 1 2 3; do
+            if npm audit --omit=dev --audit-level=high; then
+              exit 0
+            fi
+            echo "npm audit attempt $i failed, retrying in 5s..."
+            sleep 5
+          done
+          # If still failing, check if it was due to registry service availability
+          if npm audit --omit=dev --audit-level=high 2>&1 | grep -qE "503 Service Unavailable|ENOTFOUND|ECONNRESET|ETIMEDOUT"; then
+            echo "::warning::npm registry audit endpoint unavailable (transient 5xx/network error); skipping audit failure."
+            exit 0
+          fi
+          exit 1
 
       - name: Lint
         run: npm run lint
+
+      - name: Check formatting
+        run: npm run format:check
 
       - name: Build
         run: npm run build
@@ -57,6 +73,10 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Provider parity matrix
+        if: matrix.node-version == '22'
+        run: npm run test:provider-matrix
 
       - name: Integration test (public spreadsheet connectivity)
         if: matrix.node-version == '22'

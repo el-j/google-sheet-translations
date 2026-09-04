@@ -32,7 +32,7 @@ export interface WalkDirectoryOptions {
  */
 export async function walkDirectory(
   dir: string,
-  options?: WalkDirectoryOptions
+  options?: WalkDirectoryOptions,
 ): Promise<string[]> {
   const { extensions } = options ?? {};
   const lowerExts = extensions?.map((e) => e.toLowerCase());
@@ -158,7 +158,7 @@ export interface ImageDirectoryValidationResult {
  * for (const warn of result.warnings) console.warn(warn);
  */
 export async function validateImageDirectory(
-  options: ImageDirectoryValidationOptions
+  options: ImageDirectoryValidationOptions,
 ): Promise<ImageDirectoryValidationResult> {
   const {
     rootDir,
@@ -203,23 +203,21 @@ export async function validateImageDirectory(
   if (!allowRootFiles && rootFiles.length > 0) {
     errors.push(
       `Image files found directly in "${rootDir}" — the folder structure may have been flattened during sync. ` +
-        `Files: ${rootFiles.slice(0, 5).join(', ')}${rootFiles.length > 5 ? ` … (+${rootFiles.length - 5} more)` : ''}`
+        `Files: ${rootFiles.slice(0, 5).join(', ')}${rootFiles.length > 5 ? ` … (+${rootFiles.length - 5} more)` : ''}`,
     );
   }
 
   // Error: no sub-directories at all (and root-level files are not allowed).
   if (!allowRootFiles && subfolders.length === 0) {
     errors.push(
-      `No sub-directories found in "${rootDir}". Expected a nested folder structure (e.g. projects/, performances/).`
+      `No sub-directories found in "${rootDir}". Expected a nested folder structure (e.g. projects/, performances/).`,
     );
   }
 
   // Warning: expected sub-folders are missing.
   const missing = expectedSubfolders.filter((name) => !subfolders.includes(name));
   if (missing.length > 0) {
-    warnings.push(
-      `Some expected sub-folders are absent from "${rootDir}": ${missing.join(', ')}`
-    );
+    warnings.push(`Some expected sub-folders are absent from "${rootDir}": ${missing.join(', ')}`);
   }
 
   return {

@@ -53,10 +53,8 @@ const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 async function getAccessToken(credentials?: GoogleEnvVars): Promise<string> {
-  const clientEmail =
-    credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey =
-    credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
 
   if (!clientEmail || !privateKey) {
     throw new Error(
@@ -153,9 +151,7 @@ async function scanFolder(
   nameFilter?: RegExp,
   seen = new Set<string>(),
 ): Promise<DriveDocFile[]> {
-  console.log(
-    `[driveDocScanner] Scanning folder: ${folderId} (path: "${folderPath}")`,
-  );
+  console.log(`[driveDocScanner] Scanning folder: ${folderId} (path: "${folderPath}")`);
 
   const docs = await listFilesInFolder(folderId, DOC_MIME, token);
   const results: DriveDocFile[] = [];
@@ -179,17 +175,8 @@ async function scanFolder(
   if (recursive) {
     const subfolders = await listFilesInFolder(folderId, FOLDER_MIME, token);
     for (const folder of subfolders) {
-      const subPath = folderPath
-        ? `${folderPath}/${folder.name}`
-        : folder.name;
-      const subResults = await scanFolder(
-        folder.id,
-        subPath,
-        token,
-        recursive,
-        nameFilter,
-        seen,
-      );
+      const subPath = folderPath ? `${folderPath}/${folder.name}` : folder.name;
+      const subResults = await scanFolder(folder.id, subPath, token, recursive, nameFilter, seen);
       results.push(...subResults);
     }
   }

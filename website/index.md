@@ -3,75 +3,71 @@ layout: home
 
 hero:
   name: "google-sheet-translations"
-  text: "Your Google Sheets,\nas a translation backend"
+  text: "Provider-first Translation\nOperations"
   tagline: >
-    Fetch, sync and auto-translate — single spreadsheet or an entire Drive folder.
-    Full TypeScript safety, zero configuration overhead, built-in image sync.
+    Build reliable localization pipelines with explicit input, output, and sync providers.
+    Use Google Sheets for full sync workflows and CryptPad CSV for no-auth ingestion.
   image:
     src: /logo.svg
     alt: google-sheet-translations
   actions:
     - theme: brand
-      text: Get Started →
-      link: /guide/getting-started
+      text: Start with v3 Runtime →
+      link: /guide/provider-runtime
     - theme: alt
-      text: Drive Folder & Images
-      link: /guide/drive-folder
+      text: Migrate from v2
+      link: /guide/provider-migration-v3
     - theme: alt
       text: GitHub Action
       link: /guide/github-actions
+    - theme: alt
+      text: v2 Archive
+      link: /v2/
 
 features:
-  - icon: 🗂️
-    title: Google Drive Folder Management
-    details: Point the package at a Drive folder and it auto-discovers every translation spreadsheet inside — across any sub-folder depth. One call, many sheets, one merged result.
-    link: /guide/drive-folder
+  - title: Provider Runtime Architecture (v3)
+    details: Select input, output, and sync providers explicitly. Capability checks prevent unsupported operations before they can run.
+    link: /guide/provider-runtime
     linkText: Learn more
 
-  - icon: 🖼️
-    title: Built-in Image Sync from Drive
-    details: Download images from your Drive folder to a local asset directory with incremental sync, concurrency control, extension normalisation, and optional stale-file cleanup. No rclone needed.
-    link: /guide/drive-folder#image-sync
+  - title: Migration Command and Transition Path
+    details: Move from legacy action inputs to provider config using gst-migrate-v3, with dry-run mode and optional workflow rewrites.
+    link: /guide/provider-migration-v3
     linkText: Learn more
 
-  - icon: 🔄
-    title: Bidirectional Sync
-    details: Push new translation keys from your local files straight back into the shared spreadsheet. Collaborators see your keys immediately — no manual copy-paste.
+  - title: CryptPad CSV Input (v3)
+    details: Pull translation tables from CryptPad CSV exports or public endpoints and process them through the same transformation core.
+    link: /guide/provider-runtime#cryptpad-csv-mvp
+    linkText: Learn more
+
+  - title: Google Sheets Full Workflow
+    details: Read, transform, write, and sync translation data with mature Google provider adapters and locale-aware processing.
     link: /guide/bidirectional-sync
     linkText: Learn more
 
-  - icon: 🌐
-    title: Open Access (No Auth)
-    details: Have a public spreadsheet? Pass spreadsheetId + publicSheet true and you're done — no service account, no API key, no invite by email. The link is enough.
-    link: /guide/public-sheets
-    linkText: Learn more
-
-  - icon: 🤖
-    title: Auto-Translation
-    details: Missing a German translation? Enable autoTranslate and the package injects GOOGLETRANSLATE formulas automatically. Translators start from a draft, not a blank cell.
-    link: /guide/auto-translation
-    linkText: Learn more
-
-  - icon: ⚙️
-    title: One GitHub Action — All Modes
-    details: A single action covers basic sync, multi-spreadsheet Drive folders, and image downloads. Just set drive-folder-id and sync-images to unlock the full headless CMS pipeline.
+  - title: GitHub Action Automation
+    details: Run translation sync in CI with either legacy action inputs or provider config mode for v3 pipelines.
     link: /guide/github-actions
     linkText: Learn more
 
-  - icon: 🎯
-    title: Smart Locale Filtering
-    details: The generated locales.ts only contains locales that carry actual content. Empty columns and config-only sheets are silently ignored.
-    link: /guide/locale-filtering
+  - title: Drive Folder Discovery and Assets
+    details: Discover multiple spreadsheets from Drive folders, merge output, and optionally sync remote image assets to your project.
+    link: /guide/drive-folder
     linkText: Learn more
 
-  - icon: 🔒
-    title: Fully Type-Safe
-    details: Strict TypeScript throughout. Path-traversal-safe file writes, runtime type-guards on JSON, and ESLint clean with @typescript-eslint/recommended.
+  - title: Public Read Mode (No Auth)
+    details: Ingest from public Google Sheets without service-account credentials for lightweight read-only workflows.
+    link: /guide/public-sheets
+    linkText: Learn more
 
-  - icon: ⚡
-    title: Next.js Ready
-    details: Drop one import into instrumentation.ts and your translations are prefetched during next build — perfect for static export workflows.
-    link: /guide/nextjs
+  - title: Extensible Custom Providers
+    details: Implement simple TypeScript contracts for custom backends (Airtable, Notion, CSV, local DB) without vendor lock-in.
+    link: /guide/provider-runtime#implementing-custom-providers
+    linkText: Learn more
+
+  - title: Type-safe Core and Stable Outputs
+    details: Strict TypeScript, deterministic row transformation, and tested provider contracts keep output predictable across environments.
+    link: /api/
     linkText: Learn more
 ---
 
@@ -138,3 +134,40 @@ console.log(result.imageSync?.downloaded.length, 'images downloaded');
 ```
 
 > **Need Drive API access?** See [service account setup with Drive →](/guide/service-account-setup#enabling-the-drive-api-for-folder--image-usage)
+
+## Quick start — provider runtime (v3)
+
+```typescript
+import {
+  assertValidProviderRuntimeConfig,
+  createProvidersFromRuntimeConfig,
+  runProviderPipeline,
+} from '@el-j/google-sheet-translations';
+
+const config = assertValidProviderRuntimeConfig({
+  input: {
+    provider: 'cryptpad-csv',
+    options: {
+      sources: [
+        { tableName: 'home', url: 'https://cryptpad.fr/.../export.csv' },
+      ],
+    },
+  },
+});
+
+const providers = createProvidersFromRuntimeConfig(config);
+const result = await runProviderPipeline({
+  inputProvider: providers.inputProvider,
+  tableNames: ['home'],
+});
+
+console.log(result.locales);
+```
+
+See [Provider Runtime (v3)](/guide/provider-runtime) and the [v3 migration guide](/guide/provider-migration-v3).
+
+## Docs versioning
+
+::: warning Legacy docs still available
+Need the old integration model? Use the [v2 docs archive](/v2/) for legacy setup and workflows. New projects should use v3 provider runtime docs.
+:::

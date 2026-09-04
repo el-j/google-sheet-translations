@@ -45,7 +45,11 @@ export { processRawRows } from './utils/sheetProcessor';
 export type { SheetProcessingResult } from './utils/sheetProcessor';
 
 // Higher-level translation helpers
-export { getTranslationSummary, getLocaleDisplayName, mergeSheets } from './utils/translationHelpers';
+export {
+  getTranslationSummary,
+  getLocaleDisplayName,
+  mergeSheets,
+} from './utils/translationHelpers';
 export type { TranslationSummary, SheetSummary } from './utils/translationHelpers';
 
 // File-writing utilities (custom output pipelines)
@@ -56,12 +60,7 @@ export { handleBidirectionalSync } from './utils/syncManager';
 export type { SyncResult } from './utils/syncManager';
 
 // Public types
-export type {
-  TranslationData,
-  TranslationValue,
-  SheetRow,
-  GoogleEnvVars,
-} from './types';
+export type { TranslationData, TranslationValue, SheetRow, GoogleEnvVars } from './types';
 
 // Multi-spreadsheet support
 export { getMultipleSpreadSheetsData } from './getMultipleSpreadSheetsData';
@@ -75,7 +74,11 @@ export type { DriveSpreadsheetFile, ScanDriveFolderOptions } from './utils/drive
 // Drive image sync (download images/assets from a Drive folder to local disk)
 export { syncDriveImages, normalizeExtension } from './utils/driveImageSync';
 export type { DriveImageSyncOptions, DriveImageSyncResult } from './utils/driveImageSync';
-export { walkDirectory, validateImageDirectory, DEFAULT_IMAGE_EXTENSIONS } from './utils/localImageUtils';
+export {
+  walkDirectory,
+  validateImageDirectory,
+  DEFAULT_IMAGE_EXTENSIONS,
+} from './utils/localImageUtils';
 export type {
   WalkDirectoryOptions,
   ImageDirectoryValidationOptions,
@@ -83,12 +86,24 @@ export type {
 } from './utils/localImageUtils';
 
 // Drive translations orchestrator (headless CMS bridge)
-export { manageDriveTranslations, sanitizeFolderName, moveSpreadsheetToFolder } from './utils/getDriveTranslations';
-export type { GoogleDriveManagerOptions, GoogleDriveManagerResult } from './utils/getDriveTranslations';
+export {
+  manageDriveTranslations,
+  sanitizeFolderName,
+  moveSpreadsheetToFolder,
+} from './utils/getDriveTranslations';
+export type {
+  GoogleDriveManagerOptions,
+  GoogleDriveManagerResult,
+} from './utils/getDriveTranslations';
 
 // Drive project manifest (index file for multi-spreadsheet projects)
 export { buildManifest, writeManifest, readManifest } from './utils/driveProjectIndex';
-export type { DriveProjectManifest, SpreadsheetManifestEntry, BuildManifestOptions, DocManifestEntry } from './utils/driveProjectIndex';
+export type {
+  DriveProjectManifest,
+  SpreadsheetManifestEntry,
+  BuildManifestOptions,
+  DocManifestEntry,
+} from './utils/driveProjectIndex';
 
 // Drive Docs scanner (discover Google Docs in a Drive folder)
 export { scanDriveFolderForDocs, inferLocaleFromDocName } from './utils/driveDocScanner';
@@ -99,12 +114,116 @@ export { parseDocContent, slugifyKey } from './utils/docParser';
 export type { ParsedDocEntry, DocKeyStrategy, ParseDocOptions } from './utils/docParser';
 
 // Doc ingester (one-way Doc → Spreadsheet pipeline)
-export { ingestDoc, exportDoc, entriesToSeedKeys, entriesToTranslationData } from './utils/docIngester';
+export {
+  ingestDoc,
+  exportDoc,
+  entriesToSeedKeys,
+  entriesToTranslationData,
+} from './utils/docIngester';
 export type { DocIngesterOptions, DocIngestResult, DocUpdateMode } from './utils/docIngester';
 
 // WIF / Google Cloud setup helpers (programmatic API for the gst-setup-wif CLI)
 export { setupWIF, grantDrivePermissions, GcpApiError } from './setup/wifSetup';
-export type { WifSetupOptions, WifSetupResult, GrantDrivePermissionsOptions } from './setup/wifSetup';
+export type {
+  WifSetupOptions,
+  WifSetupResult,
+  GrantDrivePermissionsOptions,
+} from './setup/wifSetup';
+
+// Provider platform contracts and capability policy (v3 foundation)
+export {
+  PROVIDER_CAPABILITIES,
+  EMPTY_PROVIDER_CAPABILITIES,
+  OPERATION_CAPABILITY_REQUIREMENTS,
+  createCapabilitySet,
+  missingCapabilities,
+  hasRequiredCapabilities,
+  assertRequiredCapabilities,
+  assertOperationCapabilities,
+} from './providers';
+export type {
+  ProviderCapability,
+  ProviderCapabilitySet,
+  ProviderOperation,
+  ProviderKind,
+  ProviderMetadata,
+  CanonicalTableInput,
+  TranslationInputRequest,
+  TranslationInputResult,
+  TranslationOutputPayload,
+  TranslationOutputResult,
+  TranslationSyncPayload,
+  TranslationSyncResult,
+  TranslationInputProvider,
+  TranslationOutputProvider,
+  TranslationSyncProvider,
+  AnyTranslationProvider,
+  ProviderRegistry,
+  SegmentedProviderRegistry,
+  AssetProviderKind,
+  CanonicalAssetEntry,
+  AssetManifestResult,
+  AssetSyncRequest,
+  AssetSyncResult,
+  AssetInputProvider,
+  AssetOutputProvider,
+  AssetSyncProvider,
+  ProviderSourceKind,
+  ProviderSourceDescriptor,
+  ProviderDiscoveryRequest,
+  ProviderDiscoveryResult,
+  ProviderCatalogProvider,
+  InMemoryProviderCatalogOptions,
+  GoogleSheetsInputProviderOptions,
+  GoogleSheetsOutputProviderOptions,
+  GoogleSheetsSyncProviderOptions,
+  CryptPadCsvSource,
+  CryptPadCsvInputProviderOptions,
+  CryptPadWorkspaceProviderOptions,
+  CryptPadAssetSyncProviderOptions,
+  SyncConflictPolicy,
+  SyncChangeType,
+  SyncEntryChange,
+  SyncConflict,
+  SyncPlan,
+  ResolveSyncPlanResult,
+  BuildSyncPlanInput,
+  ProviderPipelineOptions,
+  ProviderPipelineResult,
+  ProviderReferenceConfig,
+  ProviderRuntimeConfig,
+  ProviderConfigValidationResult,
+  LegacyConfigMappingResult,
+  ProviderRuntimeSelection,
+} from './providers';
+export {
+  createGoogleSheetsInputProvider,
+  createGoogleSheetsOutputProvider,
+  createGoogleSheetsSyncProvider,
+  GOOGLE_SHEETS_PROVIDER_CAPABILITIES,
+  createCryptPadCsvInputProvider,
+  createCryptPadWorkspaceOutputProvider,
+  createCryptPadWorkspaceSyncProvider,
+  createCryptPadAssetSyncProvider,
+  CRYPTPAD_CSV_INPUT_CAPABILITIES,
+  CRYPTPAD_WORKSPACE_OUTPUT_CAPABILITIES,
+  CRYPTPAD_WORKSPACE_SYNC_CAPABILITIES,
+  CRYPTPAD_ASSET_SYNC_CAPABILITIES,
+  createInMemoryProviderCatalogProvider,
+  createDefaultProviderCatalog,
+  buildSyncPlan,
+  resolveSyncPlan,
+  runProviderPipeline,
+  validateProviderRuntimeConfig,
+  assertValidProviderRuntimeConfig,
+  mapLegacyGoogleOptionsToProviderConfig,
+  createProvidersFromRuntimeConfig,
+  requiresGoogleAuthForRuntimeConfig,
+} from './providers';
+
+// v3 migration utilities
+export { migrateProjectToV3 } from './migration/migrateV3';
+export type { MigrateV3Options, MigrateV3Result } from './migration/migrateV3';
 
 // Default export
 import { getSpreadSheetData } from './getSpreadSheetData';

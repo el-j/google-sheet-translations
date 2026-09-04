@@ -20,12 +20,16 @@ describe('wait', () => {
   test('should wait for the specified number of seconds', async () => {
     let resolveDelay!: () => void;
     mockDelayFn.mockReturnValueOnce(
-      new Promise<void>(resolve => { resolveDelay = resolve; })
+      new Promise<void>((resolve) => {
+        resolveDelay = resolve;
+      }),
     );
 
     const waitPromise = wait(2, 'test wait');
     let resolved = false;
-    waitPromise.then(() => { resolved = true; });
+    waitPromise.then(() => {
+      resolved = true;
+    });
 
     // Before resolving the delay, promise should still be pending
     await Promise.resolve();

@@ -1,169 +1,162 @@
 // ── public types ─────────────────────────────────────────────────────────────
 
 export interface WifSetupOptions {
-	/** Google Cloud project ID (e.g. "my-gcp-project") */
-	projectId: string;
-	/** Service account email (e.g. "deploy@my-gcp-project.iam.gserviceaccount.com") */
-	serviceAccountEmail: string;
-	/** GitHub repository in "owner/repo" format (e.g. "myorg/myrepo") */
-	githubRepo: string;
-	/** Workload Identity Pool ID (default: "github-actions") */
-	poolId?: string;
-	/** OIDC Provider ID (default: "github-oidc") */
-	providerId?: string;
-	/** Path to a service account JSON key file used for bootstrapping.
-	 *  If omitted, Application Default Credentials (ADC) are used. */
-	keyFilePath?: string;
-	/** Optional callback invoked before each setup step for progress reporting. */
-	onProgress?: (step: string) => void;
+  /** Google Cloud project ID (e.g. "my-gcp-project") */
+  projectId: string;
+  /** Service account email (e.g. "deploy@my-gcp-project.iam.gserviceaccount.com") */
+  serviceAccountEmail: string;
+  /** GitHub repository in "owner/repo" format (e.g. "myorg/myrepo") */
+  githubRepo: string;
+  /** Workload Identity Pool ID (default: "github-actions") */
+  poolId?: string;
+  /** OIDC Provider ID (default: "github-oidc") */
+  providerId?: string;
+  /** Path to a service account JSON key file used for bootstrapping.
+   *  If omitted, Application Default Credentials (ADC) are used. */
+  keyFilePath?: string;
+  /** Optional callback invoked before each setup step for progress reporting. */
+  onProgress?: (step: string) => void;
 }
 
 export interface WifSetupResult {
-	/** Full WIF provider resource name – set this as the `WIF_PROVIDER` env var */
-	wifProvider: string;
-	/** Numeric Google Cloud project number */
-	projectNumber: string;
-	/** Workload Identity Pool ID used */
-	poolId: string;
-	/** OIDC Provider ID used */
-	providerId: string;
+  /** Full WIF provider resource name – set this as the `WIF_PROVIDER` env var */
+  wifProvider: string;
+  /** Numeric Google Cloud project number */
+  projectNumber: string;
+  /** Workload Identity Pool ID used */
+  poolId: string;
+  /** OIDC Provider ID used */
+  providerId: string;
 }
 
 export interface GrantDrivePermissionsOptions {
-	/** Google Cloud project ID */
-	projectId: string;
-	/** Service account email to grant Drive access */
-	serviceAccountEmail: string;
-	/** Path to a service account JSON key file used for bootstrapping. */
-	keyFilePath?: string;
+  /** Google Cloud project ID */
+  projectId: string;
+  /** Service account email to grant Drive access */
+  serviceAccountEmail: string;
+  /** Path to a service account JSON key file used for bootstrapping. */
+  keyFilePath?: string;
 }
 
 import {
-	GcpApiError,
-	getGcpAccessToken as getAccessToken,
-	gcpFetch,
-	waitForOperation as pollOperation,
-	type IamPolicy,
-	type GcpOperation,
-} from "./gcpTransport";
+  GcpApiError,
+  getGcpAccessToken as getAccessToken,
+  gcpFetch,
+  waitForOperation as pollOperation,
+  type IamPolicy,
+  type GcpOperation,
+} from './gcpTransport';
 export { GcpApiError };
 
 async function getProjectNumber(projectId: string, token: string): Promise<string> {
-	const data = (await gcpFetch(
-		`https://cloudresourcemanager.googleapis.com/v1/projects/${encodeURIComponent(projectId)}`,
-		token,
-	)) as { projectNumber: string };
-	return data.projectNumber;
+  const data = (await gcpFetch(
+    `https://cloudresourcemanager.googleapis.com/v1/projects/${encodeURIComponent(projectId)}`,
+    token,
+  )) as { projectNumber: string };
+  return data.projectNumber;
 }
 
-async function createOrGetWifPool(
-	projectId: string,
-	poolId: string,
-	token: string,
-): Promise<void> {
-	try {
-		const op = (await gcpFetch(
-			`https://iam.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/locations/global/workloadIdentityPools` +
-				`?workloadIdentityPoolId=${encodeURIComponent(poolId)}`,
-			token,
-			"POST",
-			{
-				displayName: "GitHub Actions Pool",
-				description: "Pool for GitHub Actions OIDC authentication",
-				disabled: false,
-			},
-		)) as GcpOperation;
-		if (!op.done) {
-			await pollOperation(op.name, token);
-		} else if (op.error) {
-			throw new Error(`Operation failed: ${op.error.message}`);
-		}
-	} catch (err) {
-		if (err instanceof GcpApiError && err.status === 409) {
-			return; // Pool already exists – that's fine
-		}
-		throw err;
-	}
+async function createOrGetWifPool(projectId: string, poolId: string, token: string): Promise<void> {
+  try {
+    const op = (await gcpFetch(
+      `https://iam.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/locations/global/workloadIdentityPools` +
+        `?workloadIdentityPoolId=${encodeURIComponent(poolId)}`,
+      token,
+      'POST',
+      {
+        displayName: 'GitHub Actions Pool',
+        description: 'Pool for GitHub Actions OIDC authentication',
+        disabled: false,
+      },
+    )) as GcpOperation;
+    if (!op.done) {
+      await pollOperation(op.name, token);
+    } else if (op.error) {
+      throw new Error(`Operation failed: ${op.error.message}`);
+    }
+  } catch (err) {
+    if (err instanceof GcpApiError && err.status === 409) {
+      return; // Pool already exists – that's fine
+    }
+    throw err;
+  }
 }
 
 async function createOrGetWifProvider(
-	projectId: string,
-	poolId: string,
-	providerId: string,
-	githubRepo: string,
-	token: string,
+  projectId: string,
+  poolId: string,
+  providerId: string,
+  githubRepo: string,
+  token: string,
 ): Promise<void> {
-	try {
-		const op = (await gcpFetch(
-			`https://iam.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/locations/global/workloadIdentityPools/${encodeURIComponent(poolId)}/providers` +
-				`?workloadIdentityPoolProviderId=${encodeURIComponent(providerId)}`,
-			token,
-			"POST",
-			{
-				displayName: "GitHub OIDC Provider",
-				disabled: false,
-				attributeMapping: {
-					"google.subject": "assertion.sub",
-					"attribute.actor": "assertion.actor",
-					"attribute.repository": "assertion.repository",
-				},
-				// Scope the provider to this exact repository for security
-				attributeCondition: `assertion.repository=='${githubRepo}'`,
-				oidc: {
-					issuerUri: "https://token.actions.githubusercontent.com",
-				},
-			},
-		)) as GcpOperation;
-		if (!op.done) {
-			await pollOperation(op.name, token);
-		} else if (op.error) {
-			throw new Error(`Operation failed: ${op.error.message}`);
-		}
-	} catch (err) {
-		if (err instanceof GcpApiError && err.status === 409) {
-			return; // Provider already exists – that's fine
-		}
-		throw err;
-	}
+  try {
+    const op = (await gcpFetch(
+      `https://iam.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/locations/global/workloadIdentityPools/${encodeURIComponent(poolId)}/providers` +
+        `?workloadIdentityPoolProviderId=${encodeURIComponent(providerId)}`,
+      token,
+      'POST',
+      {
+        displayName: 'GitHub OIDC Provider',
+        disabled: false,
+        attributeMapping: {
+          'google.subject': 'assertion.sub',
+          'attribute.actor': 'assertion.actor',
+          'attribute.repository': 'assertion.repository',
+        },
+        // Scope the provider to this exact repository for security
+        attributeCondition: `assertion.repository=='${githubRepo}'`,
+        oidc: {
+          issuerUri: 'https://token.actions.githubusercontent.com',
+        },
+      },
+    )) as GcpOperation;
+    if (!op.done) {
+      await pollOperation(op.name, token);
+    } else if (op.error) {
+      throw new Error(`Operation failed: ${op.error.message}`);
+    }
+  } catch (err) {
+    if (err instanceof GcpApiError && err.status === 409) {
+      return; // Provider already exists – that's fine
+    }
+    throw err;
+  }
 }
 
 async function bindServiceAccount(
-	projectId: string,
-	serviceAccountEmail: string,
-	projectNumber: string,
-	poolId: string,
-	githubRepo: string,
-	token: string,
+  projectId: string,
+  serviceAccountEmail: string,
+  projectNumber: string,
+  poolId: string,
+  githubRepo: string,
+  token: string,
 ): Promise<void> {
-	const saResource = `projects/${encodeURIComponent(projectId)}/serviceAccounts/${encodeURIComponent(serviceAccountEmail)}`;
-	const principal = `principalSet://iam.googleapis.com/projects/${projectNumber}/locations/global/workloadIdentityPools/${poolId}/attribute.repository/${githubRepo}`;
+  const saResource = `projects/${encodeURIComponent(projectId)}/serviceAccounts/${encodeURIComponent(serviceAccountEmail)}`;
+  const principal = `principalSet://iam.googleapis.com/projects/${projectNumber}/locations/global/workloadIdentityPools/${poolId}/attribute.repository/${githubRepo}`;
 
-	const policy = (await gcpFetch(
-		`https://iam.googleapis.com/v1/${saResource}:getIamPolicy`,
-		token,
-		"POST",
-		{},
-	)) as IamPolicy;
+  const policy = (await gcpFetch(
+    `https://iam.googleapis.com/v1/${saResource}:getIamPolicy`,
+    token,
+    'POST',
+    {},
+  )) as IamPolicy;
 
-	const bindings = policy.bindings ?? [];
-	const role = "roles/iam.workloadIdentityUser";
-	const existing = bindings.find((b) => b.role === role);
+  const bindings = policy.bindings ?? [];
+  const role = 'roles/iam.workloadIdentityUser';
+  const existing = bindings.find((b) => b.role === role);
 
-	if (existing) {
-		if (existing.members.includes(principal)) {
-			return; // Already bound – idempotent
-		}
-		existing.members.push(principal);
-	} else {
-		bindings.push({ role, members: [principal] });
-	}
+  if (existing) {
+    if (existing.members.includes(principal)) {
+      return; // Already bound – idempotent
+    }
+    existing.members.push(principal);
+  } else {
+    bindings.push({ role, members: [principal] });
+  }
 
-	await gcpFetch(
-		`https://iam.googleapis.com/v1/${saResource}:setIamPolicy`,
-		token,
-		"POST",
-		{ policy: { ...policy, bindings } },
-	);
+  await gcpFetch(`https://iam.googleapis.com/v1/${saResource}:setIamPolicy`, token, 'POST', {
+    policy: { ...policy, bindings },
+  });
 }
 
 // ── public API ────────────────────────────────────────────────────────────────
@@ -202,46 +195,38 @@ async function bindServiceAccount(
  * ```
  */
 export async function setupWIF(options: WifSetupOptions): Promise<WifSetupResult> {
-	const poolId = options.poolId ?? "github-actions";
-	const providerId = options.providerId ?? "github-oidc";
-	const log = options.onProgress ?? (() => undefined);
+  const poolId = options.poolId ?? 'github-actions';
+  const providerId = options.providerId ?? 'github-oidc';
+  const log = options.onProgress ?? (() => undefined);
 
-	if (!options.githubRepo.includes("/")) {
-		throw new Error(
-			`githubRepo must be in "owner/repo" format, got: "${options.githubRepo}"`,
-		);
-	}
+  if (!options.githubRepo.includes('/')) {
+    throw new Error(`githubRepo must be in "owner/repo" format, got: "${options.githubRepo}"`);
+  }
 
-	log("Authenticating with Google Cloud...");
-	const token = await getAccessToken(options.keyFilePath);
+  log('Authenticating with Google Cloud...');
+  const token = await getAccessToken(options.keyFilePath);
 
-	log("Fetching project number...");
-	const projectNumber = await getProjectNumber(options.projectId, token);
+  log('Fetching project number...');
+  const projectNumber = await getProjectNumber(options.projectId, token);
 
-	log(`Creating Workload Identity Pool "${poolId}"...`);
-	await createOrGetWifPool(options.projectId, poolId, token);
+  log(`Creating Workload Identity Pool "${poolId}"...`);
+  await createOrGetWifPool(options.projectId, poolId, token);
 
-	log(`Creating OIDC Provider "${providerId}"...`);
-	await createOrGetWifProvider(
-		options.projectId,
-		poolId,
-		providerId,
-		options.githubRepo,
-		token,
-	);
+  log(`Creating OIDC Provider "${providerId}"...`);
+  await createOrGetWifProvider(options.projectId, poolId, providerId, options.githubRepo, token);
 
-	log("Binding service account permissions...");
-	await bindServiceAccount(
-		options.projectId,
-		options.serviceAccountEmail,
-		projectNumber,
-		poolId,
-		options.githubRepo,
-		token,
-	);
+  log('Binding service account permissions...');
+  await bindServiceAccount(
+    options.projectId,
+    options.serviceAccountEmail,
+    projectNumber,
+    poolId,
+    options.githubRepo,
+    token,
+  );
 
-	const wifProvider = `projects/${projectNumber}/locations/global/workloadIdentityPools/${poolId}/providers/${providerId}`;
-	return { wifProvider, projectNumber, poolId, providerId };
+  const wifProvider = `projects/${projectNumber}/locations/global/workloadIdentityPools/${poolId}/providers/${providerId}`;
+  return { wifProvider, projectNumber, poolId, providerId };
 }
 
 /**
@@ -264,36 +249,34 @@ export async function setupWIF(options: WifSetupOptions): Promise<WifSetupResult
  * });
  * ```
  */
-export async function grantDrivePermissions(
-	options: GrantDrivePermissionsOptions,
-): Promise<void> {
-	const token = await getAccessToken(options.keyFilePath);
+export async function grantDrivePermissions(options: GrantDrivePermissionsOptions): Promise<void> {
+  const token = await getAccessToken(options.keyFilePath);
 
-	const policy = (await gcpFetch(
-		`https://cloudresourcemanager.googleapis.com/v1/projects/${encodeURIComponent(options.projectId)}:getIamPolicy`,
-		token,
-		"POST",
-		{},
-	)) as IamPolicy;
+  const policy = (await gcpFetch(
+    `https://cloudresourcemanager.googleapis.com/v1/projects/${encodeURIComponent(options.projectId)}:getIamPolicy`,
+    token,
+    'POST',
+    {},
+  )) as IamPolicy;
 
-	const bindings = policy.bindings ?? [];
-	const role = "roles/drive.file";
-	const member = `serviceAccount:${options.serviceAccountEmail}`;
-	const existing = bindings.find((b) => b.role === role);
+  const bindings = policy.bindings ?? [];
+  const role = 'roles/drive.file';
+  const member = `serviceAccount:${options.serviceAccountEmail}`;
+  const existing = bindings.find((b) => b.role === role);
 
-	if (existing) {
-		if (existing.members.includes(member)) {
-			return; // Already granted – idempotent
-		}
-		existing.members.push(member);
-	} else {
-		bindings.push({ role, members: [member] });
-	}
+  if (existing) {
+    if (existing.members.includes(member)) {
+      return; // Already granted – idempotent
+    }
+    existing.members.push(member);
+  } else {
+    bindings.push({ role, members: [member] });
+  }
 
-	await gcpFetch(
-		`https://cloudresourcemanager.googleapis.com/v1/projects/${encodeURIComponent(options.projectId)}:setIamPolicy`,
-		token,
-		"POST",
-		{ policy: { ...policy, bindings } },
-	);
+  await gcpFetch(
+    `https://cloudresourcemanager.googleapis.com/v1/projects/${encodeURIComponent(options.projectId)}:setIamPolicy`,
+    token,
+    'POST',
+    { policy: { ...policy, bindings } },
+  );
 }

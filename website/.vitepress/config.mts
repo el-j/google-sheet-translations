@@ -31,14 +31,15 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
+      { text: 'Provider Runtime', link: '/guide/provider-runtime' },
+      { text: 'v3 Migration', link: '/guide/provider-migration-v3' },
       { text: 'GitHub Action', link: '/guide/github-actions' },
       {
         text: `v${pkg.version}`,
         items: [
           { text: 'Changelog', link: '/changelog' },
           { text: 'Contributing', link: '/contributing' },
-          { text: 'v2.2.x', link: '/google-sheet-translations/v2.2/' },
-          { text: 'v2.1.x', link: '/google-sheet-translations/v2.1/' },
+          { text: 'v2 Archive', link: '/v2/' },
         ],
       },
       {
@@ -71,6 +72,9 @@ export default defineConfig({
           text: 'Guides & Integrations',
           items: [
             { text: 'GitHub Actions', link: '/guide/github-actions' },
+            { text: 'Provider Runtime (v3)', link: '/guide/provider-runtime' },
+            { text: 'Migration to v3', link: '/guide/provider-migration-v3' },
+            { text: 'Full Sync Operations (v3)', link: '/guide/full-sync-operations-v3' },
             { text: 'Bidirectional Sync', link: '/guide/bidirectional-sync' },
             { text: 'Auto-Translation', link: '/guide/auto-translation' },
             { text: 'Google Docs Ingestion', link: '/guide/google-docs-ingestion' },
@@ -120,6 +124,31 @@ export default defineConfig({
             { text: 'Doc Ingester', link: '/api/doc-ingester' },
             { text: 'Doc Parser', link: '/api/doc-parser' },
             { text: 'WIF Setup', link: '/api/wif-setup' },
+          ],
+        },
+        {
+          text: 'Provider Platform (v3)',
+          items: [
+            { text: 'Overview', link: '/api/provider-platform' },
+            { text: 'Provider Contracts', link: '/api/provider-contracts' },
+            { text: 'Google Sheets Provider', link: '/api/google-provider' },
+            { text: 'CryptPad Providers', link: '/api/cryptpad-provider' },
+            { text: 'Migrate to v3', link: '/api/migrate-v3' },
+          ],
+        },
+      ],
+      '/v2/': [
+        {
+          text: 'v2 Archive',
+          items: [
+            { text: 'Overview', link: '/v2/' },
+            { text: 'v2 Getting Started', link: '/v2/getting-started' },
+            { text: 'v2 Configuration', link: '/v2/configuration' },
+            { text: 'v2 Public Sheets', link: '/v2/public-sheets' },
+            { text: 'v2 Bidirectional Sync', link: '/v2/bidirectional-sync' },
+            { text: 'v2 Auto-Translation', link: '/v2/auto-translation' },
+            { text: 'v2 GitHub Action', link: '/v2/github-actions' },
+            { text: 'v2 Migration Notes', link: '/v2/migration-notes' },
           ],
         },
       ],

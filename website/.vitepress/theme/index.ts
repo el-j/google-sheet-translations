@@ -9,6 +9,7 @@ import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { h } from 'vue'
 import LangSwitcher from './components/LangSwitcher.vue'
+import './custom.css'
 
 export default {
   extends: DefaultTheme,

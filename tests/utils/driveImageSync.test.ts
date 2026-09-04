@@ -74,7 +74,7 @@ describe('syncDriveImages', () => {
         makeListResponse([
           { id: 'file1', name: 'image1.png', mimeType: 'image/png' },
           { id: 'file2', name: 'image2.jpg', mimeType: 'image/jpeg' },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -94,9 +94,7 @@ describe('syncDriveImages', () => {
     vi.mocked(fs.existsSync).mockReturnValue(true);
 
     mockFetch.mockResolvedValueOnce(
-      makeListResponse([
-        { id: 'file1', name: 'image1.png', mimeType: 'image/png' },
-      ])
+      makeListResponse([{ id: 'file1', name: 'image1.png', mimeType: 'image/png' }]),
     );
 
     const result = await syncDriveImages({
@@ -115,7 +113,7 @@ describe('syncDriveImages', () => {
         makeListResponse([
           { id: 'file1', name: 'doc.pdf', mimeType: 'application/pdf' },
           { id: 'file2', name: 'image.png', mimeType: 'image/png' },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -135,7 +133,7 @@ describe('syncDriveImages', () => {
         makeListResponse([
           { id: 'file1', name: 'hero-banner.png', mimeType: 'image/png' },
           { id: 'file2', name: 'icon-close.png', mimeType: 'image/png' },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -155,12 +153,10 @@ describe('syncDriveImages', () => {
       .mockResolvedValueOnce(
         makeListResponse([
           { id: 'subfolder1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
-        ])
+        ]),
       )
       .mockResolvedValueOnce(
-        makeListResponse([
-          { id: 'file1', name: 'check.svg', mimeType: 'image/svg+xml' },
-        ])
+        makeListResponse([{ id: 'file1', name: 'check.svg', mimeType: 'image/svg+xml' }]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -175,12 +171,14 @@ describe('syncDriveImages', () => {
   });
 
   it('does not recurse into subfolders when recursive: false', async () => {
-    mockFetch.mockResolvedValueOnce(
-      makeListResponse([
-        { id: 'subfolder1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
-        { id: 'file1', name: 'root.png', mimeType: 'image/png' },
-      ])
-    ).mockResolvedValue(makeDownloadResponse());
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'subfolder1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
+          { id: 'file1', name: 'root.png', mimeType: 'image/png' },
+        ]),
+      )
+      .mockResolvedValue(makeDownloadResponse());
 
     const result = await syncDriveImages({
       folderId: 'root-folder',
@@ -200,12 +198,10 @@ describe('syncDriveImages', () => {
         makeListResponse([
           { id: 'sub1', name: 'icons', mimeType: 'application/vnd.google-apps.folder' },
           { id: 'sub2', name: 'docs', mimeType: 'application/vnd.google-apps.folder' },
-        ])
+        ]),
       )
       .mockResolvedValueOnce(
-        makeListResponse([
-          { id: 'file1', name: 'icon.png', mimeType: 'image/png' },
-        ])
+        makeListResponse([{ id: 'file1', name: 'icon.png', mimeType: 'image/png' }]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -225,9 +221,7 @@ describe('syncDriveImages', () => {
     vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
     vi.mocked(fs.existsSync).mockImplementation((p: any) => p === '/output');
 
-    mockFetch
-      .mockResolvedValueOnce(makeListResponse([]))
-      .mockResolvedValue(makeDownloadResponse());
+    mockFetch.mockResolvedValueOnce(makeListResponse([])).mockResolvedValue(makeDownloadResponse());
 
     const result = await syncDriveImages({
       folderId: 'root-folder',
@@ -241,8 +235,12 @@ describe('syncDriveImages', () => {
   });
 
   it('cleanSync walks nested local directories before deleting missing files', async () => {
-    vi.mocked(fs.existsSync).mockImplementation((p: any) => p === '/output' || p === '/output/nested');
-    vi.mocked(fs.readdirSync).mockImplementation((p: any) => (p === '/output' ? ['nested'] : ['old.png']) as any);
+    vi.mocked(fs.existsSync).mockImplementation(
+      (p: any) => p === '/output' || p === '/output/nested',
+    );
+    vi.mocked(fs.readdirSync).mockImplementation(
+      (p: any) => (p === '/output' ? ['nested'] : ['old.png']) as any,
+    );
     vi.mocked(fs.statSync).mockImplementation(((p: any) => ({
       isDirectory: () => p === '/output/nested',
     })) as any);
@@ -263,11 +261,13 @@ describe('syncDriveImages', () => {
   it('handles individual download errors gracefully', async () => {
     mockFetch
       .mockResolvedValueOnce(
-        makeListResponse([
-          { id: 'file1', name: 'bad.png', mimeType: 'image/png' },
-        ])
+        makeListResponse([{ id: 'file1', name: 'bad.png', mimeType: 'image/png' }]),
       )
-      .mockResolvedValueOnce({ ok: false, status: 500, text: vi.fn().mockResolvedValue('Server Error') });
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        text: vi.fn().mockResolvedValue('Server Error'),
+      });
 
     const result = await syncDriveImages({
       folderId: 'root-folder',
@@ -291,7 +291,7 @@ describe('syncDriveImages', () => {
         folderId: 'root-folder',
         outputPath: '/output',
         credentials,
-      })
+      }),
     ).rejects.toThrow('Drive API error 500');
   });
 
@@ -304,8 +304,13 @@ describe('syncDriveImages', () => {
     mockFetch
       .mockResolvedValueOnce(
         makeListResponse([
-          { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: new Date(9000).toISOString() },
-        ])
+          {
+            id: 'f1',
+            name: 'photo.png',
+            mimeType: 'image/png',
+            modifiedTime: new Date(9000).toISOString(),
+          },
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -324,9 +329,7 @@ describe('syncDriveImages', () => {
 
     mockFetch
       .mockResolvedValueOnce(
-        makeListResponse([
-          { id: 'file1', name: 'bad.png', mimeType: 'image/png' },
-        ])
+        makeListResponse([{ id: 'file1', name: 'bad.png', mimeType: 'image/png' }]),
       )
       .mockResolvedValueOnce(makeDownloadResponse());
 
@@ -364,7 +367,7 @@ describe('syncDriveImages', () => {
         folderId: 'root-folder',
         outputPath: '/output',
         credentials: undefined,
-      })
+      }),
     ).rejects.toThrow('Google Drive credentials required');
 
     if (originalEmail) process.env.GOOGLE_CLIENT_EMAIL = originalEmail;
@@ -417,7 +420,7 @@ describe('syncDriveImages', () => {
         makeListResponse([
           { id: 'file1', name: 'video.mp4', mimeType: 'video/mp4' },
           { id: 'file2', name: 'thumb.webp', mimeType: 'image/webp' },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -463,15 +466,18 @@ describe('normalizeExtension', () => {
 });
 
 describe('incrementalSync', () => {
-  const driveModifiedOld = new Date(1000).toISOString();  // 1 second since epoch
-  const driveModifiedNew = new Date(9000).toISOString();  // 9 seconds since epoch
-  const localMtimeMid = 5000;                              // 5 seconds since epoch
+  const driveModifiedOld = new Date(1000).toISOString(); // 1 second since epoch
+  const driveModifiedNew = new Date(9000).toISOString(); // 9 seconds since epoch
+  const localMtimeMid = 5000; // 5 seconds since epoch
 
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(fs.existsSync).mockReturnValue(false);
     vi.mocked(fs.readdirSync).mockReturnValue([]);
-    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false, mtimeMs: localMtimeMid } as any);
+    vi.mocked(fs.statSync).mockReturnValue({
+      isDirectory: () => false,
+      mtimeMs: localMtimeMid,
+    } as any);
     vi.mocked(pipeline).mockResolvedValue(undefined);
   });
 
@@ -482,7 +488,7 @@ describe('incrementalSync', () => {
       .mockResolvedValueOnce(
         makeListResponse([
           { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedNew },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -503,7 +509,7 @@ describe('incrementalSync', () => {
     mockFetch.mockResolvedValueOnce(
       makeListResponse([
         { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedOld },
-      ])
+      ]),
     );
 
     const result = await syncDriveImages({
@@ -524,7 +530,7 @@ describe('incrementalSync', () => {
     mockFetch.mockResolvedValueOnce(
       makeListResponse([
         { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedEqual },
-      ])
+      ]),
     );
 
     const result = await syncDriveImages({
@@ -542,9 +548,7 @@ describe('incrementalSync', () => {
 
     // No modifiedTime in response → incremental check is bypassed → skip existing
     mockFetch.mockResolvedValueOnce(
-      makeListResponse([
-        { id: 'f1', name: 'photo.png', mimeType: 'image/png' },
-      ])
+      makeListResponse([{ id: 'f1', name: 'photo.png', mimeType: 'image/png' }]),
     );
 
     const result = await syncDriveImages({
@@ -563,7 +567,7 @@ describe('incrementalSync', () => {
     mockFetch.mockResolvedValueOnce(
       makeListResponse([
         { id: 'f1', name: 'photo.png', mimeType: 'image/png', modifiedTime: driveModifiedNew },
-      ])
+      ]),
     );
 
     const result = await syncDriveImages({
@@ -584,7 +588,7 @@ describe('incrementalSync', () => {
       .mockResolvedValueOnce(
         makeListResponse([
           { id: 'f1', name: 'new.png', mimeType: 'image/png', modifiedTime: driveModifiedOld },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -610,9 +614,7 @@ describe('normalizeExtensions option', () => {
   it('normalizeExtensions: true (default) — JPEG becomes .jpg in local path', async () => {
     mockFetch
       .mockResolvedValueOnce(
-        makeListResponse([
-          { id: 'f1', name: 'photo.JPEG', mimeType: 'image/jpeg' },
-        ])
+        makeListResponse([{ id: 'f1', name: 'photo.JPEG', mimeType: 'image/jpeg' }]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -633,7 +635,7 @@ describe('normalizeExtensions option', () => {
         makeListResponse([
           { id: 'f1', name: 'banner.PNG', mimeType: 'image/png' },
           { id: 'f2', name: 'icon.SVG', mimeType: 'image/svg+xml' },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -654,7 +656,7 @@ describe('normalizeExtensions option', () => {
         makeListResponse([
           { id: 'f1', name: 'photo.JPEG', mimeType: 'image/jpeg' },
           { id: 'f2', name: 'banner.PNG', mimeType: 'image/png' },
-        ])
+        ]),
       )
       .mockResolvedValue(makeDownloadResponse());
 
@@ -673,9 +675,7 @@ describe('normalizeExtensions option', () => {
   it('normalizeExtensions: true — base name is not modified, only extension', async () => {
     mockFetch
       .mockResolvedValueOnce(
-        makeListResponse([
-          { id: 'f1', name: 'MyHero_Banner.PNG', mimeType: 'image/png' },
-        ])
+        makeListResponse([{ id: 'f1', name: 'MyHero_Banner.PNG', mimeType: 'image/png' }]),
       )
       .mockResolvedValue(makeDownloadResponse());
 

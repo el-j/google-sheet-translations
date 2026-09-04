@@ -10,6 +10,23 @@
 | [`getMultipleSpreadSheetsData`](/api/get-multiple-spreadsheets-data) | Fetch from multiple spreadsheet IDs and deep-merge results |
 | [`manageDriveTranslations`](/api/manage-drive-translations) | Top-level orchestrator — scan a Drive folder, fetch all spreadsheets, and optionally sync images |
 
+## Provider runtime (v3)
+
+See [Provider Platform (v3)](/api/provider-platform) for the full API reference (capability model, config validation, orchestration, discovery, sync engine).
+
+| Export | Description |
+|--------|-------------|
+| [`assertValidProviderRuntimeConfig`](/api/provider-platform#assertvalidproviderruntimeconfig-config) | Validate and type-check provider runtime config before execution |
+| [`createProvidersFromRuntimeConfig`](/api/provider-platform#resolving-providers) | Build concrete input/output/sync/asset-sync providers from config |
+| [`runProviderPipeline`](/api/provider-platform#running-the-pipeline) | Execute provider-driven pull/transform/write/sync/asset-sync flow |
+| [Provider Contracts](/api/provider-contracts) | TypeScript interfaces for custom translation/asset providers & registries |
+| [`createGoogleSheetsInputProvider` / `createGoogleSheetsOutputProvider` / `createGoogleSheetsSyncProvider`](/api/google-provider) | Google Sheets provider factories |
+| [`createCryptPadCsvInputProvider`](/api/cryptpad-provider#createcryptpadcsvinputprovider-options-depsoverrides) | CryptPad CSV input factory (read-only MVP) |
+| [`createCryptPadWorkspaceOutputProvider` / `createCryptPadWorkspaceSyncProvider`](/api/cryptpad-provider) | CryptPad workspace output/sync factories |
+| [`createCryptPadAssetSyncProvider`](/api/cryptpad-provider#createcryptpadassetsyncprovider-options-depsoverrides) | CryptPad asset-manifest sync factory |
+| [`createDefaultProviderCatalog`](/api/provider-platform#source-discovery-catalog) | Discover built-in provider sources |
+| [`migrateProjectToV3`](/api/migrate-v3) | Programmatic API behind `gst-migrate-v3` |
+
 ## Google Drive utilities
 
 | Export | Description |

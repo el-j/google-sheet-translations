@@ -59,11 +59,7 @@ export interface ParseDocOptions {
  * slugifyKey('nav / Home')     // → 'nav_home'
  */
 export function slugifyKey(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '');
+  return text.toLowerCase().replace(/[^\w]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
@@ -90,10 +86,7 @@ export function slugifyKey(text: string): string {
  * //    { sheetName: 'hero', key: 'subtitle', value: 'Start your journey' }]
  * ```
  */
-export function parseDocContent(
-  content: string,
-  options: ParseDocOptions = {},
-): ParsedDocEntry[] {
+export function parseDocContent(content: string, options: ParseDocOptions = {}): ParsedDocEntry[] {
   const { strategy = 'heading', defaultSheetName = 'content' } = options;
 
   if (strategy === 'marker') return parseWithMarkers(content, defaultSheetName);
@@ -110,10 +103,7 @@ export function parseDocContent(
  * - Lines after an `## Heading` accumulate as the value until the next heading
  * - Lines before any `##` are ignored (only structural headings matter)
  */
-function parseWithHeadings(
-  content: string,
-  defaultSheetName: string,
-): ParsedDocEntry[] {
+function parseWithHeadings(content: string, defaultSheetName: string): ParsedDocEntry[] {
   const lines = content.split('\n');
   const entries: ParsedDocEntry[] = [];
 
@@ -137,8 +127,7 @@ function parseWithHeadings(
 
     if (line.startsWith('# ')) {
       flushEntry();
-      currentSheet =
-        slugifyKey(line.slice(2).trim()) || defaultSheetName;
+      currentSheet = slugifyKey(line.slice(2).trim()) || defaultSheetName;
       currentKey = null;
       valueLines.length = 0;
     } else if (line.startsWith('## ')) {
@@ -163,10 +152,7 @@ function parseWithHeadings(
  * - The key path may include one dot to specify a custom sheet name
  *   (e.g. `[[key:hero.title]]` → sheet `hero`, key `title`).
  */
-function parseWithMarkers(
-  content: string,
-  defaultSheetName: string,
-): ParsedDocEntry[] {
+function parseWithMarkers(content: string, defaultSheetName: string): ParsedDocEntry[] {
   // Bound the key-path length (≤ 200 chars) to prevent ReDoS on crafted input
   const MARKER_RE = /\[\[key:([^\]]{1,200})\]\]/g;
   const entries: ParsedDocEntry[] = [];
@@ -207,10 +193,7 @@ function parseWithMarkers(
  * - Markdown heading markers (`#`) are stripped from the start of each paragraph.
  * - Each non-empty paragraph becomes `item_N` in the default sheet.
  */
-function parseNumbered(
-  content: string,
-  defaultSheetName: string,
-): ParsedDocEntry[] {
+function parseNumbered(content: string, defaultSheetName: string): ParsedDocEntry[] {
   const entries: ParsedDocEntry[] = [];
   let counter = 0;
 

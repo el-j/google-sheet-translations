@@ -383,6 +383,8 @@ jobs:
 | `spreadsheet-ids` | ❌ | `''` | Optional extra spreadsheet IDs to merge with any IDs discovered in Drive |
 | `sync-images` | ❌ | `false` | Download Drive images alongside translation sync |
 | `image-output-path` | ❌ | `./public/remote-images` | Output directory for downloaded Drive images when `sync-images` is enabled |
+| `provider-config` | ❌ | `''` | Inline JSON for v3 provider runtime config (mutually exclusive with `provider-config-path`) |
+| `provider-config-path` | ❌ | `''` | Path to provider runtime config JSON file in the repo (mutually exclusive with `provider-config`) |
 
 ### Drive Folder Mode
 
@@ -403,6 +405,46 @@ See the full Drive Folder guide in `website/guide/drive-folder.md` for the compl
 | `translations-dir` | Absolute path of the directory containing locale JSON files |
 | `locales-file` | Absolute path of the generated `locales.ts` |
 | `data-json-file` | Absolute path of the `languageData.json` snapshot |
+
+## Provider Runtime CLI (v3)
+
+In addition to `gst-setup-wif`, the package ships `gst-run-provider` for provider-config driven execution:
+
+```bash
+gst-run-provider --config=provider.config.json --sheet-titles=home,about
+```
+
+For existing workflows, use `gst-migrate-v3` to generate provider config from legacy action inputs:
+
+```bash
+gst-migrate-v3 --dry-run
+gst-migrate-v3 --dry-run --parity-check
+gst-migrate-v3 --write-workflows --provider-config-path=.github/provider.config.json
+```
+
+If a config already exists and should be replaced:
+
+```bash
+gst-migrate-v3 --force --provider-config-path=.github/provider.config.json
+```
+
+Example `provider.config.json` for CryptPad CSV input:
+
+```json
+{
+  "input": {
+    "provider": "cryptpad-csv",
+    "options": {
+      "sources": [
+        {
+          "tableName": "home",
+          "url": "https://cryptpad.fr/.../export.csv"
+        }
+      ]
+    }
+  }
+}
+```
 
 ### Auto-Create Feature
 

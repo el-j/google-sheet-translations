@@ -8,16 +8,16 @@ const DEFAULT_MAX_DELAY_MS = 30_000;
  * transient server error (HTTP 429 or 503).
  */
 function isRateLimitError(err: unknown): boolean {
-	if (!err || typeof err !== 'object') return false;
-	const e = err as Record<string, unknown>;
-	const response = e['response'] as Record<string, unknown> | undefined;
-	const status =
-		typeof e['status'] === 'number'
-			? e['status']
-			: typeof response?.['status'] === 'number'
-				? (response['status'] as number)
-				: undefined;
-	return status === 429 || status === 503;
+  if (!err || typeof err !== 'object') return false;
+  const e = err as Record<string, unknown>;
+  const response = e['response'] as Record<string, unknown> | undefined;
+  const status =
+    typeof e['status'] === 'number'
+      ? e['status']
+      : typeof response?.['status'] === 'number'
+        ? (response['status'] as number)
+        : undefined;
+  return status === 429 || status === 503;
 }
 
 /**
@@ -33,29 +33,27 @@ function isRateLimitError(err: unknown): boolean {
  * @throws  The last error if all retries are exhausted, or any non-rate-limit error immediately
  */
 export async function withRetry<T>(
-	fn: () => Promise<T>,
-	label: string,
-	baseDelayMs = 1_000,
-	retries = DEFAULT_RETRIES,
-	maxDelayMs = DEFAULT_MAX_DELAY_MS,
+  fn: () => Promise<T>,
+  label: string,
+  baseDelayMs = 1_000,
+  retries = DEFAULT_RETRIES,
+  maxDelayMs = DEFAULT_MAX_DELAY_MS,
 ): Promise<T> {
-	for (let attempt = 0; attempt <= retries; attempt++) {
-		try {
-			return await fn();
-		} catch (err) {
-			if (!isRateLimitError(err) || attempt === retries) throw err;
-			const backoff = Math.min(baseDelayMs * 2 ** attempt, maxDelayMs);
-			console.warn(
-				`[rate-limit] ${label}: retry ${attempt + 1}/${retries} in ${backoff} ms`,
-			);
-			await delay(backoff);
-		}
-	}
-	// The loop above always returns (on success) or throws (on exhausted retries or
-	// non-rate-limit errors).  This line is here solely to satisfy TypeScript's
-	// control-flow analysis — it cannot actually be reached at runtime.
-	/* c8 ignore next */
-	throw new Error('withRetry: unreachable');
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (!isRateLimitError(err) || attempt === retries) throw err;
+      const backoff = Math.min(baseDelayMs * 2 ** attempt, maxDelayMs);
+      console.warn(`[rate-limit] ${label}: retry ${attempt + 1}/${retries} in ${backoff} ms`);
+      await delay(backoff);
+    }
+  }
+  // The loop above always returns (on success) or throws (on exhausted retries or
+  // non-rate-limit errors).  This line is here solely to satisfy TypeScript's
+  // control-flow analysis — it cannot actually be reached at runtime.
+  /* c8 ignore next */
+  throw new Error('withRetry: unreachable');
 }
 
 export default withRetry;
