@@ -116,6 +116,13 @@ function hasAnyChanges(data: TranslationData): boolean {
   return Object.keys(data).length > 0 && Object.values(data).some((l) => Object.keys(l).length > 0);
 }
 
+/**
+ * Creates a {@link TranslationInputProvider} backed by Google Sheets. When
+ * `options.publicSheet` is true, reads via the no-auth public CSV export path
+ * (`publicReadNoAuth` capability); otherwise authenticates via
+ * {@link createAuthClient} and reads through the Google Sheets API, skipping
+ * (and warning about) any requested table name that has no matching sheet.
+ */
 export function createGoogleSheetsInputProvider(
   options: GoogleSheetsInputProviderOptions = {},
   depsOverrides: Partial<GoogleSheetsProviderDeps> = {},
@@ -196,6 +203,12 @@ export function createGoogleSheetsInputProvider(
   };
 }
 
+/**
+ * Creates a {@link TranslationOutputProvider} that authenticates and writes the full
+ * translation set to a Google Sheets spreadsheet via {@link updateSpreadsheetWithLocalChanges},
+ * optionally auto-translating missing cells with a formula (`autoTranslate`) and
+ * optionally overwriting existing non-empty cells (`override`).
+ */
 export function createGoogleSheetsOutputProvider(
   options: GoogleSheetsOutputProviderOptions = {},
   depsOverrides: Partial<GoogleSheetsProviderDeps> = {},
@@ -243,6 +256,13 @@ export function createGoogleSheetsOutputProvider(
   };
 }
 
+/**
+ * Creates a {@link TranslationSyncProvider} that computes local-only changes via
+ * {@link findLocalChanges} (comparing `localTranslations` against `remoteTranslations`)
+ * and, if any exist, writes just those changed keys back to the spreadsheet. Returns
+ * early with `changedKeys: 0` when there is no local diff, avoiding an unnecessary
+ * authenticated round-trip.
+ */
 export function createGoogleSheetsSyncProvider(
   options: GoogleSheetsSyncProviderOptions = {},
   depsOverrides: Partial<GoogleSheetsProviderDeps> = {},

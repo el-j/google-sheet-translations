@@ -1,3 +1,8 @@
+/**
+ * The full set of capability flags a provider can declare. A provider that
+ * doesn't support an operation simply leaves the corresponding flag `false`
+ * (see {@link EMPTY_PROVIDER_CAPABILITIES}), rather than omitting it.
+ */
 export const PROVIDER_CAPABILITIES = [
   'readTables',
   'writeTables',
@@ -26,6 +31,10 @@ export const EMPTY_PROVIDER_CAPABILITIES: ProviderCapabilitySet = {
   publicReadNoAuth: false,
 };
 
+/**
+ * A named pipeline operation (e.g. "read-input") that requires one or more
+ * capabilities to be present before it can run. See {@link OPERATION_CAPABILITY_REQUIREMENTS}.
+ */
 export type ProviderOperation =
   | 'read-input'
   | 'write-output'
@@ -50,6 +59,11 @@ export const OPERATION_CAPABILITY_REQUIREMENTS: Record<
   'public-read': ['readTables', 'publicReadNoAuth'],
 };
 
+/**
+ * Builds a full {@link ProviderCapabilitySet}, defaulting every unspecified
+ * capability to `false`. Provider factories use this so they only need to
+ * name the capabilities they actually support.
+ */
 export function createCapabilitySet(
   overrides: Partial<ProviderCapabilitySet> = {},
 ): ProviderCapabilitySet {
@@ -59,6 +73,7 @@ export function createCapabilitySet(
   };
 }
 
+/** Returns the subset of `required` that `capabilities` does not have set to `true`. */
 export function missingCapabilities(
   capabilities: ProviderCapabilitySet,
   required: ProviderCapability[],
@@ -66,6 +81,7 @@ export function missingCapabilities(
   return required.filter((capability) => !capabilities[capability]);
 }
 
+/** Returns `true` only if every capability in `required` is set to `true` on `capabilities`. */
 export function hasRequiredCapabilities(
   capabilities: ProviderCapabilitySet,
   required: ProviderCapability[],
@@ -73,6 +89,10 @@ export function hasRequiredCapabilities(
   return missingCapabilities(capabilities, required).length === 0;
 }
 
+/**
+ * Throws a descriptive error naming `providerName`, `operation` (if given), and every
+ * missing capability, unless `capabilities` already satisfies all of `required`.
+ */
 export function assertRequiredCapabilities(
   providerName: string,
   capabilities: ProviderCapabilitySet,
@@ -88,6 +108,12 @@ export function assertRequiredCapabilities(
   );
 }
 
+/**
+ * Convenience wrapper around {@link assertRequiredCapabilities} that looks up the
+ * required capabilities for a named {@link ProviderOperation} via
+ * {@link OPERATION_CAPABILITY_REQUIREMENTS}. This is the gate every pipeline stage
+ * (read/write/sync/asset-sync/discovery) runs through before it executes.
+ */
 export function assertOperationCapabilities(
   providerName: string,
   capabilities: ProviderCapabilitySet,

@@ -53,16 +53,19 @@ export interface TranslationSyncResult {
   metadata?: Record<string, unknown>;
 }
 
+/** A provider that reads canonical tables from a data source (e.g. Google Sheets, a CSV file). */
 export interface TranslationInputProvider extends ProviderMetadata {
   kind: 'input';
   readTables(request: TranslationInputRequest): Promise<TranslationInputResult>;
 }
 
+/** A provider that writes the merged translation set to a destination. */
 export interface TranslationOutputProvider extends ProviderMetadata {
   kind: 'output';
   writeTranslations(payload: TranslationOutputPayload): Promise<TranslationOutputResult>;
 }
 
+/** A provider that reconciles local translation edits with a remote source, resolving conflicts. */
 export interface TranslationSyncProvider extends ProviderMetadata {
   kind: 'sync';
   syncTranslations(payload: TranslationSyncPayload): Promise<TranslationSyncResult>;

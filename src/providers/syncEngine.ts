@@ -1,5 +1,12 @@
 import type { TranslationData } from '../types';
 
+/**
+ * Three-way sync engine: given a common ancestor ("base") and two divergent copies
+ * ("local" and "remote"), computes per-key changes on each side, flags keys changed
+ * on both sides as conflicts, and resolves the merge according to a chosen
+ * {@link SyncConflictPolicy}. Used by sync-capable providers (e.g. CryptPad workspace)
+ * to reconcile local translation edits against the remote snapshot before writing back.
+ */
 export type SyncConflictPolicy = 'remote-wins' | 'local-wins' | 'manual';
 export type SyncChangeType = 'insert' | 'update' | 'delete';
 
@@ -162,6 +169,12 @@ function cloneTranslations(input: TranslationData): TranslationData {
   return JSON.parse(JSON.stringify(input));
 }
 
+/**
+ * Diffs `localTranslations` and `remoteTranslations` each against `baseTranslations`
+ * (flattened to `locale::sheet::key` paths) and returns the resulting local changes,
+ * remote changes, and any keys that changed on both sides to a genuinely different
+ * value (conflicts). Does not merge anything — see {@link resolveSyncPlan} for that.
+ */
 export function buildSyncPlan(input: BuildSyncPlanInput): SyncPlan {
   const base = flattenTranslations(input.baseTranslations);
   const local = flattenTranslations(input.localTranslations);
@@ -203,6 +216,13 @@ export function buildSyncPlan(input: BuildSyncPlanInput): SyncPlan {
   };
 }
 
+/**
+ * Runs {@link buildSyncPlan} and merges the result into a copy of `remoteTranslations`
+ * according to `policy`:
+ * - `remote-wins` — non-conflicting local changes apply; conflicting keys keep the remote value.
+ * - `local-wins` — every local change applies, including over conflicts.
+ * - `manual` — non-conflicting local changes apply; conflicts are left as-is and counted in `skippedConflicts` for human review.
+ */
 export function resolveSyncPlan(
   input: BuildSyncPlanInput,
   policy: SyncConflictPolicy,

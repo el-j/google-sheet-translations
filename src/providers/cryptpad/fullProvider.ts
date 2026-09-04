@@ -23,9 +23,12 @@ interface CryptPadWorkspaceSnapshot {
 }
 
 export interface CryptPadWorkspaceProviderOptions {
+  /** Path to the local JSON snapshot file acting as the CryptPad workspace state. */
   filePath: string;
   authToken?: string;
+  /** Optimistic-concurrency guard: if set, writes fail unless the on-disk revision matches. */
   expectedRevision?: number;
+  /** Conflict resolution strategy used by the sync provider; ignored by the output provider. */
   conflictPolicy?: SyncConflictPolicy;
   providerId?: string;
   displayName?: string;
@@ -116,6 +119,13 @@ function assertRevision(
   }
 }
 
+/**
+ * Creates a {@link TranslationOutputProvider} that writes translations into a local
+ * JSON snapshot file representing CryptPad workspace state. Each write reads the
+ * current snapshot, checks `expectedRevision` (if set) for optimistic-concurrency
+ * safety, deep-merges the new translations over the existing ones, and writes back
+ * with the revision incremented by one.
+ */
 export function createCryptPadWorkspaceOutputProvider(
   options: CryptPadWorkspaceProviderOptions,
   depsOverrides: Partial<CryptPadWorkspaceProviderDeps> = {},
@@ -166,6 +176,13 @@ function buildSyncInput(payload: TranslationSyncPayload): BuildSyncPlanInput {
   };
 }
 
+/**
+ * Creates a {@link TranslationSyncProvider} that reconciles local translation changes
+ * against the CryptPad workspace snapshot using {@link resolveSyncPlan} (three-way
+ * diff against `payload.metadata.baseTranslations`, falling back to the remote
+ * snapshot as base) and the configured `conflictPolicy`. Like the output provider,
+ * it checks `expectedRevision` before writing and increments the revision on write.
+ */
 export function createCryptPadWorkspaceSyncProvider(
   options: CryptPadWorkspaceProviderOptions,
   depsOverrides: Partial<CryptPadWorkspaceProviderDeps> = {},

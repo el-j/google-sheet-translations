@@ -8,6 +8,13 @@ import {
 import { writeLanguageDataFile, writeLocalesFile, writeTranslationFiles } from '../utils/fileWriter';
 import { readDataJson } from '../utils/readDataJson';
 
+/**
+ * `gst-run-provider` CLI entrypoint. Reads a JSON {@link ProviderRuntimeConfig} from
+ * `--config`, resolves it to concrete providers, runs the full pipeline (input →
+ * transform → output → sync → optional asset sync), and writes the resulting
+ * translation files to disk.
+ */
+
 function parseArgs(argv: string[]): Record<string, string> {
   const result: Record<string, string> = {};
   for (const arg of argv.slice(2)) {
@@ -32,12 +39,15 @@ function printHelp(): void {
    --translations-output-dir=DIR Output dir for locale json files (default: translations)
    --locales-output-path=PATH    Output path for locales.ts (default: src/i18n/locales.ts)
    --data-json-path=PATH         Output path for languageData.json (default: src/lib/languageData.json)
+   --asset-target-dir=DIR        Run asset sync (requires "assetSync" in config) and write assets here
+   --asset-delete-missing        Delete local assets not present in the asset manifest
    --help                        Show this help
 
  EXAMPLE
    gst-run-provider \
      --config=provider.config.json \
-     --sheet-titles=home,about,pricing
+     --sheet-titles=home,about,pricing \
+     --asset-target-dir=public/assets
 `);
 }
 
@@ -79,6 +89,14 @@ async function main(): Promise<void> {
     args['data-json-path'] ?? 'src/lib/languageData.json',
   );
 
+  const assetTargetDirArg = args['asset-target-dir'];
+  const assetSync = assetTargetDirArg
+    ? {
+        targetDirectory: path.resolve(cwd, assetTargetDirArg),
+        deleteMissing: args['asset-delete-missing'] === 'true',
+      }
+    : undefined;
+
   const providers = createProvidersFromRuntimeConfig(config);
   const localDataForSync = readDataJson(dataJsonPath) ?? undefined;
 
@@ -86,6 +104,8 @@ async function main(): Promise<void> {
     inputProvider: providers.inputProvider,
     outputProvider: providers.outputProvider,
     syncProvider: providers.syncProvider,
+    assetSyncProvider: providers.assetSyncProvider,
+    assetSync,
     tableNames: sheetTitles,
     localTranslationsForSync: localDataForSync,
   });
@@ -97,6 +117,14 @@ async function main(): Promise<void> {
   }
 
   console.log(`Provider pipeline completed with ${result.locales.length} locale(s).`);
+
+  if (result.assetSyncResult) {
+    const { manifestCount, downloaded, updated, deleted, skipped } = result.assetSyncResult;
+    console.log(
+      `Asset sync completed: ${manifestCount} manifest entr${manifestCount === 1 ? 'y' : 'ies'}, ` +
+        `${downloaded.length} downloaded, ${updated.length} updated, ${deleted.length} deleted, ${skipped.length} skipped.`,
+    );
+  }
 }
 
 main().catch((err: unknown) => {

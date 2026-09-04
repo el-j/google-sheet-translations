@@ -10,11 +10,21 @@ import type {
   TranslationOutputResult,
   TranslationSyncResult,
 } from './contracts';
+import type { AssetSyncProvider, AssetSyncResult } from './assetContracts';
+
+export interface ProviderAssetSyncRequestOptions {
+  targetDirectory: string;
+  deleteMissing?: boolean;
+}
 
 export interface ProviderPipelineOptions {
   inputProvider: TranslationInputProvider;
   outputProvider?: TranslationOutputProvider;
   syncProvider?: TranslationSyncProvider;
+  /** Optional asset-sync provider (e.g. CryptPad asset manifest sync). Runs only when `assetSync` is also set. */
+  assetSyncProvider?: AssetSyncProvider;
+  /** Target directory (and delete-missing behavior) for the asset sync run. Ignored if `assetSyncProvider` is absent. */
+  assetSync?: ProviderAssetSyncRequestOptions;
   tableNames?: string[];
   localTranslationsForSync?: TranslationData;
   signal?: AbortSignal;
@@ -28,6 +38,7 @@ export interface ProviderPipelineResult {
   inputTableCount: number;
   outputResult?: TranslationOutputResult;
   syncResult?: TranslationSyncResult;
+  assetSyncResult?: AssetSyncResult;
   metadata?: Record<string, unknown>;
 }
 
@@ -69,6 +80,14 @@ function mergeTranslations(
   }
 }
 
+/**
+ * Runs the full provider-driven translation pipeline: read tables from the input
+ * provider, transform rows into canonical {@link TranslationData}, optionally write
+ * to an output provider, optionally sync local changes back, and optionally sync
+ * assets via an asset-sync provider. Each optional stage is gated by a capability
+ * check on the corresponding provider so unsupported operations fail fast instead
+ * of silently doing partial work.
+ */
 export async function runProviderPipeline(
   options: ProviderPipelineOptions,
   depsOverrides: Partial<OrchestratorDeps> = {},
@@ -152,6 +171,21 @@ export async function runProviderPipeline(
     });
   }
 
+  let assetSyncResult: AssetSyncResult | undefined;
+  if (options.assetSyncProvider && options.assetSync) {
+    assertOperationCapabilities(
+      options.assetSyncProvider.providerId,
+      options.assetSyncProvider.capabilities,
+      'sync-assets',
+    );
+
+    assetSyncResult = await options.assetSyncProvider.syncAssets({
+      targetDirectory: options.assetSync.targetDirectory,
+      deleteMissing: options.assetSync.deleteMissing,
+      signal: options.signal,
+    });
+  }
+
   return {
     translations: mergedTranslations,
     locales: Array.from(localeSet),
@@ -160,6 +194,7 @@ export async function runProviderPipeline(
     inputTableCount: inputResult.tables.length,
     outputResult,
     syncResult,
+    assetSyncResult,
     metadata: inputResult.metadata,
   };
 }

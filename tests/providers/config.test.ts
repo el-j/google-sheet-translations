@@ -17,6 +17,13 @@ describe('provider config schema and validation', () => {
     expect(result.errors).toEqual([]);
   });
 
+  it('rejects a non-object config', () => {
+    const result = validateProviderRuntimeConfig('not-an-object');
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(['Provider config must be an object.']);
+  });
+
   it('reports actionable errors for invalid configs', () => {
     const result = validateProviderRuntimeConfig({
       input: {},
@@ -30,6 +37,26 @@ describe('provider config schema and validation', () => {
     expect(result.errors.join(' | ')).toContain('Sync provider must define a non-empty "provider" string.');
   });
 
+  it('reports an error for an output provider with an empty "provider" string', () => {
+    const result = validateProviderRuntimeConfig({
+      input: { provider: 'google-sheets' },
+      output: { provider: '' },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Output provider must define a non-empty "provider" string.');
+  });
+
+  it('reports an error for a non-object sync provider', () => {
+    const result = validateProviderRuntimeConfig({
+      input: { provider: 'google-sheets' },
+      sync: 'invalid',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Sync provider must be an object when provided.');
+  });
+
   it('rejects invalid cryptpad sync combination when sync provider is not cryptpad-workspace', () => {
     const result = validateProviderRuntimeConfig({
       input: { provider: 'cryptpad-csv' },
@@ -38,6 +65,35 @@ describe('provider config schema and validation', () => {
 
     expect(result.valid).toBe(false);
     expect(result.errors[0]).toContain('only supports sync mode via "cryptpad-workspace"');
+  });
+
+  it('reports errors for an invalid assetSync provider shape', () => {
+    const result = validateProviderRuntimeConfig({
+      input: { provider: 'cryptpad-csv' },
+      assetSync: 'invalid',
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Asset sync provider must be an object when provided.');
+  });
+
+  it('reports errors for an assetSync provider missing a "provider" string', () => {
+    const result = validateProviderRuntimeConfig({
+      input: { provider: 'cryptpad-csv' },
+      assetSync: { provider: '' },
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Asset sync provider must define a non-empty "provider" string.');
+  });
+
+  it('accepts a valid assetSync provider config', () => {
+    const result = validateProviderRuntimeConfig({
+      input: { provider: 'cryptpad-csv' },
+      assetSync: { provider: 'cryptpad-assets', options: { manifestPath: './assets.json' } },
+    });
+
+    expect(result.valid).toBe(true);
   });
 
   it('accepts cryptpad-csv input + cryptpad-workspace sync combination', () => {
@@ -51,6 +107,11 @@ describe('provider config schema and validation', () => {
 
   it('throws on invalid runtime config in assert helper', () => {
     expect(() => assertValidProviderRuntimeConfig({})).toThrow('Invalid provider configuration:');
+  });
+
+  it('returns the typed config unchanged from assert helper when valid', () => {
+    const config = { input: { provider: 'google-sheets' } };
+    expect(assertValidProviderRuntimeConfig(config)).toBe(config);
   });
 
   it('maps legacy Google options to provider-centric config with deprecation message', () => {

@@ -1,3 +1,4 @@
+/** Barrel for the CryptPad provider family: CSV input (MVP), workspace output/sync, and asset sync. */
 export {
   createCryptPadCsvInputProvider,
   CRYPTPAD_CSV_INPUT_CAPABILITIES,

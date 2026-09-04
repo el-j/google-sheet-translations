@@ -8,6 +8,7 @@ import type {
 } from '../contracts';
 import { createCapabilitySet, type ProviderCapabilitySet } from '../capabilities';
 
+/** One CSV source to read as a table. Provide exactly one of `url` or `filePath`. */
 export interface CryptPadCsvSource {
   tableName: string;
   url?: string;
@@ -70,6 +71,13 @@ function parseCsvRows(csvText: string, delimiter?: string): SheetRow[] {
   });
 }
 
+/**
+ * Creates a read-only {@link TranslationInputProvider} that reads one or more CSV
+ * sources (local files or public export URLs) as canonical tables. This is a CSV-only
+ * MVP: it has no output/sync capability, so it is always paired with another provider
+ * (e.g. `cryptpad-workspace`) for write-back. Public URLs require no authentication,
+ * reflected in `publicReadNoAuth: true`.
+ */
 export function createCryptPadCsvInputProvider(
   options: CryptPadCsvInputProviderOptions,
   depsOverrides: Partial<CryptPadCsvProviderDeps> = {},

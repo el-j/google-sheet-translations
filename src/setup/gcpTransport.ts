@@ -22,6 +22,10 @@ export class GcpApiError extends Error {
 	}
 }
 
+/**
+ * Obtains a Google Cloud access token scoped to `cloud-platform`, using the given
+ * service account key file if provided, or Application Default Credentials otherwise.
+ */
 export async function getGcpAccessToken(keyFilePath?: string): Promise<string> {
 	const auth = new GoogleAuth({
 		...(keyFilePath ? { keyFilename: keyFilePath } : {}),
@@ -40,6 +44,7 @@ export async function getGcpAccessToken(keyFilePath?: string): Promise<string> {
 	return tokenResponse.token;
 }
 
+/** Authenticated JSON fetch against a Google Cloud API endpoint; throws {@link GcpApiError} on a non-OK response. */
 export async function gcpFetch(
 	url: string,
 	token: string,
@@ -63,6 +68,11 @@ export async function gcpFetch(
 	return data;
 }
 
+/**
+ * Polls a Google Cloud long-running operation (by resource name or full URL, which
+ * must resolve to a `*.googleapis.com` host) until it reports `done`, throwing if the
+ * operation itself failed or if `maxWaitMs` elapses first.
+ */
 export async function waitForOperation(
 	operationName: string,
 	token: string,

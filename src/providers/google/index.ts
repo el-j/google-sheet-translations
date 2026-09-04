@@ -1,3 +1,4 @@
+/** Barrel for the Google Sheets provider family (input/output/sync). */
 export {
   createGoogleSheetsInputProvider,
   createGoogleSheetsOutputProvider,

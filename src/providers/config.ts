@@ -1,14 +1,24 @@
 import type { SpreadsheetOptions } from '../utils/configurationHandler';
 
+/**
+ * A single provider slot: which provider implementation to instantiate
+ * (e.g. "google-sheets", "cryptpad-csv") and the options to pass to its factory.
+ */
 export interface ProviderReferenceConfig {
   provider: string;
   options?: Record<string, unknown>;
 }
 
+/**
+ * Declarative runtime configuration consumed by {@link createProvidersFromRuntimeConfig}.
+ * Only `input` is required; `output`, `sync`, and `assetSync` are opt-in per pipeline run.
+ */
 export interface ProviderRuntimeConfig {
   input: ProviderReferenceConfig;
   output?: ProviderReferenceConfig;
   sync?: ProviderReferenceConfig;
+  /** Optional asset-sync provider slot (e.g. "cryptpad-assets"). See {@link AssetSyncProvider}. */
+  assetSync?: ProviderReferenceConfig;
 }
 
 export interface ProviderConfigValidationResult {
@@ -25,6 +35,11 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+/**
+ * Validates the shape of an untrusted runtime config value (typically parsed from JSON)
+ * before it is trusted as a {@link ProviderRuntimeConfig}. Collects every error found
+ * rather than failing on the first one, so a config file can be fixed in one pass.
+ */
 export function validateProviderRuntimeConfig(
   config: unknown,
 ): ProviderConfigValidationResult {
@@ -59,6 +74,15 @@ export function validateProviderRuntimeConfig(
       errors.push('Sync provider must be an object when provided.');
     } else if (typeof sync.provider !== 'string' || sync.provider.trim().length === 0) {
       errors.push('Sync provider must define a non-empty "provider" string.');
+    }
+  }
+
+  const assetSync = config.assetSync;
+  if (assetSync !== undefined) {
+    if (!isObject(assetSync)) {
+      errors.push('Asset sync provider must be an object when provided.');
+    } else if (typeof assetSync.provider !== 'string' || assetSync.provider.trim().length === 0) {
+      errors.push('Asset sync provider must define a non-empty "provider" string.');
     }
   }
 
@@ -124,6 +148,11 @@ export function mapLegacyGoogleOptionsToProviderConfig(
   };
 }
 
+/**
+ * Validates `config` and returns it typed as {@link ProviderRuntimeConfig}, or throws
+ * with all collected validation errors joined into a single message. Use this at
+ * process boundaries (CLI, Action inputs) where a throw-on-invalid contract is wanted.
+ */
 export function assertValidProviderRuntimeConfig(config: unknown): ProviderRuntimeConfig {
   const validation = validateProviderRuntimeConfig(config);
   if (!validation.valid) {

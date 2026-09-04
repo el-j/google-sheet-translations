@@ -21,6 +21,7 @@ export interface ProviderDiscoveryResult {
   metadata?: Record<string, unknown>;
 }
 
+/** A discovery-only provider: it lists available sources, but doesn't read/write/sync them itself. */
 export interface ProviderCatalogProvider {
   kind: 'catalog';
   providerId: string;
@@ -35,6 +36,12 @@ export interface InMemoryProviderCatalogOptions {
   sources: ProviderSourceDescriptor[];
 }
 
+/**
+ * Creates a {@link ProviderCatalogProvider} backed by a static, in-memory list of
+ * sources. `discoverSources({ query })` filters that list by substring match against
+ * each source's id, name, and kind (case-insensitive); an empty/absent query returns
+ * every source.
+ */
 export function createInMemoryProviderCatalogProvider(
   options: InMemoryProviderCatalogOptions,
 ): ProviderCatalogProvider {
@@ -63,6 +70,13 @@ export function createInMemoryProviderCatalogProvider(
   };
 }
 
+/**
+ * The built-in catalog listing every provider source shipped with this package
+ * (Google Drive folder discovery, CryptPad CSV export URL, CryptPad asset manifest).
+ * Each entry is descriptive metadata only — actually reading from a discovered
+ * source still goes through the matching input/output/sync/asset-sync provider
+ * factory (see {@link createProvidersFromRuntimeConfig}).
+ */
 export function createDefaultProviderCatalog(): ProviderCatalogProvider {
   return createInMemoryProviderCatalogProvider({
     providerId: 'default-provider-catalog',

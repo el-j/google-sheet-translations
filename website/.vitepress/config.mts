@@ -126,6 +126,15 @@ export default defineConfig({
             { text: 'WIF Setup', link: '/api/wif-setup' },
           ],
         },
+        {
+          text: 'Provider Platform (v3)',
+          items: [
+            { text: 'Overview', link: '/api/provider-platform' },
+            { text: 'Google Sheets Provider', link: '/api/google-provider' },
+            { text: 'CryptPad Providers', link: '/api/cryptpad-provider' },
+            { text: 'Migrate to v3', link: '/api/migrate-v3' },
+          ],
+        },
       ],
       '/v2/': [
         {

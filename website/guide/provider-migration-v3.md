@@ -114,5 +114,5 @@ gst-run-provider --config=.github/provider.config.json --sheet-titles=home,about
 
 ## Notes
 
-- `cryptpad-csv` is read-only in MVP.
-- For full sync/write-back and asset sync planning, follow the provider full-sync roadmap.
+- `cryptpad-csv` is read-only in MVP; pair it with `cryptpad-workspace` for write-back and sync, or `cryptpad-assets` for asset sync. See [CryptPad Providers](/api/cryptpad-provider).
+- For a full function-level reference of `migrateProjectToV3`, see the [Migrate to v3 API](/api/migrate-v3).

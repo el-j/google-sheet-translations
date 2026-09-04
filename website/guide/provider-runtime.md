@@ -21,6 +21,7 @@ interface ProviderRuntimeConfig {
   input: { provider: string; options?: Record<string, unknown> };
   output?: { provider: string; options?: Record<string, unknown> };
   sync?: { provider: string; options?: Record<string, unknown> };
+  assetSync?: { provider: string; options?: Record<string, unknown> };
 }
 ```
 
@@ -62,14 +63,25 @@ console.log(result.locales);
 - Sync back: yes
 - Public no-auth read: yes (when `publicSheet: true`)
 
-### cryptpad-csv MVP
+### cryptpad-csv MVP (input only)
 
 - Input: yes
 - Output: no
 - Sync back: no
 - Public no-auth read: yes
 
-The CryptPad provider currently supports reading CSV files/exports only. Full write-back and asset-sync support are tracked in the full-sync roadmap.
+The `cryptpad-csv` provider reads CSV files/exports only. Pair it with `cryptpad-workspace` for write-back.
+
+### cryptpad-workspace
+
+- Output: yes (writes a local JSON snapshot file)
+- Sync back: yes (three-way diff with configurable conflict policy)
+
+### cryptpad-assets
+
+- Asset sync: yes — downloads/updates/skips manifest-listed files into a target directory, with optional deletion of local files not in the manifest
+
+See [CryptPad Providers](/api/cryptpad-provider) for full options, and the [Full Sync Operations guide](/guide/full-sync-operations-v3) for the conflict-policy cookbook and asset-sync runbook.
 
 ## GitHub Action provider mode
 
@@ -86,6 +98,12 @@ These inputs are mutually exclusive.
 gst-run-provider --config=provider.config.json --sheet-titles=home,about
 ```
 
+Add `--asset-target-dir` (and optionally `--asset-delete-missing`) to also run asset sync, when `assetSync` is configured:
+
+```bash
+gst-run-provider --config=provider.config.json --sheet-titles=home,about --asset-target-dir=public/assets
+```
+
 ## Capability safety
 
 Operations are guarded by capability checks:
@@ -93,5 +111,10 @@ Operations are guarded by capability checks:
 - read-input requires `readTables`
 - write-output requires `writeTables`
 - sync-back requires `syncBack`
+- sync-assets requires `assetSync`
 
 This prevents invalid combinations from silently doing partial work.
+
+## Full API reference
+
+See [Provider Platform (v3)](/api/provider-platform) for the complete API, or jump straight to the [Google Sheets Provider](/api/google-provider) or [CryptPad Providers](/api/cryptpad-provider) reference.

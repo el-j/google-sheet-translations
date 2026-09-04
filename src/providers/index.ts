@@ -1,3 +1,9 @@
+/**
+ * Public barrel for the v3 provider platform: capability model, provider contracts
+ * (translation + asset), the built-in Google and CryptPad provider factories, the
+ * catalog/discovery API, the sync engine, the orchestrator, and the runtime config
+ * layer that wires a {@link ProviderRuntimeConfig} into concrete provider instances.
+ */
 export {
   PROVIDER_CAPABILITIES,
   EMPTY_PROVIDER_CAPABILITIES,

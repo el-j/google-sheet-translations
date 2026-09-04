@@ -7,21 +7,25 @@ import {
   createCryptPadCsvInputProvider,
   createCryptPadWorkspaceOutputProvider,
   createCryptPadWorkspaceSyncProvider,
+  createCryptPadAssetSyncProvider,
   type CryptPadCsvInputProviderOptions,
   type CryptPadWorkspaceProviderOptions,
   type CryptPadCsvSource,
+  type CryptPadAssetSyncProviderOptions,
 } from './cryptpad';
 import type {
   TranslationInputProvider,
   TranslationOutputProvider,
   TranslationSyncProvider,
 } from './contracts';
+import type { AssetSyncProvider } from './assetContracts';
 import type { ProviderRuntimeConfig } from './config';
 
 export interface ProviderRuntimeSelection {
   inputProvider: TranslationInputProvider;
   outputProvider?: TranslationOutputProvider;
   syncProvider?: TranslationSyncProvider;
+  assetSyncProvider?: AssetSyncProvider;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -120,6 +124,35 @@ function createSyncProvider(
   }
 }
 
+function createAssetSyncProvider(
+  providerId: string,
+  options: Record<string, unknown>,
+): AssetSyncProvider {
+  switch (providerId) {
+    case 'cryptpad-assets': {
+      if (typeof options.manifestPath !== 'string' || options.manifestPath.trim().length === 0) {
+        throw new Error('cryptpad-assets sync provider requires a non-empty "manifestPath" option.');
+      }
+
+      const typedOptions: CryptPadAssetSyncProviderOptions = {
+        manifestPath: options.manifestPath,
+        providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
+        displayName: typeof options.displayName === 'string' ? options.displayName : undefined,
+      };
+
+      return createCryptPadAssetSyncProvider(typedOptions);
+    }
+    default:
+      throw new Error(`Unsupported asset sync provider: "${providerId}"`);
+  }
+}
+
+/**
+ * Builds a {@link ProviderRuntimeSelection} by resolving each configured provider slot
+ * (`input`, `output`, `sync`, `assetSync`) to a concrete provider instance via its factory.
+ * Throws if a slot names a provider ID with no matching factory, or if a provider's
+ * required options are missing.
+ */
 export function createProvidersFromRuntimeConfig(
   config: ProviderRuntimeConfig,
 ): ProviderRuntimeSelection {
@@ -136,13 +169,23 @@ export function createProvidersFromRuntimeConfig(
     ? createSyncProvider(config.sync.provider, asRecord(config.sync.options))
     : undefined;
 
+  const assetSyncProvider = config.assetSync
+    ? createAssetSyncProvider(config.assetSync.provider, asRecord(config.assetSync.options))
+    : undefined;
+
   return {
     inputProvider,
     outputProvider,
     syncProvider,
+    assetSyncProvider,
   };
 }
 
+/**
+ * Determines whether a runtime config needs authenticated Google credentials, i.e.
+ * whether Google Sheets is used for output/sync, or for input without `publicSheet: true`.
+ * Used to skip Google auth bootstrapping entirely for CryptPad-only pipelines.
+ */
 export function requiresGoogleAuthForRuntimeConfig(config: ProviderRuntimeConfig): boolean {
   const inputProviderId = config.input.provider;
   const inputOptions = asRecord(config.input.options);

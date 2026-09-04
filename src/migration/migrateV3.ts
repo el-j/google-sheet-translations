@@ -7,12 +7,17 @@ import type { SpreadsheetOptions } from '../utils/configurationHandler';
 export interface MigrateV3Options {
   projectRoot?: string;
   providerConfigPath?: string;
+  /** Preview changes without writing any files. */
   dryRun?: boolean;
+  /** Rewrite legacy `uses: el-j/google-sheet-translations@...` workflow steps to `provider-config-path` mode. */
   writeWorkflows?: boolean;
+  /** Overwrite an existing provider config file at `providerConfigPath` instead of warning and skipping. */
   force?: boolean;
+  /** Cross-check the generated provider config against the legacy option mapping and report any drift. */
   parityCheck?: boolean;
 }
 
+/** Result of comparing the generated provider config against {@link mapLegacyGoogleOptionsToProviderConfig}. */
 export interface MigrationParityCheck {
   passed: boolean;
   differences: string[];
@@ -56,6 +61,7 @@ function listWorkflowFiles(projectRoot: string): string[] {
     .map((e) => path.join(workflowsDir, e.name));
 }
 
+/** Parses the `with:` block of one workflow step (lines `[start, end)`) into a flat key/value map. */
 function extractInputsFromStep(lines: string[], start: number, end: number): Record<string, string> {
   const inputs: Record<string, string> = {};
 
@@ -82,6 +88,7 @@ function extractInputsFromStep(lines: string[], start: number, end: number): Rec
   return inputs;
 }
 
+/** Finds the line ranges of every step in `content` that uses `el-j/google-sheet-translations@...`. */
 function findActionStepRanges(content: string): Array<{ start: number; end: number }> {
   const lines = content.split(/\r?\n/);
   const ranges: Array<{ start: number; end: number }> = [];
@@ -134,6 +141,7 @@ function unquote(input: string | undefined): string | undefined {
   return input.replace(/^['"]|['"]$/g, '');
 }
 
+/** Maps a legacy workflow step's parsed `with:` inputs to a v3 {@link ProviderRuntimeConfig}. */
 function buildProviderConfigFromInputs(inputs: Record<string, string>): ProviderRuntimeConfig {
   const spreadsheetId = unquote(inputs['google-spreadsheet-id']);
   const rowLimit = parseNum(inputs['row-limit']);
@@ -170,6 +178,13 @@ function buildProviderConfigFromInputs(inputs: Record<string, string>): Provider
   return config;
 }
 
+/**
+ * Rewrites every legacy action step in `content` (that isn't already using
+ * `provider-config`/`provider-config-path`) by stripping its legacy input keys and
+ * inserting a `provider-config-path: '<providerConfigPath>'` input in their place.
+ * Steps are processed back-to-front so earlier line-range offsets stay valid as later
+ * steps are rewritten.
+ */
 function rewriteWorkflow(content: string, providerConfigPath: string): string {
   const lines = content.split(/\r?\n/);
   const ranges = findActionStepRanges(content);
@@ -316,6 +331,12 @@ function collectDifferences(
   return [];
 }
 
+/**
+ * Compares the generated `providerConfig` against the config
+ * {@link mapLegacyGoogleOptionsToProviderConfig} would produce from the same legacy
+ * inputs, after canonicalizing both sides (dropping default-valued optional fields
+ * so they don't register as spurious differences).
+ */
 function runParityCheck(
   providerConfig: ProviderRuntimeConfig,
   inputs: Record<string, string>,
@@ -332,6 +353,16 @@ function runParityCheck(
   };
 }
 
+/**
+ * Auto-migrates a project from the legacy GitHub Action inputs to the v3 provider
+ * runtime: scans `.github/workflows/*.yml` for steps using the legacy action inputs,
+ * generates a {@link ProviderRuntimeConfig} from the first legacy step found, writes
+ * it to `providerConfigPath` (unless it already exists and `force` is not set), and —
+ * when `writeWorkflows` is set — rewrites each matching step in place to reference
+ * that config file instead of the legacy inputs. Workflows using Drive-folder mode
+ * (which has no v3 equivalent yet) are left untouched with a warning rather than
+ * being rewritten. Throws if no workflow files exist, or if none use the legacy action.
+ */
 export function migrateProjectToV3(options: MigrateV3Options = {}): MigrateV3Result {
   const projectRoot = path.resolve(options.projectRoot ?? process.cwd());
   const providerConfigPath = options.providerConfigPath ?? 'provider.config.json';

@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { migrateProjectToV3 } from '../migration/migrateV3';
 
+/**
+ * `gst-migrate-v3` CLI entrypoint. Wraps {@link migrateProjectToV3}: prints a summary
+ * of legacy workflows found, files rewritten/created, and any parity-check result;
+ * exits with code 2 if `--parity-check` reports differences, or code 1 on any thrown error.
+ */
+
 function parseArgs(argv: string[]): Record<string, string> {
   const result: Record<string, string> = {};
   for (const arg of argv.slice(2)) {

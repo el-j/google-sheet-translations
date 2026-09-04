@@ -11,6 +11,7 @@ import type {
 } from '../assetContracts';
 
 export interface CryptPadAssetSyncProviderOptions {
+  /** Path to a JSON file containing a {@link CanonicalAssetEntry}[] manifest. */
   manifestPath: string;
   providerId?: string;
   displayName?: string;
@@ -35,6 +36,10 @@ function toSha256(content: Buffer): string {
   return crypto.createHash('sha256').update(content).digest('hex');
 }
 
+/**
+ * Guards against path traversal: returns false if `relativePath` would resolve
+ * to a location outside `targetDirectory` (e.g. via `../` segments).
+ */
 function isSafePath(targetDirectory: string, relativePath: string): boolean {
   const resolvedRoot = path.resolve(targetDirectory);
   const resolvedTarget = path.resolve(targetDirectory, relativePath);
@@ -103,6 +108,16 @@ function createDefaultDeps(): CryptPadAssetSyncProviderDeps {
   };
 }
 
+/**
+ * Creates an {@link AssetSyncProvider} that syncs binary/static assets described by a
+ * JSON manifest (`manifestPath`) into a local target directory. For each manifest
+ * entry it downloads a missing file, overwrites a file whose SHA-256 hash differs,
+ * or skips a file that is already up to date; entries sharing the same declared
+ * `hash` reuse one fetched buffer. When {@link AssetSyncRequest.deleteMissing} is
+ * set, local files under the target directory that are not named by the manifest
+ * are removed. All target paths are checked with {@link isSafePath} to reject
+ * manifest entries that would write outside the target directory.
+ */
 export function createCryptPadAssetSyncProvider(
   options: CryptPadAssetSyncProviderOptions,
   depsOverrides: Partial<CryptPadAssetSyncProviderDeps> = {},
