@@ -1,3 +1,9 @@
+## [3.0.0-beta.2](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2026-09-04)
+
+### 🐛 Bug Fixes
+
+* **package:** normalize bin paths to remove leading dot-slash ([e7d00f8](https://github.com/el-j/google-sheet-translations/commit/e7d00f89076b69c871d87d4951adcda187e08d58))
+
 ## [3.0.0-beta.1](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.11...v3.0.0-beta.1) (2026-09-04)
 
 ### 🚀 Features
