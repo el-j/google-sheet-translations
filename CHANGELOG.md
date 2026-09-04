@@ -1,3 +1,13 @@
+## [3.0.0-beta.1](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.11...v3.0.0-beta.1) (2026-09-04)
+
+### 🚀 Features
+
+* **v3:** provider-first architecture, multi-provider sync, asset pipeline, and migration tooling ([#140](https://github.com/el-j/google-sheet-translations/issues/140)) ([8eaf700](https://github.com/el-j/google-sheet-translations/commit/8eaf70017fd7c47a7c440578b789cbab7953a543)), closes [#137](https://github.com/el-j/google-sheet-translations/issues/137) [#138](https://github.com/el-j/google-sheet-translations/issues/138) [#139](https://github.com/el-j/google-sheet-translations/issues/139) [#135](https://github.com/el-j/google-sheet-translations/issues/135) [#136](https://github.com/el-j/google-sheet-translations/issues/136) [#135](https://github.com/el-j/google-sheet-translations/issues/135) [#136](https://github.com/el-j/google-sheet-translations/issues/136) [#137](https://github.com/el-j/google-sheet-translations/issues/137) [#138](https://github.com/el-j/google-sheet-translations/issues/138) [#139](https://github.com/el-j/google-sheet-translations/issues/139) [#141](https://github.com/el-j/google-sheet-translations/issues/141) [#142](https://github.com/el-j/google-sheet-translations/issues/142) [#143](https://github.com/el-j/google-sheet-translations/issues/143) [#144](https://github.com/el-j/google-sheet-translations/issues/144) [#141](https://github.com/el-j/google-sheet-translations/issues/141) [#142](https://github.com/el-j/google-sheet-translations/issues/142) [#143](https://github.com/el-j/google-sheet-translations/issues/143) [#144](https://github.com/el-j/google-sheet-translations/issues/144) [#145](https://github.com/el-j/google-sheet-translations/issues/145)
+
+### 🐛 Bug Fixes
+
+* **release:** pin conventionalcommits to v8, add v3 major release rule, and harden back-merge ([9313471](https://github.com/el-j/google-sheet-translations/commit/9313471bab60b62bf610f0b97d9ed653db4c7274))
+
 ## [2.2.0-beta.11](https://github.com/el-j/google-sheet-translations/compare/v2.2.0-beta.10...v2.2.0-beta.11) (2026-08-30)
 
 ### 🚀 Features
