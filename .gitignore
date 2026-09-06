@@ -49,4 +49,4 @@ website/public/translations/
 # Sync script temp output
 tmp/
 
-.vitepress
+/.vitepress

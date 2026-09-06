@@ -4,12 +4,21 @@ import { defineConfig } from 'vitepress'
 const require = createRequire(import.meta.url)
 const pkg = require('../../package.json') as { version: string }
 
+const base = (process.env.DOCS_BASE || '/google-sheet-translations/').replace(/\/?$/, '/')
+const outDir = process.env.DOCS_OUT_DIR || undefined
+const isPreview = base.includes('/next/') || process.env.DOCS_ENV === 'preview'
+const isBeta = pkg.version.includes('beta') || pkg.version.includes('alpha') || pkg.version.includes('rc')
+const stableVersion = process.env.DOCS_STABLE_VERSION || (isBeta ? 'v2.2.0' : `v${pkg.version}`)
+const previewVersion = process.env.DOCS_PREVIEW_VERSION || (isBeta ? `v${pkg.version}` : 'v3.0.0-beta.2')
+const currentVersionLabel = isPreview ? `${previewVersion} (preview)` : `${stableVersion}`
+
 export default defineConfig({
   title: '@el-j/google-sheet-translations',
   description: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
 
   // GitHub Pages base path
-  base: '/google-sheet-translations/',
+  base,
+  outDir,
 
   // Clean URLs
   cleanUrls: true,
@@ -22,7 +31,7 @@ export default defineConfig({
     ['meta', { name: 'og:title', content: '@el-j/google-sheet-translations' }],
     ['meta', { name: 'og:description', content: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Drive folder management, image sync, bidirectional sync, auto-translation, and Next.js integration.' }],
     ['meta', { name: 'og:site_name', content: '@el-j/google-sheet-translations' }],
-    ['link', { rel: 'icon', href: '/google-sheet-translations/favicon.ico' }],
+    ['link', { rel: 'icon', href: `${base}favicon.ico` }],
   ],
 
   themeConfig: {
@@ -35,11 +44,28 @@ export default defineConfig({
       { text: 'v3 Migration', link: '/guide/provider-migration-v3' },
       { text: 'GitHub Action', link: '/guide/github-actions' },
       {
-        text: `v${pkg.version}`,
+        text: currentVersionLabel,
         items: [
+          {
+            text: `${stableVersion} (latest stable)`,
+            link: 'https://el-j.github.io/google-sheet-translations/',
+            target: '_self',
+            noIcon: true,
+          },
+          {
+            text: `${previewVersion} (preview)`,
+            link: 'https://el-j.github.io/google-sheet-translations/next/',
+            target: '_self',
+            noIcon: true,
+          },
+          {
+            text: 'v2 Archive',
+            link: 'https://el-j.github.io/google-sheet-translations/v2/',
+            target: '_self',
+            noIcon: true,
+          },
           { text: 'Changelog', link: '/changelog' },
           { text: 'Contributing', link: '/contributing' },
-          { text: 'v2 Archive', link: '/v2/' },
         ],
       },
       {
@@ -164,7 +190,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/el-j/google-sheet-translations/edit/main/website/:path',
+      pattern: `https://github.com/el-j/google-sheet-translations/edit/${isPreview ? 'develop' : 'main'}/website/:path`,
       text: 'Edit this page on GitHub',
     },
 

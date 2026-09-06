@@ -47,6 +47,7 @@
     "release:dry-run": "semantic-release --dry-run",
     "docs:dev": "vitepress dev website",
     "docs:build": "vitepress build website",
+    "docs:bundle": "node scripts/build-docs-bundle.mjs",
     "docs:preview": "vitepress preview website",
     "test:integration": "INTEGRATION=true vitest run tests/integration --testTimeout=60000",
     "test:provider-matrix": "vitest run tests/providers --testTimeout=60000",

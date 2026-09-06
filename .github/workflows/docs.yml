@@ -8,13 +8,17 @@ on:
   workflow_run:
     workflows: ["Release"]
     types: [completed]
-    branches: [main]
+    branches:
+      - main
+      - develop
 
   # Secondary trigger: website / script changes that are not part of a release
   # (e.g. fixing a typo in a doc page). src/** and tests/** are intentionally
   # omitted here — those changes go through the Release workflow first.
   push:
-    branches: [main]
+    branches:
+      - main
+      - develop
     paths:
       - 'website/**'
       - 'scripts/**'
@@ -49,10 +53,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # When triggered by workflow_run, check out main HEAD so we get the
+          # When triggered by workflow_run, check out head branch so we get the
           # version-bumped package.json committed by semantic-release.
           # For push / workflow_dispatch, use the SHA that triggered this run.
-          ref: ${{ github.event_name == 'workflow_run' && 'main' || github.sha }}
+          ref: ${{ github.event_name == 'workflow_run' && (github.event.workflow_run.head_branch || 'main') || github.sha }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -103,29 +107,8 @@ jobs:
           path: _previous_pages
         continue-on-error: true
 
-      - name: Build with VitePress
-        run: npm run docs:build
-
-      - name: Archive versions into deployment bundle
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          MAJOR_MINOR=$(echo "$VERSION" | cut -d. -f1,2)
-          # Preserve older versioned directories from previous deployments
-          if [ -d "_previous_pages" ]; then
-            for dir in _previous_pages/v*/; do
-              if [ -d "$dir" ]; then
-                base=$(basename "$dir")
-                echo "Preserving historical documentation: $base"
-                cp -r "$dir" "website/.vitepress/dist/$base"
-              fi
-            done
-          fi
-          # Archive current version under its specific major.minor tag (e.g. /v2.2/)
-          if [ -n "$MAJOR_MINOR" ]; then
-            echo "Archiving current version as v${MAJOR_MINOR}"
-            mkdir -p "website/.vitepress/dist/v${MAJOR_MINOR}"
-            cp -r website/.vitepress/dist/* "website/.vitepress/dist/v${MAJOR_MINOR}/" 2>/dev/null || true
-          fi
+      - name: Build multi-version documentation bundle
+        run: npm run docs:bundle
 
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v6

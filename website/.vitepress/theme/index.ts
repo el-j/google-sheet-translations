@@ -9,12 +9,14 @@ import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import { h } from 'vue'
 import LangSwitcher from './components/LangSwitcher.vue'
+import PreviewBanner from './components/PreviewBanner.vue'
 import './custom.css'
 
 export default {
   extends: DefaultTheme,
   Layout() {
     return h(DefaultTheme.Layout, null, {
+      'layout-top': () => h(PreviewBanner),
       'nav-bar-content-after': () => h(LangSwitcher),
     })
   },
