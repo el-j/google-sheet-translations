@@ -48,6 +48,15 @@ function getPackageVersion(dir) {
   }
 }
 
+function getCurrentBranch() {
+  try {
+    const out = execSync('git rev-parse --abbrev-ref HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+    return out;
+  } catch {
+    return 'unknown';
+  }
+}
+
 async function main() {
   console.log('=== Building Multi-Version Documentation Bundle ===');
 
@@ -63,42 +72,51 @@ async function main() {
   }
   fs.mkdirSync(distDir, { recursive: true });
 
-  const currentPkgVersion = getPackageVersion(repoRoot) || '3.0.0-beta.2';
-  const previewVersion = currentPkgVersion.includes('beta') || currentPkgVersion.includes('alpha')
-    ? `v${currentPkgVersion}`
-    : 'v3.0.0-beta.2';
+  const currentBranch = getCurrentBranch();
+  console.log(`[build] Current branch: ${currentBranch}`);
 
   const stableRef = resolveGitRef(['origin/main', 'main']);
-  let stableBuilt = false;
+  const previewRef = resolveGitRef(['origin/develop', 'develop']);
 
-  if (stableRef) {
-    console.log(`[build:stable] Found stable git ref: ${stableRef}`);
+  const currentPkgVersion = getPackageVersion(repoRoot) || '2.2.0';
+  let stableVersion = 'v2.2.0';
+  let previewVersion = 'v3.0.0-beta.3';
+
+  // --- Step A: Build Stable Docs (/google-sheet-translations/) ---
+  if (currentBranch === 'main' || !stableRef) {
+    console.log('[build:stable] Building stable docs directly from current workspace...');
+    stableVersion = `v${currentPkgVersion}`;
+    run('npx vitepress build website', {
+      cwd: repoRoot,
+      env: {
+        ...process.env,
+        DOCS_BASE: '/google-sheet-translations/',
+        DOCS_OUT_DIR: distDir,
+        DOCS_STABLE_VERSION: stableVersion,
+        DOCS_PREVIEW_VERSION: previewVersion,
+        VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true',
+      },
+    });
+  } else {
+    console.log(`[build:stable] Building stable docs from ref ${stableRef}...`);
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gst-docs-stable-'));
-
     try {
-      // Extract stable ref into tmpDir
       execSync(`git archive ${stableRef} | tar -x -C "${tmpDir}"`, { cwd: repoRoot });
+      stableVersion = `v${getPackageVersion(tmpDir) || '2.2.0'}`;
 
-      const stableVersion = `v${getPackageVersion(tmpDir) || '2.2.0'}`;
-      console.log(`[build:stable] Extracted ${stableRef} (version: ${stableVersion}) to ${tmpDir}`);
-
-      // Link node_modules
+      // Link node_modules and dist
       const tmpNodeModules = path.join(tmpDir, 'node_modules');
       if (!fs.existsSync(tmpNodeModules)) {
         try {
           fs.symlinkSync(path.join(repoRoot, 'node_modules'), tmpNodeModules, 'junction');
-        } catch {
-          // ignore
-        }
+        } catch { /* ignore */ }
       }
-
-      // Copy built library dist
       const tmpDist = path.join(tmpDir, 'dist');
       if (!fs.existsSync(tmpDist)) {
         fs.cpSync(path.join(repoRoot, 'dist'), tmpDist, { recursive: true });
       }
 
-      // Overlay updated theme, components, and config.mts so stable docs have the new version dropdown
+      // Overlay theme & config
       const vitepressDir = path.join(tmpDir, 'website/.vitepress');
       fs.mkdirSync(vitepressDir, { recursive: true });
       fs.cpSync(
@@ -111,7 +129,6 @@ async function main() {
         { recursive: true },
       );
 
-      console.log(`[build:stable] Building stable documentation for base: /google-sheet-translations/...`);
       run('npx vitepress build website', {
         cwd: tmpDir,
         env: {
@@ -123,53 +140,73 @@ async function main() {
           VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true',
         },
       });
-
-      stableBuilt = true;
-      console.log(`[build:stable] Successfully built stable docs into ${distDir}`);
-    } catch (err) {
-      console.warn('[build:stable] Warning: building from stable ref failed:', err);
     } finally {
       try {
         fs.rmSync(tmpDir, { recursive: true, force: true });
-      } catch {
-        // ignore
-      }
+      } catch { /* ignore */ }
     }
   }
 
-  // If stable build was not possible from ref (e.g. shallow clone or offline), build current workspace to distDir
-  if (!stableBuilt) {
-    console.log('[build:stable] Falling back to building current workspace as root docs...');
+  // --- Step B: Build Preview Docs (/google-sheet-translations/next/) ---
+  fs.mkdirSync(nextDistDir, { recursive: true });
+
+  if (currentBranch === 'develop' || !previewRef) {
+    console.log('[build:preview] Building preview docs directly from current workspace...');
+    previewVersion = currentPkgVersion.includes('beta') || currentPkgVersion.includes('alpha')
+      ? `v${currentPkgVersion}`
+      : 'v3.0.0-beta.3';
+
     run('npx vitepress build website', {
       cwd: repoRoot,
       env: {
         ...process.env,
-        DOCS_BASE: '/google-sheet-translations/',
-        DOCS_OUT_DIR: distDir,
-        DOCS_STABLE_VERSION: 'v2.2.0',
+        DOCS_BASE: '/google-sheet-translations/next/',
+        DOCS_ENV: 'preview',
+        DOCS_OUT_DIR: nextDistDir,
+        DOCS_STABLE_VERSION: stableVersion,
         DOCS_PREVIEW_VERSION: previewVersion,
         VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true',
       },
     });
+  } else {
+    console.log(`[build:preview] Building preview docs from ref ${previewRef}...`);
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gst-docs-preview-'));
+    try {
+      execSync(`git archive ${previewRef} | tar -x -C "${tmpDir}"`, { cwd: repoRoot });
+      previewVersion = `v${getPackageVersion(tmpDir) || '3.0.0-beta.3'}`;
+
+      // Link node_modules and dist
+      const tmpNodeModules = path.join(tmpDir, 'node_modules');
+      if (!fs.existsSync(tmpNodeModules)) {
+        try {
+          fs.symlinkSync(path.join(repoRoot, 'node_modules'), tmpNodeModules, 'junction');
+        } catch { /* ignore */ }
+      }
+      const tmpDist = path.join(tmpDir, 'dist');
+      if (!fs.existsSync(tmpDist)) {
+        fs.cpSync(path.join(repoRoot, 'dist'), tmpDist, { recursive: true });
+      }
+
+      run('npx vitepress build website', {
+        cwd: tmpDir,
+        env: {
+          ...process.env,
+          DOCS_BASE: '/google-sheet-translations/next/',
+          DOCS_ENV: 'preview',
+          DOCS_OUT_DIR: nextDistDir,
+          DOCS_STABLE_VERSION: stableVersion,
+          DOCS_PREVIEW_VERSION: previewVersion,
+          VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true',
+        },
+      });
+    } finally {
+      try {
+        fs.rmSync(tmpDir, { recursive: true, force: true });
+      } catch { /* ignore */ }
+    }
   }
 
-  // 3. Build Preview Documentation (develop / v3-beta) into website/.vitepress/dist/next
-  console.log(`[build:preview] Building v3-beta preview docs into ${nextDistDir}...`);
-  fs.mkdirSync(nextDistDir, { recursive: true });
-  run('npx vitepress build website', {
-    cwd: repoRoot,
-    env: {
-      ...process.env,
-      DOCS_BASE: '/google-sheet-translations/next/',
-      DOCS_ENV: 'preview',
-      DOCS_OUT_DIR: nextDistDir,
-      DOCS_STABLE_VERSION: 'v2.2.0',
-      DOCS_PREVIEW_VERSION: previewVersion,
-      VITE_CONFIG_NATIVE_IGNORE_WARNING: 'true',
-    },
-  });
-
-  // 4. Ensure v2 archive exists at website/.vitepress/dist/v2
+  // --- Step C: Copy v2 Archive to /google-sheet-translations/v2/ ---
   const v2Dist = path.join(distDir, 'v2');
   const previewV2Dist = path.join(nextDistDir, 'v2');
   if (!fs.existsSync(v2Dist) && fs.existsSync(previewV2Dist)) {
@@ -177,7 +214,7 @@ async function main() {
     fs.cpSync(previewV2Dist, v2Dist, { recursive: true });
   }
 
-  // 5. Preserve historical version folders from _previous_pages (downloaded from gh-pages)
+  // --- Step D: Preserve historical version folders from _previous_pages ---
   const prevPagesDir = path.join(repoRoot, '_previous_pages');
   if (fs.existsSync(prevPagesDir)) {
     console.log('[build:archive] Checking for historical versions in _previous_pages...');
@@ -192,7 +229,7 @@ async function main() {
     }
   }
 
-  // 6. Create v2.2 snapshot directory if not present
+  // --- Step E: Create v2.2 snapshot archive directory ---
   const v22Dist = path.join(distDir, 'v2.2');
   if (!fs.existsSync(v22Dist)) {
     console.log('[build:archive] Creating v2.2 snapshot archive directory...');
@@ -205,7 +242,7 @@ async function main() {
   }
 
   console.log('\n=== Multi-Version Documentation Bundle Built Successfully! ===');
-  console.log(`  - Root (Stable v2.2.0):         ${distDir}/index.html`);
+  console.log(`  - Root (Stable ${stableVersion}):         ${distDir}/index.html`);
   console.log(`  - Next (Preview ${previewVersion}): ${nextDistDir}/index.html`);
   console.log(`  - v2 Archive:                   ${distDir}/v2/index.html`);
   console.log(`  - v2.2 Snapshot:                ${distDir}/v2.2/index.html`);
