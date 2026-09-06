@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {
+  --vp-c-brand-1: #0f766e;
+  --vp-c-brand-2: #115e59;
+  --vp-c-brand-3: #134e4a;
+  --vp-c-brand-soft: rgba(15, 118, 110, 0.16);
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(120deg, #0f766e 0%, #0369a1 48%, #0e7490 100%);
+  --vp-font-family-base: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
+  --vp-font-family-mono: 'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+}
+
+.VPNavBar {
+  backdrop-filter: saturate(160%) blur(10px);
+  background: rgba(255, 255, 255, 0.86);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.VPHero {
+  padding-top: 48px;
+}
+
+.VPHero .name,
+.VPHero .text,
+.VPHero .tagline,
+.VPHero .actions {
+  animation: heroFadeSlide 560ms ease both;
+}
+
+.VPHero .text {
+  animation-delay: 60ms;
+}
+
+.VPHero .tagline {
+  animation-delay: 120ms;
+}
+
+.VPHero .actions {
+  animation-delay: 180ms;
+}
+
+.VPHero .container {
+  border-radius: 28px;
+  background:
+    radial-gradient(130% 140% at 0% 0%, rgba(14, 116, 144, 0.18) 0%, rgba(14, 116, 144, 0) 55%),
+    radial-gradient(110% 120% at 100% 100%, rgba(15, 118, 110, 0.16) 0%, rgba(15, 118, 110, 0) 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 252, 0.98) 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 20px 60px rgba(2, 8, 23, 0.08);
+  padding: 2rem;
+}
+
+.VPHero .name,
+.VPHero .text {
+  letter-spacing: -0.02em;
+}
+
+.VPHero .tagline {
+  max-width: 720px;
+  color: #334155;
+}
+
+.VPHero .action .VPButton.medium.brand {
+  box-shadow: 0 10px 26px rgba(15, 118, 110, 0.3);
+}
+
+.VPFeature {
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  animation: featureRiseIn 520ms ease both;
+}
+
+.VPFeatures .item:nth-child(2) .VPFeature { animation-delay: 45ms; }
+.VPFeatures .item:nth-child(3) .VPFeature { animation-delay: 90ms; }
+.VPFeatures .item:nth-child(4) .VPFeature { animation-delay: 135ms; }
+.VPFeatures .item:nth-child(5) .VPFeature { animation-delay: 180ms; }
+.VPFeatures .item:nth-child(6) .VPFeature { animation-delay: 225ms; }
+.VPFeatures .item:nth-child(7) .VPFeature { animation-delay: 270ms; }
+.VPFeatures .item:nth-child(8) .VPFeature { animation-delay: 315ms; }
+
+.VPFeature:hover {
+  transform: translateY(-3px);
+  border-color: rgba(15, 118, 110, 0.34);
+  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+}
+
+.VPFeature .title {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.VPDoc {
+  background:
+    radial-gradient(80% 55% at 100% 0%, rgba(15, 118, 110, 0.05), rgba(15, 118, 110, 0) 62%),
+    radial-gradient(70% 45% at 0% 100%, rgba(3, 105, 161, 0.05), rgba(3, 105, 161, 0) 62%);
+}
+
+.VPDoc .content-container h1,
+.VPDoc .content-container h2,
+.VPDoc .content-container h3 {
+  letter-spacing: -0.015em;
+}
+
+.custom-block.warning {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.08);
+}
+
+@keyframes heroFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes featureRiseIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .VPHero .container {
+    border-radius: 20px;
+    padding: 1.25rem;
+  }
+
+  .VPHero .tagline {
+    font-size: 15px;
+    line-height: 1.5;
+  }
+}
