@@ -16,8 +16,18 @@ function run(cmd, opts = {}) {
   execSync(cmd, { stdio: 'inherit', cwd: repoRoot, ...opts });
 }
 
+function ensureGitRef(ref) {
+  try {
+    const branch = ref.replace(/^origin\//, '');
+    execSync(`git fetch origin ${branch}:refs/remotes/origin/${branch}`, { stdio: 'ignore', cwd: repoRoot });
+  } catch {
+    // ignore
+  }
+}
+
 function resolveGitRef(candidates) {
   for (const ref of candidates) {
+    ensureGitRef(ref);
     try {
       execSync(`git rev-parse --verify ${ref}`, { stdio: 'ignore', cwd: repoRoot });
       return ref;
