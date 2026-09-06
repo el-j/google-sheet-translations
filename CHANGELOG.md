@@ -1,3 +1,9 @@
+## [3.0.0-beta.3](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.2...v3.0.0-beta.3) (2026-09-06)
+
+### 🚀 Features
+
+* **docs:** add multi-version navigation switcher, preview bundle, and docs pipeline ([41828d5](https://github.com/el-j/google-sheet-translations/commit/41828d593b1f203bf0ab315830cc68b5bdd70be9))
+
 ## [3.0.0-beta.2](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.1...v3.0.0-beta.2) (2026-09-04)
 
 ### 🐛 Bug Fixes
