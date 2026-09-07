@@ -90,31 +90,43 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git fetch --tags
+          # Re-fetch all tags so we can see what semantic-release just created
+          git fetch --tags --force
           CURRENT_REF="${{ github.event.workflow_run.head_branch || github.ref_name }}"
-          VERSION=$(node -p "require('./package.json').version")
-          TAG="v${VERSION}"
-          echo "Target tag: $TAG"
 
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
+          # Read version from the NEWEST tag created by semantic-release.
+          # We cannot use package.json here because semantic-release bumped it and
+          # committed it remotely, but the workspace checkout still has the OLD version.
+          TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.' | head -1)
+          echo "Most recent release tag: $TAG"
+
+          if [ -z "$TAG" ]; then
+            echo "No release tag found — skipping bundle attachment."
+            exit 0
+          fi
+
+          if git rev-parse "$TAG" > /dev/null 2>&1; then
             echo "Attaching dist-action bundle to $TAG..."
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
 
-            # Check out the tag in detached HEAD, add dist-action, and update tag
+            # Check out the tag in detached HEAD — dist-action/ is gitignored so the
+            # built bundle from the previous step is still present in the workspace.
             git checkout "$TAG"
             git add -f dist-action/index.mjs
+            # commit may be a no-op if nothing changed; || true so we never fail here
             git commit -m "build(action): attach action bundle for $TAG [skip ci]" || true
-            git tag -fa "$TAG" -m "Release $TAG"
-            git push origin "$TAG" --force
+            git tag -fa "$TAG" -m "Release $TAG" || true
+            git push origin "$TAG" --force || echo "Warning: could not force-push $TAG (may be protected or unchanged)"
 
-            # If stable release on main, update floating major tag (e.g. v3) pointing to this commit with bundle
+            # If stable release on main, update floating major tag (e.g. v3)
+            VERSION="${TAG#v}"
             if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] && [ "$CURRENT_REF" = "main" ]; then
               MAJOR=$(echo "$VERSION" | cut -d. -f1)
               echo "Updating floating tag: v${MAJOR}"
-              git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}"
-              git push origin "v${MAJOR}" --force
+              git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}" || true
+              git push origin "v${MAJOR}" --force || echo "Warning: could not force-push v${MAJOR}"
             fi
 
             # Return to working branch
