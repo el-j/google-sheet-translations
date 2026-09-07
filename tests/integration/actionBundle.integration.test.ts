@@ -11,6 +11,14 @@ describe('Action Bundle Integration: dist-action/index.mjs', () => {
   let tmpDir: string;
   let outputFile: string;
 
+  beforeAll(async () => {
+    if (!fs.existsSync(actionBundlePath)) {
+      await execFileAsync('npm', ['run', 'build:action'], {
+        cwd: path.resolve(__dirname, '../..'),
+      });
+    }
+  });
+
   beforeEach(() => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gst-action-test-'));
     outputFile = path.join(tmpDir, 'github_output.txt');
