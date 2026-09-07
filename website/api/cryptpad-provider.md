@@ -1,9 +1,11 @@
 # CryptPad Providers (v3)
 
-Factory functions for the CryptPad provider family used by the v3 [provider runtime](/api/provider-platform): CSV input (read-only MVP), workspace output/sync, and asset sync.
+Factory functions and client classes for the CryptPad provider family used by the v3 [provider runtime](/api/provider-platform): native E2EE sheets, CSV input, workspace output/sync, and asset sync.
 
 ```typescript
 import {
+  createCryptPadSheetInputProvider,
+  CryptPadClient,
   createCryptPadCsvInputProvider,
   createCryptPadWorkspaceOutputProvider,
   createCryptPadWorkspaceSyncProvider,
@@ -11,7 +13,73 @@ import {
 } from '@el-j/google-sheet-translations';
 ```
 
-These are usually not called directly — `createProvidersFromRuntimeConfig` calls them for you from a `ProviderRuntimeConfig` naming `cryptpad-csv`, `cryptpad-workspace`, or `cryptpad-assets`.
+---
+
+## `createCryptPadSheetInputProvider(options)`
+
+Creates an end-to-end encrypted {@link TranslationInputProvider} that reads translation tables directly from **password-protected** or public CryptPad spreadsheets (OnlyOffice sheets) over WebSockets using TweetNaCl, without requiring any browser or bot.
+
+```typescript
+function createCryptPadSheetInputProvider(
+  options: CryptPadSheetInputProviderOptions,
+): TranslationInputProvider
+```
+
+```typescript
+interface CryptPadSheetSource {
+  tableName: string;
+  url?: string;
+  password?: string;
+  tableId?: string;
+}
+
+interface CryptPadSheetInputProviderOptions {
+  sources?: CryptPadSheetSource[];
+  url?: string;
+  password?: string;
+  tableName?: string;
+  providerId?: string;
+  displayName?: string;
+  timeoutMs?: number;
+}
+```
+
+```typescript
+const input = createCryptPadSheetInputProvider({
+  url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/',
+  password: 'test-test',
+  tableName: 'i18n',
+});
+```
+
+---
+
+## `CryptPadClient`
+
+A standalone, headless programmatic client for reading and decrypting CryptPad documents directly in Node.js / CI.
+
+```typescript
+class CryptPadClient {
+  constructor(options: CryptPadClientOptions);
+  fetchSheetData(signal?: AbortSignal): Promise<CryptPadSheetResult>;
+  fetchSheetRows(signal?: AbortSignal): Promise<SheetRow[]>;
+  getKeys(): DerivedCryptPadKeys;
+  getWebsocketUrl(signal?: AbortSignal): Promise<string>;
+}
+```
+
+```typescript
+const client = new CryptPadClient({
+  url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/',
+  password: 'test-test',
+});
+
+// Fetch raw grid cells & metadata
+const { cells, metadata } = await client.fetchSheetData();
+
+// Fetch structured translation rows
+const rows = await client.fetchSheetRows();
+```
 
 ---
 

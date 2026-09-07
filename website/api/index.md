@@ -21,6 +21,7 @@ See [Provider Platform (v3)](/api/provider-platform) for the full API reference 
 | [`runProviderPipeline`](/api/provider-platform#running-the-pipeline) | Execute provider-driven pull/transform/write/sync/asset-sync flow |
 | [Provider Contracts](/api/provider-contracts) | TypeScript interfaces for custom translation/asset providers & registries |
 | [`createGoogleSheetsInputProvider` / `createGoogleSheetsOutputProvider` / `createGoogleSheetsSyncProvider`](/api/google-provider) | Google Sheets provider factories |
+| [`createCryptPadSheetInputProvider` / `CryptPadClient`](/api/cryptpad-provider#createcryptpadsheetinputprovider-options) | CryptPad end-to-end encrypted OnlyOffice sheet provider and standalone client |
 | [`createCryptPadCsvInputProvider`](/api/cryptpad-provider#createcryptpadcsvinputprovider-options-depsoverrides) | CryptPad CSV input factory (read-only MVP) |
 | [`createCryptPadWorkspaceOutputProvider` / `createCryptPadWorkspaceSyncProvider`](/api/cryptpad-provider) | CryptPad workspace output/sync factories |
 | [`createCryptPadAssetSyncProvider`](/api/cryptpad-provider#createcryptpadassetsyncprovider-options-depsoverrides) | CryptPad asset-manifest sync factory |

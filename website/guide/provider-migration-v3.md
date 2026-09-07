@@ -240,15 +240,16 @@ jobs:
 
 Once on v3, you can migrate away from Google Sheets entirely without changing how your application consumes translations:
 
-1. Export or publish your CryptPad spreadsheet as a public CSV link.
-2. Change your `input.provider` from `google-sheets` to `cryptpad-csv`:
+1. Connect your password-protected (`.../p/`) or team-shared CryptPad spreadsheet directly (zero manual export required!).
+2. Set your `input.provider` to `cryptpad-sheet`:
 
 ```json
 {
   "input": {
-    "provider": "cryptpad-csv",
+    "provider": "cryptpad-sheet",
     "options": {
-      "csvUrl": "https://cryptpad.fr/file/export.csv",
+      "url": "https://cryptpad.fr/sheet/#/2/sheet/edit/your-pad-seed/p/",
+      "password": "${{ secrets.CRYPTPAD_PASSWORD }}",
       "tableName": "home"
     }
   },
@@ -262,10 +263,10 @@ Once on v3, you can migrate away from Google Sheets entirely without changing ho
 }
 ```
 
-3. Remove all Google credentials and Service Accounts from your repository secrets.
+3. Remove all Google Cloud IAM credentials and Service Account keys from your repository secrets.
 4. Run `npm run translations`: your application continues to receive identical JSON files and `locales.ts`!
 
-For details, see the [Non-Google Providers Guide](/guide/non-google-providers).
+For details and standalone `CryptPadClient` usage, see the [Non-Google Providers Guide](/guide/non-google-providers).
 
 ---
 
