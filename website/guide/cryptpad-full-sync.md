@@ -42,6 +42,30 @@ flowchart LR
 
 ---
 
+## Document & Header Row Structure (100% Google Sheets Parity)
+
+CryptPad spreadsheets use the exact same tabular convention as Google Sheets:
+
+### Row 1: Header Definition Row
+- **Column A (Cell A1):** Key column definition — standard keyword is `"var"` (or `"key"`).
+- **Columns B, C, D... (Cells B1, C1, D1...):** Language locale identifiers (e.g. `"de"`, `"en"`, `"fr"`, `"es"`).
+
+### Rows 2+: Translation Key & Content Rows
+- **Column A (Cells A2, A3...):** Translation variable / key name (e.g. `saeulen.title`, `btn.submit`).
+- **Columns B, C...:** Translated strings for each locale defined in row 1.
+
+| Row | Column A (`var`) | Column B (`de`) | Column C (`en`) |
+|---|---|---|---|
+| **1 (Header)** | `var` | `de` | `en` |
+| **2** | `hero.title` | `Signal für Demokratie` | `Signal for Democracy` |
+| **3** | `nav.about` | `Über uns` | `About Us` |
+| **4** | `btn.submit` | `Absenden` | `Submit` |
+
+> [!TIP]
+> Both `"var"` and `"key"` are supported interchangeably as the key header. When reading or writing, the provider recognizes either format without requiring configuration changes.
+
+---
+
 ## 1. Quickstart: CLI Tooling
 
 The package provides the dedicated `gst-cryptpad` binary.

@@ -10,6 +10,10 @@ const COMMON_LOCALE_PATTERNS = [
 ];
 
 const NON_LOCALE_KEYWORDS = [
+  'var',
+  'vars',
+  'variable',
+  'variables',
   'key',
   'keys',
   'id',

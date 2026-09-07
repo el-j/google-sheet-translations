@@ -37,6 +37,22 @@ describe('cryptpad sheet output provider', () => {
     expect(authRows).toEqual([{ key: 'login.title', en: 'Welcome', de: 'Willkommen' }]);
   });
 
+  it('supports custom keyColumnName = "var" matching Google Sheets header convention', () => {
+    const translations = {
+      de: {
+        saeulen: { title: 'Säulen' },
+      },
+      en: {
+        saeulen: { title: 'Pillars' },
+      },
+    };
+
+    const sheetRows = convertTranslationsToSheetRows(translations, {}, 'var');
+    expect(sheetRows.saeulen).toEqual([
+      { var: 'title', de: 'Säulen', en: 'Pillars' },
+    ]);
+  });
+
   it('writes translations via CryptPadClient writeSheetRows mock', async () => {
     const mockWriteSheetRows = vi.fn().mockResolvedValue(4);
     vi.spyOn(CryptPadClient.prototype, 'writeSheetRows').mockImplementation(mockWriteSheetRows);

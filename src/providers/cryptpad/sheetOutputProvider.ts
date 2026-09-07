@@ -20,6 +20,8 @@ export interface CryptPadSheetOutputProviderOptions {
   providerId?: string;
   /** Optional custom provider display name. */
   displayName?: string;
+  /** Optional key column name in row 1 (e.g. 'var' or 'key'). Defaults to 'var'. */
+  keyColumnName?: 'var' | 'key' | string;
   /** Optional timeout in milliseconds for WebSocket operations. */
   timeoutMs?: number;
 }
@@ -35,6 +37,7 @@ export const CRYPTPAD_SHEET_OUTPUT_CAPABILITIES: ProviderCapabilitySet = createC
 export function convertTranslationsToSheetRows(
   translations: TranslationData,
   localeMapping: Record<string, string> = {},
+  keyColumnName: string = 'key',
 ): Record<string, SheetRow[]> {
   // Map reverse: normalizedLocale -> originalHeader
   const reverseMapping: Record<string, string> = {};
@@ -54,7 +57,7 @@ export function convertTranslationsToSheetRows(
 
       for (const [key, value] of Object.entries(keys)) {
         if (!sheetRowsMap[sheetName].has(key)) {
-          sheetRowsMap[sheetName].set(key, { key });
+          sheetRowsMap[sheetName].set(key, { [keyColumnName]: key });
         }
         sheetRowsMap[sheetName].get(key)![colHeader] = String(value);
       }
@@ -100,7 +103,11 @@ export function createCryptPadSheetOutputProvider(
       });
 
       const effectiveMapping = options.localeMapping ?? payload.localeMapping ?? {};
-      const sheetRowsMap = convertTranslationsToSheetRows(payload.translations, effectiveMapping);
+      const sheetRowsMap = convertTranslationsToSheetRows(
+        payload.translations,
+        effectiveMapping,
+        options.keyColumnName ?? 'key',
+      );
       const updatedSheets: string[] = [];
       let totalUpdatedCells = 0;
 

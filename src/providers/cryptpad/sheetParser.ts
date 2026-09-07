@@ -210,6 +210,11 @@ export function convertCellsToSheetRows(cells: CryptPadSheetGrid): SheetRow[] {
       sheetRow[headerName] = rowCells.get(col) ?? '';
     }
 
+    // Support 'var' as key column header for consumers expecting .key
+    if (sheetRow.var !== undefined && sheetRow.key === undefined) {
+      sheetRow.key = sheetRow.var;
+    }
+
     // Only include rows that have at least one non-empty value
     const hasValue = Object.values(sheetRow).some(
       (v) => typeof v === 'string' && v.trim().length > 0,

@@ -165,6 +165,27 @@ describe('cryptpad sheet coordinate and cell parser', () => {
     ]);
   });
 
+  it('converts cells grid where row 1 header is "var", "de", "en"', () => {
+    const cells = {
+      A1: 'var',
+      B1: 'de',
+      C1: 'en',
+      A2: 'saeulen.title',
+      B2: 'Die Säulen der Demokratie',
+      C2: 'The Pillars of Democracy',
+    };
+
+    const rows = convertCellsToSheetRows(cells);
+    expect(rows).toEqual([
+      {
+        var: 'saeulen.title',
+        key: 'saeulen.title',
+        de: 'Die Säulen der Demokratie',
+        en: 'The Pillars of Democracy',
+      },
+    ]);
+  });
+
   it('builds cell references with and without sheet names', () => {
     expect(buildCellRef(undefined, 'A', 1)).toBe('A1');
     expect(buildCellRef(undefined, 0, 1)).toBe('A1');

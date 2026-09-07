@@ -28,6 +28,10 @@ describe('localeFilter', () => {
     });
 
     it('should reject common non-locale keywords', () => {
+      expect(isValidLocale('var')).toBe(false);
+      expect(isValidLocale('vars')).toBe(false);
+      expect(isValidLocale('variable')).toBe(false);
+      expect(isValidLocale('variables')).toBe(false);
       expect(isValidLocale('key')).toBe(false);
       expect(isValidLocale('keys')).toBe(false);
       expect(isValidLocale('id')).toBe(false);

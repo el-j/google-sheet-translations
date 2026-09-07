@@ -205,13 +205,29 @@ export class CryptPadClient {
     const targetSheet = data.sheets[sheetName];
     const existingRows = targetSheet?.rows ?? [];
 
-    // Collect all column names
-    const colNamesSet = new Set<string>(['key']);
+    // Determine primary key column header ('var' or 'key')
+    let keyColName = 'var';
+    const firstExisting = existingRows[0];
+    const firstIncoming = rows[0];
+    if (firstExisting) {
+      if ('var' in firstExisting) keyColName = 'var';
+      else if ('key' in firstExisting) keyColName = 'key';
+    } else if (firstIncoming) {
+      if ('var' in firstIncoming) keyColName = 'var';
+      else if ('key' in firstIncoming) keyColName = 'key';
+    }
+
+    // Collect all column names with key column first
+    const colNamesSet = new Set<string>([keyColName]);
     for (const r of existingRows) {
-      for (const k of Object.keys(r)) colNamesSet.add(k);
+      for (const k of Object.keys(r)) {
+        if (k !== 'key' && k !== 'var') colNamesSet.add(k);
+      }
     }
     for (const r of rows) {
-      for (const k of Object.keys(r)) colNamesSet.add(k);
+      for (const k of Object.keys(r)) {
+        if (k !== 'key' && k !== 'var') colNamesSet.add(k);
+      }
     }
 
     const colNames = Array.from(colNamesSet);
@@ -230,20 +246,23 @@ export class CryptPadClient {
     // Map existing keys to row index (1-based, header is 1, rows start at 2)
     const keyToRowIdx = new Map<string, number>();
     existingRows.forEach((r, idx) => {
-      if (r.key) keyToRowIdx.set(r.key, idx + 2);
+      const rowKey = r.var ?? r.key ?? r[keyColName];
+      if (rowKey) keyToRowIdx.set(rowKey, idx + 2);
     });
 
     let nextAvailableRow = existingRows.length + 2;
 
     for (const row of rows) {
-      if (!row.key) continue;
-      const targetRow = keyToRowIdx.get(row.key) ?? nextAvailableRow++;
-      keyToRowIdx.set(row.key, targetRow);
+      const rowKey = row.var ?? row.key ?? row[keyColName];
+      if (!rowKey) continue;
+      const targetRow = keyToRowIdx.get(rowKey) ?? nextAvailableRow++;
+      keyToRowIdx.set(rowKey, targetRow);
 
       for (const [colName, val] of Object.entries(row)) {
-        const colIdx = colNames.indexOf(colName);
+        const mappedColName = colName === 'key' || colName === 'var' ? keyColName : colName;
+        const colIdx = colNames.indexOf(mappedColName);
         if (colIdx >= 0 && val !== undefined) {
-          const existingVal = existingRows[targetRow - 2]?.[colName];
+          const existingVal = existingRows[targetRow - 2]?.[mappedColName];
           if (options.override || !existingVal || existingVal.trim().length === 0) {
             updates.push({
               sheet: sheetName,
