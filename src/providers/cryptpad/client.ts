@@ -4,12 +4,21 @@ import {
   type ParsedCryptPadUrl,
   type DerivedCryptPadKeys,
 } from './crypto';
-import { resolveCryptPadWebsocketUrl, fetchChannelHistory } from './netflux';
+import {
+  resolveCryptPadWebsocketUrl,
+  fetchChannelHistory,
+  broadcastChannelMessage,
+} from './netflux';
 import {
   extractOnlyOfficeChannelId,
   parseOnlyOfficeChanges,
   convertCellsToSheetRows,
+  convertCellsToMultiSheetRows,
+  groupCellsBySheet,
+  buildOnlyOfficeChangePayload,
+  colIndexToLetter,
   type CryptPadSheetGrid,
+  type OnlyOfficeCellUpdate,
 } from './sheetParser';
 import type { SheetRow } from '../../types';
 
@@ -28,6 +37,14 @@ export interface CryptPadSheetResult {
   url: string;
   cells: CryptPadSheetGrid;
   rows: SheetRow[];
+  sheets: Record<
+    string,
+    {
+      cells: CryptPadSheetGrid;
+      rows: SheetRow[];
+    }
+  >;
+  sheetNames: string[];
   metadata: {
     app: string;
     mode: string;
@@ -81,8 +98,8 @@ export class CryptPadClient {
   }
 
   /**
-   * Fetches the complete sheet data, including raw cell coordinate mappings
-   * and structured rows formatted for translation ingestion.
+   * Fetches the complete sheet data, including raw cell coordinate mappings,
+   * multi-sheet tabs, and structured rows formatted for translation ingestion.
    */
   async fetchSheetData(signal?: AbortSignal): Promise<CryptPadSheetResult> {
     const wsUrl = await this.getWebsocketUrl(signal);
@@ -106,12 +123,29 @@ export class CryptPadClient {
       cells = parseOnlyOfficeChanges(rtMessages);
     }
 
-    const rows = convertCellsToSheetRows(cells);
+    const multiSheets = convertCellsToMultiSheetRows(cells);
+    const sheetNames = Object.keys(multiSheets);
+    const defaultSheet = multiSheets['Sheet1'] ? 'Sheet1' : sheetNames[0];
+    const defaultRows =
+      defaultSheet && multiSheets[defaultSheet]
+        ? multiSheets[defaultSheet]
+        : convertCellsToSheetRows(cells);
+
+    const groupedCells = groupCellsBySheet(cells);
+    const sheetsResult: Record<string, { cells: CryptPadSheetGrid; rows: SheetRow[] }> = {};
+    for (const name of sheetNames) {
+      sheetsResult[name] = {
+        cells: groupedCells[name] ?? {},
+        rows: multiSheets[name] ?? [],
+      };
+    }
 
     return {
       url: this.parsedUrl.cleanUrl,
       cells,
-      rows,
+      rows: defaultRows,
+      sheets: sheetsResult,
+      sheetNames,
       metadata: {
         app: this.parsedUrl.app,
         mode: this.parsedUrl.mode,
@@ -123,9 +157,106 @@ export class CryptPadClient {
 
   /**
    * Directly fetches tabular translation rows `[ { key: '...', en: '...', de: '...' } ]`.
+   * If `sheetName` is provided, returns rows for that specific tab.
    */
-  async fetchSheetRows(signal?: AbortSignal): Promise<SheetRow[]> {
+  async fetchSheetRows(sheetName?: string, signal?: AbortSignal): Promise<SheetRow[]> {
     const result = await this.fetchSheetData(signal);
+    if (sheetName && result.sheets[sheetName]) {
+      return result.sheets[sheetName].rows;
+    }
     return result.rows;
+  }
+
+  /**
+   * Broadcasts cell updates to the OnlyOffice real-time collaboration channel.
+   */
+  async sendCellUpdates(updates: OnlyOfficeCellUpdate[], signal?: AbortSignal): Promise<void> {
+    if (updates.length === 0) return;
+
+    const data = await this.fetchSheetData(signal);
+    const rtChannel = data.metadata.rtChannelId;
+    if (!rtChannel) {
+      throw new Error(
+        `CryptPad sheet "${this.parsedUrl.cleanUrl}" does not have an active OnlyOffice RT channel.`,
+      );
+    }
+
+    const wsUrl = await this.getWebsocketUrl(signal);
+    const { cryptKey } = this.getKeys();
+    const payload = buildOnlyOfficeChangePayload(updates);
+
+    await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
+      timeoutMs: this.timeoutMs,
+      signal,
+    });
+  }
+
+  /**
+   * Updates or appends rows in a target sheet tab, creating new cells as needed.
+   */
+  async writeSheetRows(
+    sheetName: string,
+    rows: SheetRow[],
+    options: { override?: boolean; signal?: AbortSignal } = {},
+  ): Promise<number> {
+    if (rows.length === 0) return 0;
+
+    const data = await this.fetchSheetData(options.signal);
+    const targetSheet = data.sheets[sheetName];
+    const existingRows = targetSheet?.rows ?? [];
+
+    // Collect all column names
+    const colNamesSet = new Set<string>(['key']);
+    for (const r of existingRows) {
+      for (const k of Object.keys(r)) colNamesSet.add(k);
+    }
+    for (const r of rows) {
+      for (const k of Object.keys(r)) colNamesSet.add(k);
+    }
+
+    const colNames = Array.from(colNamesSet);
+    const updates: OnlyOfficeCellUpdate[] = [];
+
+    // Header row (row 1)
+    colNames.forEach((name, idx) => {
+      updates.push({
+        sheet: sheetName,
+        col: colIndexToLetter(idx),
+        row: 1,
+        value: name,
+      });
+    });
+
+    // Map existing keys to row index (1-based, header is 1, rows start at 2)
+    const keyToRowIdx = new Map<string, number>();
+    existingRows.forEach((r, idx) => {
+      if (r.key) keyToRowIdx.set(r.key, idx + 2);
+    });
+
+    let nextAvailableRow = existingRows.length + 2;
+
+    for (const row of rows) {
+      if (!row.key) continue;
+      const targetRow = keyToRowIdx.get(row.key) ?? nextAvailableRow++;
+      keyToRowIdx.set(row.key, targetRow);
+
+      for (const [colName, val] of Object.entries(row)) {
+        const colIdx = colNames.indexOf(colName);
+        if (colIdx >= 0 && val !== undefined) {
+          const existingVal = existingRows[targetRow - 2]?.[colName];
+          if (options.override || !existingVal || existingVal.trim().length === 0) {
+            updates.push({
+              sheet: sheetName,
+              col: colIndexToLetter(colIdx),
+              row: targetRow,
+              value: String(val),
+            });
+          }
+        }
+      }
+    }
+
+    await this.sendCellUpdates(updates, options.signal);
+    return updates.length;
   }
 }

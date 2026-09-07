@@ -13,9 +13,15 @@ import type {
 /**
  * Options for configuring a CryptPad asset synchronization provider.
  */
+import { CryptPadDriveClient } from './driveClient';
+
 export interface CryptPadAssetSyncProviderOptions {
   /** Path to a JSON file containing a {@link CanonicalAssetEntry}[] manifest. */
-  manifestPath: string;
+  manifestPath?: string;
+  /** CryptPad Drive folder URL containing asset files to sync. */
+  driveUrl?: string;
+  /** Optional password if the drive pad is password-protected. */
+  password?: string;
   /** Optional custom provider identifier. Defaults to 'cryptpad-assets'. */
   providerId?: string;
   /** Optional human-friendly provider name. */
@@ -137,7 +143,23 @@ export function createCryptPadAssetSyncProvider(
     displayName: options.displayName ?? 'CryptPad Asset Sync',
     capabilities: CRYPTPAD_ASSET_SYNC_CAPABILITIES,
     async syncAssets(request: AssetSyncRequest): Promise<AssetSyncResult> {
-      const manifest = await deps.readManifest(options.manifestPath);
+      let manifest: CanonicalAssetEntry[] = [];
+      if (options.manifestPath) {
+        manifest = await deps.readManifest(options.manifestPath);
+      } else if (options.driveUrl) {
+        const driveClient = new CryptPadDriveClient({
+          url: options.driveUrl,
+          password: options.password,
+        });
+        const items = await driveClient.listDriveItems(request.signal);
+        manifest = items
+          .filter((item) => item.type !== 'folder' && !item.url.includes('/sheet/'))
+          .map((item) => ({
+            assetId: item.id || item.title,
+            relativePath: item.path || item.title,
+            sourceUrl: item.url,
+          }));
+      }
       const downloaded: string[] = [];
       const updated: string[] = [];
       const skipped: string[] = [];

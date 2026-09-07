@@ -51662,6 +51662,10 @@ function b64Decode(str) {
 	if (pad) s += "=".repeat(4 - pad);
 	return new Uint8Array(Buffer.from(s, "base64"));
 }
+/** Encodes bytes to standard base64 string. */
+function b64Encode(bytes) {
+	return Buffer.from(bytes).toString("base64");
+}
 /** Decodes UTF-8 string to Uint8Array. */
 function decodeUTF8(str) {
 	return new Uint8Array(Buffer.from(str, "utf8"));
@@ -51745,6 +51749,16 @@ function decryptCryptPadPayload(payload, cryptKey) {
 		} catch {}
 	}
 	return null;
+}
+/**
+* Encrypts a plaintext message payload using TweetNaCl secretbox (XSalsa20-Poly1305).
+* Formats output as `base64(nonce)|base64(ciphertext)`.
+*/
+function encryptCryptPadPayload(plaintext, cryptKey) {
+	const nonce = import_nacl_fast.default.randomBytes(24);
+	const msgBytes = decodeUTF8(plaintext);
+	const cipher = import_nacl_fast.default.secretbox(msgBytes, nonce, cryptKey);
+	return `${b64Encode(nonce)}|${b64Encode(cipher)}`;
 }
 //#endregion
 //#region src/providers/cryptpad/netflux.ts
@@ -51854,6 +51868,69 @@ function fetchChannelHistory(wsUrl, channelHex, cryptKey, options = {}) {
 		};
 	});
 }
+/**
+* Connects to the CryptPad Netflux WebSocket server, joins a channel,
+* encrypts the given message with TweetNaCl, and broadcasts it to all peers
+* in the channel (including historyKeeper).
+*/
+function broadcastChannelMessage(wsUrl, channelHex, cryptKey, message, options = {}) {
+	const { timeoutMs = 8e3, signal } = options;
+	return new Promise((resolve, reject) => {
+		if (signal?.aborted) return reject(/* @__PURE__ */ new Error("Operation aborted"));
+		const ws = new WebSocket(wsUrl);
+		let seq = 1;
+		let timeout = null;
+		let sent = false;
+		const cleanup = () => {
+			if (timeout) clearTimeout(timeout);
+			try {
+				ws.close();
+			} catch {}
+		};
+		timeout = setTimeout(() => {
+			cleanup();
+			if (sent) resolve();
+			else reject(/* @__PURE__ */ new Error(`Timeout after ${timeoutMs}ms broadcasting message to CryptPad channel "${channelHex}".`));
+		}, timeoutMs);
+		if (signal) signal.addEventListener("abort", () => {
+			cleanup();
+			reject(/* @__PURE__ */ new Error("Operation aborted"));
+		});
+		ws.onopen = () => {
+			ws.send(JSON.stringify([
+				seq++,
+				"JOIN",
+				channelHex
+			]));
+		};
+		ws.onmessage = (event) => {
+			try {
+				const raw = typeof event.data === "string" ? event.data : event.data.toString();
+				const msg = JSON.parse(raw);
+				if (!Array.isArray(msg)) return;
+				const [, peerId, cmd] = msg;
+				if (cmd === "JOIN" && typeof peerId === "string" && !sent) {
+					sent = true;
+					const encrypted = encryptCryptPadPayload(message, cryptKey);
+					ws.send(JSON.stringify([
+						seq++,
+						"MSG",
+						channelHex,
+						encrypted
+					]));
+					setTimeout(() => {
+						cleanup();
+						resolve();
+					}, 350);
+				}
+			} catch {}
+		};
+		ws.onerror = (err) => {
+			cleanup();
+			reject(/* @__PURE__ */ new Error(`CryptPad WebSocket broadcast error: ${String(err)}`));
+		};
+	});
+}
 //#endregion
 //#region src/providers/cryptpad/sheetParser.ts
 /** Converts column index (0-based) to letter: 0 -> 'A', 25 -> 'Z', 26 -> 'AA'. */
@@ -51918,9 +51995,9 @@ function parseOnlyOfficeChanges(rtMessages) {
 				const strLen = buf.readUInt32LE(i + 1);
 				if (strLen > 0 && strLen < 4e3 && i + 5 + strLen <= buf.length) {
 					const str = buf.subarray(i + 5, i + 5 + strLen).toString("utf16le");
-					const cellMatch = str.match(/^(?:Sheet\d+!)?([A-Z]+)(\d+)$/);
+					const cellMatch = str.match(/^(?:([^!]+)!)?([A-Z]+)(\d+)$/);
 					if (cellMatch) {
-						const cellRef = `${cellMatch[1]}${cellMatch[2]}`;
+						const cellRef = `${cellMatch[1] ? `${cellMatch[1]}!` : ""}${cellMatch[2]}${cellMatch[3]}`;
 						const searchStart = i + 5 + strLen;
 						for (let j = searchStart; j < Math.min(searchStart + 30, buf.length - 5); j++) if (buf[j] === 8) {
 							const nextLen = buf.readUInt32LE(j + 1);
@@ -51974,6 +52051,62 @@ function convertCellsToSheetRows(cells) {
 	}
 	return resultRows;
 }
+/**
+* Groups a flat grid of cell coordinates by sheet tab name.
+* Cells without an explicit sheet prefix are assigned to `defaultSheet` (defaults to 'Sheet1').
+*/
+function groupCellsBySheet(cells, defaultSheet = "Sheet1") {
+	const result = {};
+	for (const [cellRef, val] of Object.entries(cells)) {
+		const parsed = parseCellRef(cellRef);
+		if (!parsed) continue;
+		const sheetName = parsed.sheet && parsed.sheet.trim().length > 0 ? parsed.sheet.trim() : defaultSheet;
+		if (!result[sheetName]) result[sheetName] = {};
+		const flatRef = `${parsed.col}${parsed.row}`;
+		result[sheetName][flatRef] = val;
+	}
+	if (Object.keys(result).length === 0 && Object.keys(cells).length > 0) result[defaultSheet] = { ...cells };
+	return result;
+}
+/**
+* Converts a grid of cell references into a dictionary of SheetRow arrays keyed by sheet tab name.
+*/
+function convertCellsToMultiSheetRows(cells, defaultSheet = "Sheet1") {
+	const grouped = groupCellsBySheet(cells, defaultSheet);
+	const result = {};
+	for (const [sheetName, sheetGrid] of Object.entries(grouped)) result[sheetName] = convertCellsToSheetRows(sheetGrid);
+	return result;
+}
+/**
+* Encodes a single cell update record into OnlyOffice binary format (0x08 prefix + UTF-16LE string).
+*/
+function encodeOnlyOfficeCellRecord(cellRef, value) {
+	const refBuf = Buffer.from(cellRef, "utf16le");
+	const valBuf = Buffer.from(value, "utf16le");
+	const refHeader = Buffer.alloc(5);
+	refHeader[0] = 8;
+	refHeader.writeUInt32LE(refBuf.length, 1);
+	const valHeader = Buffer.alloc(5);
+	valHeader[0] = 8;
+	valHeader.writeUInt32LE(valBuf.length, 1);
+	return Buffer.concat([
+		refHeader,
+		refBuf,
+		valHeader,
+		valBuf
+	]);
+}
+/**
+* Formats a list of cell updates into an OnlyOffice change transaction JSON string.
+*/
+function buildOnlyOfficeChangePayload(updates) {
+	const records = updates.map((u) => {
+		const colStr = typeof u.col === "number" ? colIndexToLetter(u.col) : u.col.toUpperCase();
+		return encodeOnlyOfficeCellRecord(`${u.sheet && u.sheet.trim().length > 0 ? `${u.sheet.trim()}!` : ""}${colStr}${u.row}`, u.value);
+	});
+	const changeEntry = `asc_1;${Buffer.concat(records).toString("base64")}`;
+	return JSON.stringify({ changes: [{ change: changeEntry }] });
+}
 //#endregion
 //#region src/providers/cryptpad/client.ts
 /**
@@ -52000,8 +52133,8 @@ var CryptPadClient = class {
 		return resolveCryptPadWebsocketUrl(this.parsedUrl.origin, signal);
 	}
 	/**
-	* Fetches the complete sheet data, including raw cell coordinate mappings
-	* and structured rows formatted for translation ingestion.
+	* Fetches the complete sheet data, including raw cell coordinate mappings,
+	* multi-sheet tabs, and structured rows formatted for translation ingestion.
 	*/
 	async fetchSheetData(signal) {
 		const wsUrl = await this.getWebsocketUrl(signal);
@@ -52015,11 +52148,22 @@ var CryptPadClient = class {
 			timeoutMs: this.timeoutMs,
 			signal
 		}));
-		const rows = convertCellsToSheetRows(cells);
+		const multiSheets = convertCellsToMultiSheetRows(cells);
+		const sheetNames = Object.keys(multiSheets);
+		const defaultSheet = multiSheets["Sheet1"] ? "Sheet1" : sheetNames[0];
+		const defaultRows = defaultSheet && multiSheets[defaultSheet] ? multiSheets[defaultSheet] : convertCellsToSheetRows(cells);
+		const groupedCells = groupCellsBySheet(cells);
+		const sheetsResult = {};
+		for (const name of sheetNames) sheetsResult[name] = {
+			cells: groupedCells[name] ?? {},
+			rows: multiSheets[name] ?? []
+		};
 		return {
 			url: this.parsedUrl.cleanUrl,
 			cells,
-			rows,
+			rows: defaultRows,
+			sheets: sheetsResult,
+			sheetNames,
 			metadata: {
 				app: this.parsedUrl.app,
 				mode: this.parsedUrl.mode,
@@ -52030,9 +52174,70 @@ var CryptPadClient = class {
 	}
 	/**
 	* Directly fetches tabular translation rows `[ { key: '...', en: '...', de: '...' } ]`.
+	* If `sheetName` is provided, returns rows for that specific tab.
 	*/
-	async fetchSheetRows(signal) {
-		return (await this.fetchSheetData(signal)).rows;
+	async fetchSheetRows(sheetName, signal) {
+		const result = await this.fetchSheetData(signal);
+		if (sheetName && result.sheets[sheetName]) return result.sheets[sheetName].rows;
+		return result.rows;
+	}
+	/**
+	* Broadcasts cell updates to the OnlyOffice real-time collaboration channel.
+	*/
+	async sendCellUpdates(updates, signal) {
+		if (updates.length === 0) return;
+		const rtChannel = (await this.fetchSheetData(signal)).metadata.rtChannelId;
+		if (!rtChannel) throw new Error(`CryptPad sheet "${this.parsedUrl.cleanUrl}" does not have an active OnlyOffice RT channel.`);
+		const wsUrl = await this.getWebsocketUrl(signal);
+		const { cryptKey } = this.getKeys();
+		await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, buildOnlyOfficeChangePayload(updates), {
+			timeoutMs: this.timeoutMs,
+			signal
+		});
+	}
+	/**
+	* Updates or appends rows in a target sheet tab, creating new cells as needed.
+	*/
+	async writeSheetRows(sheetName, rows, options = {}) {
+		if (rows.length === 0) return 0;
+		const existingRows = (await this.fetchSheetData(options.signal)).sheets[sheetName]?.rows ?? [];
+		const colNamesSet = /* @__PURE__ */ new Set(["key"]);
+		for (const r of existingRows) for (const k of Object.keys(r)) colNamesSet.add(k);
+		for (const r of rows) for (const k of Object.keys(r)) colNamesSet.add(k);
+		const colNames = Array.from(colNamesSet);
+		const updates = [];
+		colNames.forEach((name, idx) => {
+			updates.push({
+				sheet: sheetName,
+				col: colIndexToLetter(idx),
+				row: 1,
+				value: name
+			});
+		});
+		const keyToRowIdx = /* @__PURE__ */ new Map();
+		existingRows.forEach((r, idx) => {
+			if (r.key) keyToRowIdx.set(r.key, idx + 2);
+		});
+		let nextAvailableRow = existingRows.length + 2;
+		for (const row of rows) {
+			if (!row.key) continue;
+			const targetRow = keyToRowIdx.get(row.key) ?? nextAvailableRow++;
+			keyToRowIdx.set(row.key, targetRow);
+			for (const [colName, val] of Object.entries(row)) {
+				const colIdx = colNames.indexOf(colName);
+				if (colIdx >= 0 && val !== void 0) {
+					const existingVal = existingRows[targetRow - 2]?.[colName];
+					if (options.override || !existingVal || existingVal.trim().length === 0) updates.push({
+						sheet: sheetName,
+						col: colIndexToLetter(colIdx),
+						row: targetRow,
+						value: String(val)
+					});
+				}
+			}
+		}
+		await this.sendCellUpdates(updates, options.signal);
+		return updates.length;
 	}
 };
 //#endregion
@@ -52066,7 +52271,7 @@ function createCryptPadSheetInputProvider(options) {
 			const requested = new Set((request.tableNames ?? []).filter(Boolean));
 			const selectedSources = requested.size === 0 ? sources : sources.filter((source) => requested.has(source.tableName));
 			return {
-				tables: await Promise.all(selectedSources.map(async (source) => {
+				tables: (await Promise.all(selectedSources.map(async (source) => {
 					const url = source.url ?? options.url ?? process.env.CRYPTPAD_URL;
 					if (!url) throw new Error(`CryptPad sheet source "${source.tableName}" does not define a URL.`);
 					const sheetData = await new CryptPadClient({
@@ -52074,7 +52279,22 @@ function createCryptPadSheetInputProvider(options) {
 						password: source.password ?? options.password ?? process.env.CRYPTPAD_PASSWORD,
 						timeoutMs: options.timeoutMs
 					}).fetchSheetData(request.signal);
-					return {
+					const sourceTables = [];
+					if (Array.isArray(sheetData.sheetNames) && sheetData.sheetNames.length > 1) {
+						for (const tabName of sheetData.sheetNames) if (requested.size === 0 || requested.has(tabName) || requested.has(source.tableName)) sourceTables.push({
+							tableId: `${source.tableId ?? url}#${tabName}`,
+							tableName: tabName,
+							rows: sheetData.sheets[tabName]?.rows ?? [],
+							sourcePath: url,
+							metadata: {
+								provider: "cryptpad-sheet",
+								channelId: sheetData.metadata.channelId,
+								rtChannelId: sheetData.metadata.rtChannelId,
+								sheetTab: tabName
+							}
+						});
+					}
+					if (sourceTables.length === 0) sourceTables.push({
 						tableId: source.tableId ?? url,
 						tableName: source.tableName,
 						rows: sheetData.rows,
@@ -52085,11 +52305,78 @@ function createCryptPadSheetInputProvider(options) {
 							rtChannelId: sheetData.metadata.rtChannelId,
 							cellCount: Object.keys(sheetData.cells).length
 						}
-					};
-				})),
+					});
+					return sourceTables;
+				}))).flat(),
 				metadata: {
 					provider: "cryptpad-sheet",
 					sourceCount: selectedSources.length
+				}
+			};
+		}
+	};
+}
+//#endregion
+//#region src/providers/cryptpad/sheetOutputProvider.ts
+const CRYPTPAD_SHEET_OUTPUT_CAPABILITIES = createCapabilitySet({ writeTables: true });
+/**
+* Converts nested TranslationData `[locale][sheet][key] = value` into
+* tabular rows `Record<sheetName, SheetRow[]>`.
+*/
+function convertTranslationsToSheetRows(translations, localeMapping = {}) {
+	const reverseMapping = {};
+	for (const [header, norm] of Object.entries(localeMapping)) reverseMapping[norm] = header;
+	const sheetRowsMap = {};
+	for (const [locale, sheets] of Object.entries(translations)) {
+		const colHeader = reverseMapping[locale] ?? locale;
+		for (const [sheetName, keys] of Object.entries(sheets)) {
+			if (!sheetRowsMap[sheetName]) sheetRowsMap[sheetName] = /* @__PURE__ */ new Map();
+			for (const [key, value] of Object.entries(keys)) {
+				if (!sheetRowsMap[sheetName].has(key)) sheetRowsMap[sheetName].set(key, { key });
+				sheetRowsMap[sheetName].get(key)[colHeader] = String(value);
+			}
+		}
+	}
+	const result = {};
+	for (const [sheetName, keyMap] of Object.entries(sheetRowsMap)) result[sheetName] = Array.from(keyMap.values());
+	return result;
+}
+/**
+* Creates a {@link TranslationOutputProvider} that writes translation data directly
+* into password-protected or public CryptPad spreadsheets (multi-tab OnlyOffice workbooks)
+* using end-to-end encrypted Netflux WebSockets.
+*/
+function createCryptPadSheetOutputProvider(options = {}) {
+	const url = options.url ?? process.env.CRYPTPAD_URL;
+	if (!url) throw new Error("CryptPad Sheet output provider requires a \"url\" option or CRYPTPAD_URL environment variable.");
+	const password = options.password ?? process.env.CRYPTPAD_PASSWORD;
+	return {
+		kind: "output",
+		providerId: options.providerId ?? "cryptpad-sheet",
+		displayName: options.displayName ?? "CryptPad Sheet Output (E2EE)",
+		capabilities: CRYPTPAD_SHEET_OUTPUT_CAPABILITIES,
+		async writeTranslations(payload) {
+			const client = new CryptPadClient({
+				url,
+				password,
+				timeoutMs: options.timeoutMs
+			});
+			const effectiveMapping = options.localeMapping ?? payload.localeMapping ?? {};
+			const sheetRowsMap = convertTranslationsToSheetRows(payload.translations, effectiveMapping);
+			const updatedSheets = [];
+			let totalUpdatedCells = 0;
+			for (const [sheetName, rows] of Object.entries(sheetRowsMap)) {
+				const count = await client.writeSheetRows(sheetName, rows, { override: options.override ?? false });
+				updatedSheets.push(sheetName);
+				totalUpdatedCells += count;
+			}
+			return {
+				wroteFiles: [url],
+				metadata: {
+					provider: "cryptpad-sheet",
+					url,
+					updatedSheets,
+					totalUpdatedCells
 				}
 			};
 		}
@@ -52242,6 +52529,148 @@ function resolveSyncPlan(input, policy) {
 	};
 }
 //#endregion
+//#region src/providers/cryptpad/sheetSyncProvider.ts
+const CRYPTPAD_SHEET_SYNC_CAPABILITIES = createCapabilitySet({
+	syncBack: true,
+	writeTables: true
+});
+/**
+* Creates a {@link TranslationSyncProvider} that reconciles local translation changes
+* against a live CryptPad spreadsheet (multi-tab OnlyOffice workbook) using three-way
+* diffing and conflict policies, pushing only the resolved diffs back over Netflux.
+*/
+function createCryptPadSheetSyncProvider(options = {}) {
+	const url = options.url ?? process.env.CRYPTPAD_URL;
+	if (!url) throw new Error("CryptPad Sheet sync provider requires a \"url\" option or CRYPTPAD_URL environment variable.");
+	const password = options.password ?? process.env.CRYPTPAD_PASSWORD;
+	return {
+		kind: "sync",
+		providerId: options.providerId ?? "cryptpad-sheet",
+		displayName: options.displayName ?? "CryptPad Sheet Sync (E2EE)",
+		capabilities: CRYPTPAD_SHEET_SYNC_CAPABILITIES,
+		async syncTranslations(payload) {
+			const resolution = resolveSyncPlan({
+				baseTranslations: payload.metadata?.baseTranslations ?? payload.remoteTranslations,
+				localTranslations: payload.localTranslations,
+				remoteTranslations: payload.remoteTranslations
+			}, options.conflictPolicy ?? "manual");
+			if (resolution.appliedLocalChanges === 0) return {
+				changedKeys: 0,
+				skippedKeys: resolution.skippedConflicts,
+				metadata: {
+					reason: "no-local-diff",
+					url,
+					policy: resolution.policy
+				}
+			};
+			const client = new CryptPadClient({
+				url,
+				password,
+				timeoutMs: options.timeoutMs
+			});
+			const effectiveMapping = options.localeMapping ?? {};
+			const sheetRowsMap = convertTranslationsToSheetRows(resolution.mergedTranslations, effectiveMapping);
+			for (const [sheetName, rows] of Object.entries(sheetRowsMap)) await client.writeSheetRows(sheetName, rows, { override: options.override ?? options.conflictPolicy === "local-wins" });
+			return {
+				changedKeys: resolution.appliedLocalChanges,
+				skippedKeys: resolution.skippedConflicts,
+				metadata: {
+					provider: "cryptpad-sheet",
+					url,
+					policy: resolution.policy
+				}
+			};
+		}
+	};
+}
+//#endregion
+//#region src/providers/cryptpad/driveClient.ts
+/**
+* Headless client for inspecting and traversing encrypted CryptPad Drive folders.
+*/
+var CryptPadDriveClient = class {
+	constructor(options) {
+		if (!options.url || typeof options.url !== "string") throw new Error("CryptPadDriveClient requires a valid \"url\" option.");
+		this.parsedUrl = parsePadUrl(options.url);
+		this.password = options.password ?? process.env.CRYPTPAD_PASSWORD;
+		this.passwords = options.passwords ?? {};
+		this.timeoutMs = options.timeoutMs ?? 1e4;
+	}
+	/**
+	* Fetches the drive pad's Netflux history, decrypts all changes, and parses
+	* the hierarchical filesystem tree into a flat list of items.
+	*/
+	async listDriveItems(signal) {
+		const wsUrl = await resolveCryptPadWebsocketUrl(this.parsedUrl.origin, signal);
+		const { channelHex, cryptKey } = deriveCryptPadKeys(this.parsedUrl.seed, this.password);
+		const messages = await fetchChannelHistory(wsUrl, channelHex, cryptKey, {
+			timeoutMs: this.timeoutMs,
+			signal
+		});
+		const items = [];
+		for (const raw of messages) try {
+			const parsed = JSON.parse(raw);
+			if (parsed && typeof parsed === "object") {
+				const fileDict = parsed.files || parsed.data?.files || parsed;
+				if (fileDict && typeof fileDict === "object" && !Array.isArray(fileDict)) for (const [id, val] of Object.entries(fileDict)) {
+					if (!val || typeof val !== "object") continue;
+					const fileObj = val;
+					const title = String(fileObj.title || fileObj.name || id);
+					const href = String(fileObj.href || fileObj.url || "");
+					const typeStr = String(fileObj.type || fileObj.app || (href.includes("/sheet/") ? "sheet" : "file"));
+					const type = typeStr.includes("sheet") ? "sheet" : typeStr.includes("folder") ? "folder" : typeStr.includes("pad") ? "pad" : "file";
+					const itemUrl = href.startsWith("http") ? href : `${this.parsedUrl.origin}${href.startsWith("/") ? "" : "/"}${href}`;
+					const password = fileObj.password ?? this.passwords[itemUrl] ?? this.passwords[title] ?? this.password;
+					items.push({
+						id,
+						title,
+						type,
+						url: itemUrl,
+						password,
+						channel: typeof fileObj.channel === "string" ? fileObj.channel : void 0,
+						path: title,
+						ctime: typeof fileObj.ctime === "number" ? fileObj.ctime : void 0,
+						mtime: typeof fileObj.mtime === "number" ? fileObj.mtime : void 0
+					});
+				}
+				if (Array.isArray(parsed)) for (const entry of parsed) {
+					if (!entry || typeof entry !== "object") continue;
+					const fileObj = entry;
+					const title = String(fileObj.title || fileObj.name || "untitled");
+					const href = String(fileObj.href || fileObj.url || "");
+					const typeStr = String(fileObj.type || fileObj.app || (href.includes("/sheet/") ? "sheet" : "file"));
+					const type = typeStr.includes("sheet") ? "sheet" : typeStr.includes("folder") ? "folder" : typeStr.includes("pad") ? "pad" : "file";
+					const itemUrl = href.startsWith("http") ? href : `${this.parsedUrl.origin}${href.startsWith("/") ? "" : "/"}${href}`;
+					const password = fileObj.password ?? this.passwords[itemUrl] ?? this.passwords[title] ?? this.password;
+					items.push({
+						id: String(fileObj.id || title),
+						title,
+						type,
+						url: itemUrl,
+						password,
+						channel: typeof fileObj.channel === "string" ? fileObj.channel : void 0,
+						path: title
+					});
+				}
+			}
+		} catch {}
+		const seen = /* @__PURE__ */ new Set();
+		const deduplicated = [];
+		for (const item of items) if (item.url && !seen.has(item.url)) {
+			seen.add(item.url);
+			deduplicated.push(item);
+		}
+		return deduplicated;
+	}
+	/**
+	* Filters and returns only spreadsheets found within the drive folder.
+	*/
+	async listSheets(signal) {
+		return (await this.listDriveItems(signal)).filter((item) => item.type === "sheet" || item.url.includes("/sheet/"));
+	}
+};
+createCapabilitySet({ discoverByFolder: true });
+//#endregion
 //#region src/providers/cryptpad/fullProvider.ts
 const CRYPTPAD_WORKSPACE_OUTPUT_CAPABILITIES = createCapabilitySet({ writeTables: true });
 const CRYPTPAD_WORKSPACE_SYNC_CAPABILITIES = createCapabilitySet({
@@ -52388,6 +52817,9 @@ function createCryptPadWorkspaceSyncProvider(options, depsOverrides = {}) {
 }
 //#endregion
 //#region src/providers/cryptpad/assetProvider.ts
+/**
+* Options for configuring a CryptPad asset synchronization provider.
+*/
 const CRYPTPAD_ASSET_SYNC_CAPABILITIES = createCapabilitySet({
 	assetSync: true,
 	discoverByFolder: true
@@ -52473,7 +52905,16 @@ function createCryptPadAssetSyncProvider(options, depsOverrides = {}) {
 		displayName: options.displayName ?? "CryptPad Asset Sync",
 		capabilities: CRYPTPAD_ASSET_SYNC_CAPABILITIES,
 		async syncAssets(request) {
-			const manifest = await deps.readManifest(options.manifestPath);
+			let manifest = [];
+			if (options.manifestPath) manifest = await deps.readManifest(options.manifestPath);
+			else if (options.driveUrl) manifest = (await new CryptPadDriveClient({
+				url: options.driveUrl,
+				password: options.password
+			}).listDriveItems(request.signal)).filter((item) => item.type !== "folder" && !item.url.includes("/sheet/")).map((item) => ({
+				assetId: item.id || item.title,
+				relativePath: item.path || item.title,
+				sourceUrl: item.url
+			}));
 			const downloaded = [];
 			const updated = [];
 			const skipped = [];
@@ -52706,6 +53147,16 @@ function createInputProvider(providerId, options) {
 function createOutputProvider(providerId, options) {
 	switch (providerId) {
 		case "google-sheets": return createGoogleSheetsOutputProvider(options);
+		case "cryptpad-sheet":
+		case "cryptpad": return createCryptPadSheetOutputProvider({
+			url: typeof options.url === "string" ? options.url : void 0,
+			password: typeof options.password === "string" ? options.password : void 0,
+			override: options.override === true,
+			localeMapping: typeof options.localeMapping === "object" && options.localeMapping !== null ? options.localeMapping : void 0,
+			providerId: typeof options.providerId === "string" ? options.providerId : void 0,
+			displayName: typeof options.displayName === "string" ? options.displayName : void 0,
+			timeoutMs: typeof options.timeoutMs === "number" ? options.timeoutMs : void 0
+		});
 		case "cryptpad-workspace":
 			if (typeof options.filePath !== "string" || options.filePath.trim().length === 0) throw new Error("cryptpad-workspace output provider requires a non-empty \"filePath\" option.");
 			return createCryptPadWorkspaceOutputProvider({
@@ -52721,6 +53172,17 @@ function createOutputProvider(providerId, options) {
 function createSyncProvider(providerId, options) {
 	switch (providerId) {
 		case "google-sheets": return createGoogleSheetsSyncProvider(options);
+		case "cryptpad-sheet":
+		case "cryptpad": return createCryptPadSheetSyncProvider({
+			url: typeof options.url === "string" ? options.url : void 0,
+			password: typeof options.password === "string" ? options.password : void 0,
+			override: options.override === true,
+			conflictPolicy: options.conflictPolicy === "remote-wins" || options.conflictPolicy === "local-wins" || options.conflictPolicy === "manual" ? options.conflictPolicy : void 0,
+			localeMapping: typeof options.localeMapping === "object" && options.localeMapping !== null ? options.localeMapping : void 0,
+			providerId: typeof options.providerId === "string" ? options.providerId : void 0,
+			displayName: typeof options.displayName === "string" ? options.displayName : void 0,
+			timeoutMs: typeof options.timeoutMs === "number" ? options.timeoutMs : void 0
+		});
 		case "cryptpad-workspace":
 			if (typeof options.filePath !== "string" || options.filePath.trim().length === 0) throw new Error("cryptpad-workspace sync provider requires a non-empty \"filePath\" option.");
 			return createCryptPadWorkspaceSyncProvider({
@@ -52736,13 +53198,18 @@ function createSyncProvider(providerId, options) {
 }
 function createAssetSyncProvider(providerId, options) {
 	switch (providerId) {
-		case "cryptpad-assets":
-			if (typeof options.manifestPath !== "string" || options.manifestPath.trim().length === 0) throw new Error("cryptpad-assets sync provider requires a non-empty \"manifestPath\" option.");
+		case "cryptpad-assets": {
+			const hasManifest = typeof options.manifestPath === "string" && options.manifestPath.trim().length > 0;
+			const hasDrive = typeof options.driveUrl === "string" && options.driveUrl.trim().length > 0;
+			if (!hasManifest && !hasDrive) throw new Error("cryptpad-assets sync provider requires a non-empty \"manifestPath\" option.");
 			return createCryptPadAssetSyncProvider({
-				manifestPath: options.manifestPath,
+				manifestPath: typeof options.manifestPath === "string" ? options.manifestPath : void 0,
+				driveUrl: typeof options.driveUrl === "string" ? options.driveUrl : void 0,
+				password: typeof options.password === "string" ? options.password : void 0,
 				providerId: typeof options.providerId === "string" ? options.providerId : void 0,
 				displayName: typeof options.displayName === "string" ? options.displayName : void 0
 			});
+		}
 		default: throw new Error(`Unsupported asset sync provider: "${providerId}"`);
 	}
 }

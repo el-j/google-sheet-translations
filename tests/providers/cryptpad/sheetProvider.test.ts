@@ -13,6 +13,11 @@ import {
   parseCellRef,
   extractOnlyOfficeChannelId,
   convertCellsToSheetRows,
+  convertCellsToMultiSheetRows,
+  groupCellsBySheet,
+  buildCellRef,
+  buildOnlyOfficeChangePayload,
+  parseOnlyOfficeChanges,
 } from '../../../src/providers/cryptpad/sheetParser';
 import {
   createCryptPadSheetInputProvider,
@@ -159,6 +164,64 @@ describe('cryptpad sheet coordinate and cell parser', () => {
       { key: 'btn.submit', en: 'Submit', de: 'Absenden' },
     ]);
   });
+
+  it('builds cell references with and without sheet names', () => {
+    expect(buildCellRef(undefined, 'A', 1)).toBe('A1');
+    expect(buildCellRef(undefined, 0, 1)).toBe('A1');
+    expect(buildCellRef('Sheet1', 'B', 2)).toBe('Sheet1!B2');
+    expect(buildCellRef('auth', 2, 5)).toBe('auth!C5');
+  });
+
+  it('groups cells by sheet tab name', () => {
+    const cells = {
+      'Sheet1!A1': 'key',
+      'Sheet1!B1': 'en',
+      'common!A1': 'key',
+      'common!B1': 'de',
+      A2: 'default.key',
+    };
+
+    const grouped = groupCellsBySheet(cells);
+    expect(Object.keys(grouped).sort()).toEqual(['Sheet1', 'common']);
+    expect(grouped.common).toEqual({ A1: 'key', B1: 'de' });
+    expect(grouped.Sheet1).toEqual({ A1: 'key', B1: 'en', A2: 'default.key' });
+  });
+
+  it('converts cells to multi-sheet rows', () => {
+    const cells = {
+      'common!A1': 'key',
+      'common!B1': 'en',
+      'common!A2': 'app.title',
+      'common!B2': 'My App',
+      'auth!A1': 'key',
+      'auth!B1': 'en',
+      'auth!A2': 'login.btn',
+      'auth!B2': 'Sign In',
+    };
+
+    const multi = convertCellsToMultiSheetRows(cells);
+    expect(Object.keys(multi).sort()).toEqual(['auth', 'common']);
+    expect(multi.common).toEqual([{ key: 'app.title', en: 'My App' }]);
+    expect(multi.auth).toEqual([{ key: 'login.btn', en: 'Sign In' }]);
+  });
+
+  it('builds OnlyOffice changesets and parses them back', () => {
+    const updates = [
+      { sheet: 'common', col: 'A', row: 1, value: 'key' },
+      { sheet: 'common', col: 'B', row: 1, value: 'en' },
+      { sheet: 'common', col: 'A', row: 2, value: 'welcome' },
+      { sheet: 'common', col: 'B', row: 2, value: 'Hello World' },
+    ];
+
+    const jsonPayload = buildOnlyOfficeChangePayload(updates);
+    expect(jsonPayload).toContain('asc_1;');
+
+    const parsedCells = parseOnlyOfficeChanges([jsonPayload]);
+    expect(parsedCells['common!A1']).toBe('key');
+    expect(parsedCells['common!B1']).toBe('en');
+    expect(parsedCells['common!A2']).toBe('welcome');
+    expect(parsedCells['common!B2']).toBe('Hello World');
+  });
 });
 
 describe('cryptpad sheet input provider', () => {
@@ -195,6 +258,36 @@ describe('cryptpad sheet input provider', () => {
     expect(result.tables[0].tableName).toBe('i18n');
     expect(result.tables[0].rows).toEqual([{ key: 'greeting', en: 'Hello' }]);
     expect(result.tables[0].metadata.provider).toBe('cryptpad-sheet');
+  });
+
+  it('reads multi-sheet tabs separately', async () => {
+    const mockFetchSheetData = vi.fn().mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/',
+      cells: {},
+      rows: [],
+      sheetNames: ['common', 'auth'],
+      sheets: {
+        common: { cells: {}, rows: [{ key: 'app.title', en: 'App' }] },
+        auth: { cells: {}, rows: [{ key: 'login', en: 'Log in' }] },
+      },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'chan123' },
+    });
+
+    vi.spyOn(CryptPadClient.prototype, 'fetchSheetData').mockImplementation(mockFetchSheetData);
+
+    const provider = createCryptPadSheetInputProvider({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/',
+      password: 'test-test',
+      tableName: 'common',
+    });
+
+    // Request both tabs
+    const result = await provider.readTables({ tableNames: ['common', 'auth'] });
+    expect(result.tables).toHaveLength(2);
+    expect(result.tables[0].tableName).toBe('common');
+    expect(result.tables[0].rows).toEqual([{ key: 'app.title', en: 'App' }]);
+    expect(result.tables[1].tableName).toBe('auth');
+    expect(result.tables[1].rows).toEqual([{ key: 'login', en: 'Log in' }]);
   });
 
   it('CryptPadClient throws if password is required but not provided', () => {

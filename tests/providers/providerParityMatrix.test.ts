@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createCryptPadCsvInputProvider,
+  createCryptPadSheetInputProvider,
+  createCryptPadSheetOutputProvider,
+  createCryptPadSheetSyncProvider,
+  createCryptPadDriveCatalogProvider,
   createCryptPadWorkspaceOutputProvider,
   createCryptPadWorkspaceSyncProvider,
   createCryptPadAssetSyncProvider,
@@ -81,6 +85,37 @@ describe('provider parity matrix', () => {
       assertOperationCapabilities(
         catalogProvider.providerId,
         catalogProvider.capabilities,
+        'discover-sources',
+      ),
+    ).not.toThrow();
+
+    // Live E2EE CryptPad Sheet & Drive providers
+    const sheetInput = createCryptPadSheetInputProvider({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+    });
+    const sheetOutput = createCryptPadSheetOutputProvider({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+    });
+    const sheetSync = createCryptPadSheetSyncProvider({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+    });
+    const driveCatalog = createCryptPadDriveCatalogProvider({
+      driveUrl: 'https://cryptpad.fr/drive/#/2/drive/edit/seed/p/',
+    });
+
+    expect(() =>
+      assertOperationCapabilities(sheetInput.providerId, sheetInput.capabilities, 'read-input'),
+    ).not.toThrow();
+    expect(() =>
+      assertOperationCapabilities(sheetOutput.providerId, sheetOutput.capabilities, 'write-output'),
+    ).not.toThrow();
+    expect(() =>
+      assertOperationCapabilities(sheetSync.providerId, sheetSync.capabilities, 'sync-back'),
+    ).not.toThrow();
+    expect(() =>
+      assertOperationCapabilities(
+        driveCatalog.providerId,
+        driveCatalog.capabilities,
         'discover-sources',
       ),
     ).not.toThrow();

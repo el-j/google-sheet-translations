@@ -1,4 +1,5 @@
 import type {
+  CanonicalTableInput,
   TranslationInputProvider,
   TranslationInputRequest,
   TranslationInputResult,
@@ -98,24 +99,54 @@ export function createCryptPadSheetInputProvider(
           });
 
           const sheetData = await client.fetchSheetData(request.signal);
+          const sourceTables: CanonicalTableInput[] = [];
 
-          return {
-            tableId: source.tableId ?? url,
-            tableName: source.tableName,
-            rows: sheetData.rows,
-            sourcePath: url,
-            metadata: {
-              provider: 'cryptpad-sheet',
-              channelId: sheetData.metadata.channelId,
-              rtChannelId: sheetData.metadata.rtChannelId,
-              cellCount: Object.keys(sheetData.cells).length,
-            },
-          };
+          // If the document has multiple named tabs
+          if (Array.isArray(sheetData.sheetNames) && sheetData.sheetNames.length > 1) {
+            for (const tabName of sheetData.sheetNames) {
+              if (
+                requested.size === 0 ||
+                requested.has(tabName) ||
+                requested.has(source.tableName)
+              ) {
+                sourceTables.push({
+                  tableId: `${source.tableId ?? url}#${tabName}`,
+                  tableName: tabName,
+                  rows: sheetData.sheets[tabName]?.rows ?? [],
+                  sourcePath: url,
+                  metadata: {
+                    provider: 'cryptpad-sheet',
+                    channelId: sheetData.metadata.channelId,
+                    rtChannelId: sheetData.metadata.rtChannelId,
+                    sheetTab: tabName,
+                  },
+                });
+              }
+            }
+          }
+
+          // Fallback if single tab or no specific sub-tabs matched
+          if (sourceTables.length === 0) {
+            sourceTables.push({
+              tableId: source.tableId ?? url,
+              tableName: source.tableName,
+              rows: sheetData.rows,
+              sourcePath: url,
+              metadata: {
+                provider: 'cryptpad-sheet',
+                channelId: sheetData.metadata.channelId,
+                rtChannelId: sheetData.metadata.rtChannelId,
+                cellCount: Object.keys(sheetData.cells).length,
+              },
+            });
+          }
+
+          return sourceTables;
         }),
       );
 
       return {
-        tables,
+        tables: tables.flat(),
         metadata: {
           provider: 'cryptpad-sheet',
           sourceCount: selectedSources.length,

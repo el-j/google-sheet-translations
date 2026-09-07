@@ -1,4 +1,9 @@
-import { decryptCryptPadPayload } from './crypto';
+import { decryptCryptPadPayload, encryptCryptPadPayload } from './crypto';
+
+export interface NetfluxBroadcastOptions {
+  timeoutMs?: number;
+  signal?: AbortSignal;
+}
 
 export interface NetfluxHistoryOptions {
   timeoutMs?: number;
@@ -159,6 +164,97 @@ export function fetchChannelHistory(
     ws.onerror = (err) => {
       cleanup();
       reject(new Error(`CryptPad WebSocket error: ${String(err)}`));
+    };
+  });
+}
+
+/**
+ * Connects to the CryptPad Netflux WebSocket server, joins a channel,
+ * encrypts the given message with TweetNaCl, and broadcasts it to all peers
+ * in the channel (including historyKeeper).
+ */
+export function broadcastChannelMessage(
+  wsUrl: string,
+  channelHex: string,
+  cryptKey: Uint8Array,
+  message: string,
+  options: NetfluxBroadcastOptions = {},
+): Promise<void> {
+  const { timeoutMs = 8000, signal } = options;
+
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      return reject(new Error('Operation aborted'));
+    }
+
+    const ws = new WebSocket(wsUrl);
+    let seq = 1;
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    let sent = false;
+
+    const cleanup = () => {
+      if (timeout) clearTimeout(timeout);
+      try {
+        ws.close();
+      } catch {
+        // Ignore
+      }
+    };
+
+    timeout = setTimeout(() => {
+      cleanup();
+      if (sent) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            `Timeout after ${timeoutMs}ms broadcasting message to CryptPad channel "${channelHex}".`,
+          ),
+        );
+      }
+    }, timeoutMs);
+
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        cleanup();
+        reject(new Error('Operation aborted'));
+      });
+    }
+
+    ws.onopen = () => {
+      // Send Netflux JOIN
+      ws.send(JSON.stringify([seq++, 'JOIN', channelHex]));
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const raw = typeof event.data === 'string' ? event.data : event.data.toString();
+        const msg = JSON.parse(raw);
+        if (!Array.isArray(msg)) return;
+
+        const [, peerId, cmd] = msg;
+
+        // When JOIN is acknowledged by history keeper or channel peer
+        if (cmd === 'JOIN' && typeof peerId === 'string' && !sent) {
+          sent = true;
+          const encrypted = encryptCryptPadPayload(message, cryptKey);
+          // Broadcast to channel
+          ws.send(JSON.stringify([seq++, 'MSG', channelHex, encrypted]));
+
+          // Brief delay to ensure frame is flushed to socket before closing
+          setTimeout(() => {
+            cleanup();
+            resolve();
+          }, 350);
+        }
+      } catch {
+        // Ignore
+      }
+    };
+
+    ws.onerror = (err) => {
+      cleanup();
+      reject(new Error(`CryptPad WebSocket broadcast error: ${String(err)}`));
     };
   });
 }

@@ -100,6 +100,7 @@ export default defineConfig({
             { text: 'What is New in v3?', link: '/guide/v3-overview' },
             { text: 'Migrating from v2 to v3', link: '/guide/provider-migration-v3' },
             { text: 'Non-Google Providers (CryptPad)', link: '/guide/non-google-providers' },
+            { text: 'CryptPad Full Sync & Drive', link: '/guide/cryptpad-full-sync' },
             { text: 'Provider Runtime Architecture', link: '/guide/provider-runtime' },
             { text: 'Full Sync & Conflict Policies', link: '/guide/full-sync-operations-v3' },
           ],

@@ -6,11 +6,15 @@ import {
 import {
   createCryptPadCsvInputProvider,
   createCryptPadSheetInputProvider,
+  createCryptPadSheetOutputProvider,
+  createCryptPadSheetSyncProvider,
   createCryptPadWorkspaceOutputProvider,
   createCryptPadWorkspaceSyncProvider,
   createCryptPadAssetSyncProvider,
   type CryptPadCsvInputProviderOptions,
   type CryptPadSheetInputProviderOptions,
+  type CryptPadSheetOutputProviderOptions,
+  type CryptPadSheetSyncProviderOptions,
   type CryptPadSheetSource,
   type CryptPadWorkspaceProviderOptions,
   type CryptPadCsvSource,
@@ -23,6 +27,7 @@ import type {
 } from './contracts';
 import type { AssetSyncProvider } from './assetContracts';
 import type { ProviderRuntimeConfig } from './config';
+import type { SyncConflictPolicy } from './syncEngine';
 
 /**
  * Set of instantiated providers resolved from a {@link ProviderRuntimeConfig}.
@@ -95,6 +100,23 @@ function createOutputProvider(
   switch (providerId) {
     case 'google-sheets':
       return createGoogleSheetsOutputProvider(options);
+    case 'cryptpad-sheet':
+    case 'cryptpad': {
+      const typedOptions: CryptPadSheetOutputProviderOptions = {
+        url: typeof options.url === 'string' ? options.url : undefined,
+        password: typeof options.password === 'string' ? options.password : undefined,
+        override: options.override === true,
+        localeMapping:
+          typeof options.localeMapping === 'object' && options.localeMapping !== null
+            ? (options.localeMapping as Record<string, string>)
+            : undefined,
+        providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
+        displayName: typeof options.displayName === 'string' ? options.displayName : undefined,
+        timeoutMs: typeof options.timeoutMs === 'number' ? options.timeoutMs : undefined,
+      };
+
+      return createCryptPadSheetOutputProvider(typedOptions);
+    }
     case 'cryptpad-workspace': {
       if (typeof options.filePath !== 'string' || options.filePath.trim().length === 0) {
         throw new Error(
@@ -125,6 +147,29 @@ function createSyncProvider(
   switch (providerId) {
     case 'google-sheets':
       return createGoogleSheetsSyncProvider(options);
+    case 'cryptpad-sheet':
+    case 'cryptpad': {
+      const typedOptions: CryptPadSheetSyncProviderOptions = {
+        url: typeof options.url === 'string' ? options.url : undefined,
+        password: typeof options.password === 'string' ? options.password : undefined,
+        override: options.override === true,
+        conflictPolicy:
+          options.conflictPolicy === 'remote-wins' ||
+          options.conflictPolicy === 'local-wins' ||
+          options.conflictPolicy === 'manual'
+            ? (options.conflictPolicy as SyncConflictPolicy)
+            : undefined,
+        localeMapping:
+          typeof options.localeMapping === 'object' && options.localeMapping !== null
+            ? (options.localeMapping as Record<string, string>)
+            : undefined,
+        providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
+        displayName: typeof options.displayName === 'string' ? options.displayName : undefined,
+        timeoutMs: typeof options.timeoutMs === 'number' ? options.timeoutMs : undefined,
+      };
+
+      return createCryptPadSheetSyncProvider(typedOptions);
+    }
     case 'cryptpad-workspace': {
       if (typeof options.filePath !== 'string' || options.filePath.trim().length === 0) {
         throw new Error('cryptpad-workspace sync provider requires a non-empty "filePath" option.');
@@ -158,14 +203,19 @@ function createAssetSyncProvider(
 ): AssetSyncProvider {
   switch (providerId) {
     case 'cryptpad-assets': {
-      if (typeof options.manifestPath !== 'string' || options.manifestPath.trim().length === 0) {
+      const hasManifest =
+        typeof options.manifestPath === 'string' && options.manifestPath.trim().length > 0;
+      const hasDrive = typeof options.driveUrl === 'string' && options.driveUrl.trim().length > 0;
+      if (!hasManifest && !hasDrive) {
         throw new Error(
           'cryptpad-assets sync provider requires a non-empty "manifestPath" option.',
         );
       }
 
       const typedOptions: CryptPadAssetSyncProviderOptions = {
-        manifestPath: options.manifestPath,
+        manifestPath: typeof options.manifestPath === 'string' ? options.manifestPath : undefined,
+        driveUrl: typeof options.driveUrl === 'string' ? options.driveUrl : undefined,
+        password: typeof options.password === 'string' ? options.password : undefined,
         providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
         displayName: typeof options.displayName === 'string' ? options.displayName : undefined,
       };

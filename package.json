@@ -19,7 +19,8 @@
   "bin": {
     "gst-setup-wif": "dist-cli/setup-wif.mjs",
     "gst-run-provider": "dist-cli/run-provider.mjs",
-    "gst-migrate-v3": "dist-cli/migrate-v3.mjs"
+    "gst-migrate-v3": "dist-cli/migrate-v3.mjs",
+    "gst-cryptpad": "dist-cli/cryptpad.mjs"
   },
   "files": [
     "dist",

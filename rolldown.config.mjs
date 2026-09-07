@@ -54,6 +54,16 @@ const cliConfigs = [
     platform: 'node',
     external: isExternal,
   },
+  {
+    input: 'src/setup/cryptpadCli.ts',
+    output: {
+      file: 'dist-cli/cryptpad.mjs',
+      format: 'esm',
+      banner: '#!/usr/bin/env node',
+    },
+    platform: 'node',
+    external: isExternal,
+  },
 ];
 
 const actionConfig = {

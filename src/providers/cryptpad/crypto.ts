@@ -153,3 +153,14 @@ export function decryptCryptPadPayload(payload: string, cryptKey: Uint8Array): s
 
   return null;
 }
+
+/**
+ * Encrypts a plaintext message payload using TweetNaCl secretbox (XSalsa20-Poly1305).
+ * Formats output as `base64(nonce)|base64(ciphertext)`.
+ */
+export function encryptCryptPadPayload(plaintext: string, cryptKey: Uint8Array): string {
+  const nonce = nacl.randomBytes(24);
+  const msgBytes = decodeUTF8(plaintext);
+  const cipher = nacl.secretbox(msgBytes, nonce, cryptKey);
+  return `${b64Encode(nonce)}|${b64Encode(cipher)}`;
+}

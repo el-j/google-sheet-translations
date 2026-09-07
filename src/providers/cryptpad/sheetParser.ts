@@ -115,10 +115,11 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
               const strBuf = buf.subarray(i + 5, i + 5 + strLen);
               const str = strBuf.toString('utf16le');
 
-              // Case A: explicit cell coordinate reference (e.g. Sheet1!A1)
-              const cellMatch = str.match(/^(?:Sheet\d+!)?([A-Z]+)(\d+)$/);
+              // Case A: explicit cell coordinate reference (e.g. Sheet1!A1, auth!B2)
+              const cellMatch = str.match(/^(?:([^!]+)!)?([A-Z]+)(\d+)$/);
               if (cellMatch) {
-                const cellRef = `${cellMatch[1]}${cellMatch[2]}`;
+                const sheetPrefix = cellMatch[1] ? `${cellMatch[1]}!` : '';
+                const cellRef = `${sheetPrefix}${cellMatch[2]}${cellMatch[3]}`;
                 // Look forward within next 30 bytes for the text value
                 const searchStart = i + 5 + strLen;
                 for (let j = searchStart; j < Math.min(searchStart + 30, buf.length - 5); j++) {
@@ -219,4 +220,114 @@ export function convertCellsToSheetRows(cells: CryptPadSheetGrid): SheetRow[] {
   }
 
   return resultRows;
+}
+
+/**
+ * Builds a cell reference string such as "A1" or "Sheet1!B2".
+ */
+export function buildCellRef(
+  sheetName: string | undefined,
+  col: string | number,
+  row: number,
+): string {
+  const colLetter = typeof col === 'number' ? colIndexToLetter(col) : col.toUpperCase();
+  return sheetName ? `${sheetName}!${colLetter}${row}` : `${colLetter}${row}`;
+}
+
+/**
+ * Groups a flat grid of cell coordinates by sheet tab name.
+ * Cells without an explicit sheet prefix are assigned to `defaultSheet` (defaults to 'Sheet1').
+ */
+export function groupCellsBySheet(
+  cells: CryptPadSheetGrid,
+  defaultSheet = 'Sheet1',
+): Record<string, CryptPadSheetGrid> {
+  const result: Record<string, CryptPadSheetGrid> = {};
+
+  for (const [cellRef, val] of Object.entries(cells)) {
+    const parsed = parseCellRef(cellRef);
+    if (!parsed) continue;
+
+    const sheetName =
+      parsed.sheet && parsed.sheet.trim().length > 0 ? parsed.sheet.trim() : defaultSheet;
+    if (!result[sheetName]) {
+      result[sheetName] = {};
+    }
+
+    const flatRef = `${parsed.col}${parsed.row}`;
+    result[sheetName][flatRef] = val;
+  }
+
+  // Ensure at least defaultSheet exists if input was non-empty
+  if (Object.keys(result).length === 0 && Object.keys(cells).length > 0) {
+    result[defaultSheet] = { ...cells };
+  }
+
+  return result;
+}
+
+/**
+ * Converts a grid of cell references into a dictionary of SheetRow arrays keyed by sheet tab name.
+ */
+export function convertCellsToMultiSheetRows(
+  cells: CryptPadSheetGrid,
+  defaultSheet = 'Sheet1',
+): Record<string, SheetRow[]> {
+  const grouped = groupCellsBySheet(cells, defaultSheet);
+  const result: Record<string, SheetRow[]> = {};
+
+  for (const [sheetName, sheetGrid] of Object.entries(grouped)) {
+    result[sheetName] = convertCellsToSheetRows(sheetGrid);
+  }
+
+  return result;
+}
+
+export interface OnlyOfficeCellUpdate {
+  sheet?: string;
+  col: string | number;
+  row: number;
+  value: string;
+}
+
+/**
+ * Encodes a single cell update record into OnlyOffice binary format (0x08 prefix + UTF-16LE string).
+ */
+export function encodeOnlyOfficeCellRecord(cellRef: string, value: string): Buffer {
+  const refBuf = Buffer.from(cellRef, 'utf16le');
+  const valBuf = Buffer.from(value, 'utf16le');
+
+  const refHeader = Buffer.alloc(5);
+  refHeader[0] = 0x08;
+  refHeader.writeUInt32LE(refBuf.length, 1);
+
+  const valHeader = Buffer.alloc(5);
+  valHeader[0] = 0x08;
+  valHeader.writeUInt32LE(valBuf.length, 1);
+
+  return Buffer.concat([refHeader, refBuf, valHeader, valBuf]);
+}
+
+/**
+ * Formats a list of cell updates into an OnlyOffice change transaction JSON string.
+ */
+export function buildOnlyOfficeChangePayload(updates: OnlyOfficeCellUpdate[]): string {
+  const records = updates.map((u) => {
+    const colStr = typeof u.col === 'number' ? colIndexToLetter(u.col) : u.col.toUpperCase();
+    const sheetPrefix = u.sheet && u.sheet.trim().length > 0 ? `${u.sheet.trim()}!` : '';
+    const ref = `${sheetPrefix}${colStr}${u.row}`;
+    return encodeOnlyOfficeCellRecord(ref, u.value);
+  });
+
+  const fullPayload = Buffer.concat(records);
+  const base64Data = fullPayload.toString('base64');
+  const changeEntry = `asc_1;${base64Data}`;
+
+  return JSON.stringify({
+    changes: [
+      {
+        change: changeEntry,
+      },
+    ],
+  });
 }
