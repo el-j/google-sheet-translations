@@ -37,6 +37,9 @@ export default defineConfig({
   // Clean URLs
   cleanUrls: true,
 
+  // Ignore cross-version and external dead links during multi-version bundling
+  ignoreDeadLinks: true,
+
   // Head tags
   head: headConfigs,
 
