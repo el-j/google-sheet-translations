@@ -90,7 +90,7 @@
     "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/node": "^26.4.1",
     "@vitest/coverage-v8": "^5.0.0",
-    "conventional-changelog-conventionalcommits": "^8.0.0",
+    "conventional-changelog-conventionalcommits": "^10.4.0",
     "dotenv": "17.4.2",
     "npm-check-updates": "^23.1.0",
     "oxfmt": "^0.66.0",
