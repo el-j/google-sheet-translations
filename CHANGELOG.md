@@ -1,3 +1,9 @@
+## [3.0.0-beta.6](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2026-09-07)
+
+### 🚀 Features
+
+* **cryptpad:** auto-initialize OnlyOffice RT channel headlessly ([603cd66](https://github.com/el-j/google-sheet-translations/commit/603cd66e64e690153dd5d5526ddde07287f7eb36))
+
 ## [3.0.0-beta.5](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2026-09-07)
 
 ### 🚀 Features
