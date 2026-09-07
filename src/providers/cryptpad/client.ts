@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {
   parsePadUrl,
   deriveCryptPadKeys,
@@ -98,6 +99,35 @@ export class CryptPadClient {
   }
 
   /**
+   * Initializes the OnlyOffice RT channel for a brand-new CryptPad sheet that has never
+   * been opened in a browser. Generates a random 32-hex channel ID, broadcasts it as an
+   * encrypted metadata patch on the Netflux channel (the same thing the OnlyOffice browser
+   * client does on first open), and returns the new RT channel ID.
+   *
+   * This removes the requirement to open the sheet in a browser before the CLI can write to it.
+   */
+  async initializeRtChannel(signal?: AbortSignal): Promise<string> {
+    const wsUrl = await this.getWebsocketUrl(signal);
+    const { channelHex, cryptKey } = this.getKeys();
+
+    // Generate a fresh 32-char hex channel ID (same length CryptPad uses)
+    const newRtChannel = crypto.randomBytes(16).toString('hex');
+
+    // Build the metadata patch CryptPad's OnlyOffice client writes on first open.
+    // Format: { content: { channel: "<32hexId>" } }
+    // CryptPad wraps this in an edit-sequence envelope: [1, [[0, 0, jsonStr]]]
+    const innerJson = JSON.stringify({ content: { channel: newRtChannel } });
+    const envelope = JSON.stringify([1, [[0, 0, innerJson]]]);
+
+    await broadcastChannelMessage(wsUrl, channelHex, cryptKey, envelope, {
+      timeoutMs: this.timeoutMs,
+      signal,
+    });
+
+    return newRtChannel;
+  }
+
+  /**
    * Fetches the complete sheet data, including raw cell coordinate mappings,
    * multi-sheet tabs, and structured rows formatted for translation ingestion.
    */
@@ -169,16 +199,25 @@ export class CryptPadClient {
 
   /**
    * Broadcasts cell updates to the OnlyOffice real-time collaboration channel.
+   * If the sheet has never been opened in a browser (RT channel is None), it is
+   * automatically initialized headlessly — no browser required.
    */
   async sendCellUpdates(updates: OnlyOfficeCellUpdate[], signal?: AbortSignal): Promise<void> {
     if (updates.length === 0) return;
 
     const data = await this.fetchSheetData(signal);
-    const rtChannel = data.metadata.rtChannelId;
+    let rtChannel = data.metadata.rtChannelId;
+
     if (!rtChannel) {
-      throw new Error(
-        `CryptPad sheet "${this.parsedUrl.cleanUrl}" does not have an active OnlyOffice RT channel.`,
+      // Sheet was created but never opened in a browser — initialize the RT channel headlessly.
+      console.log(
+        'No OnlyOffice RT channel found. Initializing headlessly (no browser required)...',
       );
+      rtChannel = await this.initializeRtChannel(signal);
+      console.log(`RT channel initialized: ${rtChannel}`);
+
+      // Brief pause to let CryptPad's server register the new channel
+      await new Promise((r) => setTimeout(r, 800));
     }
 
     const wsUrl = await this.getWebsocketUrl(signal);

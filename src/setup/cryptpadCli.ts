@@ -111,7 +111,9 @@ async function main(): Promise<void> {
       console.log(`  App:          ${data.metadata.app}`);
       console.log(`  Mode:         ${data.metadata.mode}`);
       console.log(`  Channel ID:   ${data.metadata.channelId}`);
-      console.log(`  RT Channel:   ${data.metadata.rtChannelId ?? 'None'}`);
+      console.log(
+        `  RT Channel:   ${data.metadata.rtChannelId ?? 'None (will auto-initialize on first push)'}`,
+      );
       console.log(`  Total Cells:  ${Object.keys(data.cells).length}`);
       console.log(`  Sheet Tabs (${data.sheetNames.length}):`);
       for (const name of data.sheetNames) {

@@ -82,7 +82,7 @@ describe('CryptPadClient direct methods', () => {
     expect(fallbackRows).toEqual([{ key: 'def', en: 'Default' }]);
   });
 
-  it('sendCellUpdates throws if rtChannel is missing', async () => {
+  it('sendCellUpdates auto-initializes RT channel if missing (headless, no browser required)', async () => {
     const client = new CryptPadClient({
       url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
       password: 'test',
@@ -97,9 +97,17 @@ describe('CryptPadClient direct methods', () => {
       metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' }, // no rtChannelId
     });
 
-    await expect(
-      client.sendCellUpdates([{ sheet: 'common', col: 'A', row: 1, value: 'test' }]),
-    ).rejects.toThrow('does not have an active OnlyOffice RT channel');
+    // initializeRtChannel should be called and should return a new channel ID
+    const initSpy = vi
+      .spyOn(client, 'initializeRtChannel')
+      .mockResolvedValue('abcdef1234567890abcdef1234567890');
+
+    // broadcastChannelMessage will be called with the new RT channel
+    vi.spyOn(netfluxModule, 'broadcastChannelMessage').mockResolvedValue(undefined);
+
+    await client.sendCellUpdates([{ sheet: 'common', col: 'A', row: 1, value: 'test' }]);
+
+    expect(initSpy).toHaveBeenCalledOnce();
   });
 });
 
