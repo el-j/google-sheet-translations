@@ -37,12 +37,13 @@
     "build": "npm run build:types && npm run build:cjs && npm run build:esm && npm run build:cli",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
-    "prepare": "npm run build",
+    "prepare": "npm run build && (husky || true)",
     "test": "vitest run --coverage",
     "lint": "oxlint src/ --deny-warnings",
     "lint:fix": "oxlint src/ --fix",
     "format": "oxfmt --write src/ tests/",
     "format:check": "oxfmt --check src/ tests/",
+    "fix": "npm run lint:fix && npm run format",
     "dev": "tsc --watch",
     "release": "semantic-release",
     "release:dry-run": "semantic-release --dry-run",
@@ -94,6 +95,8 @@
     "@vitest/coverage-v8": "^5.0.0",
     "conventional-changelog-conventionalcommits": "^10.4.0",
     "dotenv": "17.4.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.0",
     "npm-check-updates": "^23.1.0",
     "oxfmt": "^0.67.0",
     "oxlint": "^1.82.0",
@@ -119,5 +122,14 @@
   },
   "allowScripts": {
     "fsevents@2.3.3": true
+  },
+  "lint-staged": {
+    "src/**/*.{js,ts,mjs}": [
+      "oxlint --fix",
+      "oxfmt --write"
+    ],
+    "tests/**/*.{js,ts,mjs}": [
+      "oxfmt --write"
+    ]
   }
 }
