@@ -1,3 +1,24 @@
+## [3.0.0-beta.4](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2026-09-07)
+
+### 🚀 Features
+
+* **cryptpad:** add headless cryptpad sheet provider and CryptPadClient with password support ([554da3b](https://github.com/el-j/google-sheet-translations/commit/554da3b9a49d36e5e2c2a4553cf9a16d69775b47))
+
+### 🐛 Bug Fixes
+
+* **docs:** add ignoreDeadLinks to prevent cross-version link check failures ([44b188c](https://github.com/el-j/google-sheet-translations/commit/44b188ce82c763e8bc1ce8839b420eaaa7b67b7d))
+
+### 📝 Documentation
+
+* add cryptpad-sheet and CryptPadClient to v3 overview and feature matrix ([93cce88](https://github.com/el-j/google-sheet-translations/commit/93cce88dec8469b0bebd2ceeb3fced76b09013b4))
+* complete CryptPad provider & client documentation and API references ([ed9a3c7](https://github.com/el-j/google-sheet-translations/commit/ed9a3c78dcbf763c4a902adfc2bf80a8d47d8ad8))
+* ensure origin/main and origin/develop are fetched before building bundle ([0047f42](https://github.com/el-j/google-sheet-translations/commit/0047f425eb76657fd275cae6919633b4c43e1220))
+* make bundle builder symmetric across main and develop branches ([239b12a](https://github.com/el-j/google-sheet-translations/commit/239b12a52ad1c155c0aa9da22d195e3157f94ab9))
+* sync symmetric bundle builder to main ([d5620e5](https://github.com/el-j/google-sheet-translations/commit/d5620e5e6585f97b05113c7facde2a91efad088d))
+* **theme:** fix dark mode styling, banner navigation offset, and expand v3 migration & CryptPad docs ([aed153b](https://github.com/el-j/google-sheet-translations/commit/aed153b13647645b431e45514bb3afd1890a72e4))
+* **theme:** sync dark mode, banner layout, and v3 migration docs to main ([18a1ec7](https://github.com/el-j/google-sheet-translations/commit/18a1ec77750673e462ffe24301da2604378d8126))
+* update multi-version switcher, preview bundle, and docs deployment pipeline ([d2c5556](https://github.com/el-j/google-sheet-translations/commit/d2c55567bb7efbb40cd5b9c9855bf98a75537d11))
+
 ## [2.2.0](https://github.com/el-j/google-sheet-translations/compare/v2.1.4...v2.2.0) (2026-08-30)
 
 ### 🚀 Features
