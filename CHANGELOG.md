@@ -1,3 +1,9 @@
+## [3.0.0-beta.7](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2026-09-07)
+
+### 🐛 Bug Fixes
+
+* **ci:** read release tag from git instead of stale package.json in bundle-attach step ([a9e76c5](https://github.com/el-j/google-sheet-translations/commit/a9e76c5620cd5007cc2b468329e149fd96214aee))
+
 ## [3.0.0-beta.6](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2026-09-07)
 
 ### 🚀 Features
