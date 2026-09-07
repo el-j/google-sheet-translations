@@ -122,8 +122,9 @@ jobs:
           git fetch origin develop
           git checkout develop
           git merge main -m "chore(sync): back-merge release v${VERSION} into develop [skip ci]" || {
-            echo "Merge conflict detected during back-merge. Resolving using main changes for release artifacts..."
-            git checkout --theirs CHANGELOG.md package.json package-lock.json 2>/dev/null || true
+            echo "Merge conflict detected during back-merge. Preserving develop dependencies and syncing changelog..."
+            git checkout --ours package.json package-lock.json 2>/dev/null || true
+            git checkout --theirs CHANGELOG.md 2>/dev/null || true
             git add CHANGELOG.md package.json package-lock.json 2>/dev/null || true
             git commit -m "chore(sync): back-merge release v${VERSION} into develop (resolved) [skip ci]" || true
           }
