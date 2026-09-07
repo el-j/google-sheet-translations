@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import { defineConfig } from 'vitepress'
+import { defineConfig, type HeadConfig } from 'vitepress'
 
 const require = createRequire(import.meta.url)
 const pkg = require('../../package.json') as { version: string }
@@ -12,9 +12,23 @@ const stableVersion = process.env.DOCS_STABLE_VERSION || (isBeta ? 'v2.2.0' : `v
 const previewVersion = process.env.DOCS_PREVIEW_VERSION || (isBeta ? `v${pkg.version}` : 'v3.0.0-beta.3')
 const currentVersionLabel = isPreview ? `${previewVersion} (preview)` : `${stableVersion}`
 
+const headConfigs: HeadConfig[] = [
+  ['meta', { name: 'theme-color', content: '#0ea5e9' }],
+  ['meta', { name: 'og:type', content: 'website' }],
+  ['meta', { name: 'og:locale', content: 'en' }],
+  ['meta', { name: 'og:title', content: '@el-j/google-sheet-translations' }],
+  ['meta', { name: 'og:description', content: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Modular provider platform with full bidirectional sync and asset management.' }],
+  ['meta', { name: 'og:site_name', content: '@el-j/google-sheet-translations' }],
+  ['link', { rel: 'icon', href: `${base}favicon.ico` }],
+]
+
+if (isPreview) {
+  headConfigs.push(['style', {}, ':root { --vp-layout-top-height: 40px; }'])
+}
+
 export default defineConfig({
   title: '@el-j/google-sheet-translations',
-  description: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
+  description: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
 
   // GitHub Pages base path
   base,
@@ -24,21 +38,15 @@ export default defineConfig({
   cleanUrls: true,
 
   // Head tags
-  head: [
-    ['meta', { name: 'theme-color', content: '#0ea5e9' }],
-    ['meta', { name: 'og:type', content: 'website' }],
-    ['meta', { name: 'og:locale', content: 'en' }],
-    ['meta', { name: 'og:title', content: '@el-j/google-sheet-translations' }],
-    ['meta', { name: 'og:description', content: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Drive folder management, image sync, bidirectional sync, auto-translation, and Next.js integration.' }],
-    ['meta', { name: 'og:site_name', content: '@el-j/google-sheet-translations' }],
-    ['link', { rel: 'icon', href: `${base}favicon.ico` }],
-  ],
+  head: headConfigs,
 
   themeConfig: {
     logo: { src: '/logo.svg', width: 24, height: 24 },
 
     nav: [
-      { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+      { text: 'Guide', link: '/guide/getting-started', activeMatch: '^/guide/(getting-started|configuration|introduction)' },
+      { text: 'v3 Platform & Migration', link: '/guide/v3-overview', activeMatch: '^/guide/(v3-overview|provider-migration-v3|non-google-providers|provider-runtime|full-sync-operations-v3)' },
+      { text: 'CryptPad & Providers', link: '/guide/non-google-providers' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
       { text: 'GitHub Action', link: '/guide/github-actions' },
       {
@@ -81,6 +89,16 @@ export default defineConfig({
             { text: 'What is this?', link: '/guide/introduction' },
             { text: 'Getting Started', link: '/guide/getting-started' },
             { text: 'Configuration', link: '/guide/configuration' },
+          ],
+        },
+        {
+          text: 'v3 Platform & Migration',
+          items: [
+            { text: 'What is New in v3?', link: '/guide/v3-overview' },
+            { text: 'Migrating from v2 to v3', link: '/guide/provider-migration-v3' },
+            { text: 'Non-Google Providers (CryptPad)', link: '/guide/non-google-providers' },
+            { text: 'Provider Runtime Architecture', link: '/guide/provider-runtime' },
+            { text: 'Full Sync & Conflict Policies', link: '/guide/full-sync-operations-v3' },
           ],
         },
         {
@@ -147,6 +165,31 @@ export default defineConfig({
             { text: 'WIF Setup', link: '/api/wif-setup' },
           ],
         },
+        {
+          text: 'Provider Platform (v3)',
+          items: [
+            { text: 'Overview', link: '/api/provider-platform' },
+            { text: 'Provider Contracts', link: '/api/provider-contracts' },
+            { text: 'Google Sheets Provider', link: '/api/google-provider' },
+            { text: 'CryptPad Providers', link: '/api/cryptpad-provider' },
+            { text: 'Migrate to v3', link: '/api/migrate-v3' },
+          ],
+        },
+      ],
+      '/v2/': [
+        {
+          text: 'v2 Archive',
+          items: [
+            { text: 'Overview', link: '/v2/' },
+            { text: 'v2 Getting Started', link: '/v2/getting-started' },
+            { text: 'v2 Configuration', link: '/v2/configuration' },
+            { text: 'v2 Public Sheets', link: '/v2/public-sheets' },
+            { text: 'v2 Bidirectional Sync', link: '/v2/bidirectional-sync' },
+            { text: 'v2 Auto-Translation', link: '/v2/auto-translation' },
+            { text: 'v2 GitHub Action', link: '/v2/github-actions' },
+            { text: 'v2 Migration Notes', link: '/v2/migration-notes' },
+          ],
+        },
       ],
     },
 
@@ -160,7 +203,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/el-j/google-sheet-translations/edit/main/website/:path',
+      pattern: `https://github.com/el-j/google-sheet-translations/edit/${isPreview ? 'develop' : 'main'}/website/:path`,
       text: 'Edit this page on GitHub',
     },
 
