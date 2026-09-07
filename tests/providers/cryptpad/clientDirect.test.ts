@@ -109,6 +109,45 @@ describe('CryptPadClient direct methods', () => {
 
     expect(initSpy).toHaveBeenCalledOnce();
   });
+
+  it('uses the progress callback without emitting console output when auto-initializing a missing RT channel', async () => {
+    const onProgress = vi.fn();
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+      onProgress,
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const initSpy = vi
+      .spyOn(client, 'initializeRtChannel')
+      .mockResolvedValue('abcdef1234567890abcdef1234567890');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await client.sendCellUpdates([{ sheet: 'common', col: 'A', row: 1, value: 'test' }]);
+
+    expect(initSpy).toHaveBeenCalledOnce();
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    expect(onProgress).toHaveBeenCalledWith(
+      'No OnlyOffice RT channel found. Initializing headlessly (no browser required)...',
+    );
+    expect(onProgress).toHaveBeenCalledWith(
+      'RT channel initialized: abcdef1234567890abcdef1234567890',
+    );
+    expect(logSpy).not.toHaveBeenCalled();
+    logSpy.mockRestore();
+  });
 });
 
 describe('CryptPadDriveClient direct methods', () => {

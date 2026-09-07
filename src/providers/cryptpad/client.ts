@@ -32,6 +32,8 @@ export interface CryptPadClientOptions {
   websocketUrl?: string;
   /** Optional timeout in milliseconds for history retrieval. Defaults to 10000ms. */
   timeoutMs?: number;
+  /** Optional callback for progress/status messages during headless RT channel setup. */
+  onProgress?: (message: string) => void;
 }
 
 export interface CryptPadSheetResult {
@@ -63,6 +65,7 @@ export class CryptPadClient {
   readonly password?: string;
   readonly websocketUrl?: string;
   readonly timeoutMs: number;
+  readonly onProgress?: (message: string) => void;
   private derivedKeys?: DerivedCryptPadKeys;
 
   constructor(options: CryptPadClientOptions) {
@@ -74,6 +77,7 @@ export class CryptPadClient {
     this.password = options.password ?? process.env.CRYPTPAD_PASSWORD;
     this.websocketUrl = options.websocketUrl;
     this.timeoutMs = options.timeoutMs ?? 10000;
+    this.onProgress = options.onProgress;
 
     if (this.parsedUrl.isPasswordProtected && !this.password) {
       throw new Error(
@@ -210,11 +214,11 @@ export class CryptPadClient {
 
     if (!rtChannel) {
       // Sheet was created but never opened in a browser — initialize the RT channel headlessly.
-      console.log(
+      this.onProgress?.(
         'No OnlyOffice RT channel found. Initializing headlessly (no browser required)...',
       );
       rtChannel = await this.initializeRtChannel(signal);
-      console.log(`RT channel initialized: ${rtChannel}`);
+      this.onProgress?.(`RT channel initialized: ${rtChannel}`);
 
       // Brief pause to let CryptPad's server register the new channel
       await new Promise((r) => setTimeout(r, 800));
