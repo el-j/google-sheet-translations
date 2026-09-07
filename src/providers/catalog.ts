@@ -117,6 +117,13 @@ export function createDefaultProviderCatalog(): ProviderCatalogProvider {
         metadata: { authRequired: true },
       },
       {
+        providerId: 'cryptpad-sheet',
+        sourceId: 'cryptpad-sheet-url',
+        kind: 'table',
+        name: 'CryptPad Sheet (E2EE OnlyOffice)',
+        metadata: { authRequired: false, passwordSupported: true },
+      },
+      {
         providerId: 'cryptpad-csv',
         sourceId: 'cryptpad-csv-url',
         kind: 'table',

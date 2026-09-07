@@ -5,10 +5,13 @@ import {
 } from './google';
 import {
   createCryptPadCsvInputProvider,
+  createCryptPadSheetInputProvider,
   createCryptPadWorkspaceOutputProvider,
   createCryptPadWorkspaceSyncProvider,
   createCryptPadAssetSyncProvider,
   type CryptPadCsvInputProviderOptions,
+  type CryptPadSheetInputProviderOptions,
+  type CryptPadSheetSource,
   type CryptPadWorkspaceProviderOptions,
   type CryptPadCsvSource,
   type CryptPadAssetSyncProviderOptions,
@@ -63,6 +66,22 @@ function createInputProvider(
       };
 
       return createCryptPadCsvInputProvider(typedOptions);
+    }
+    case 'cryptpad-sheet':
+    case 'cryptpad': {
+      const typedOptions: CryptPadSheetInputProviderOptions = {
+        sources: Array.isArray(options.sources)
+          ? (options.sources as CryptPadSheetSource[])
+          : undefined,
+        url: typeof options.url === 'string' ? options.url : undefined,
+        password: typeof options.password === 'string' ? options.password : undefined,
+        tableName: typeof options.tableName === 'string' ? options.tableName : undefined,
+        providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
+        displayName: typeof options.displayName === 'string' ? options.displayName : undefined,
+        timeoutMs: typeof options.timeoutMs === 'number' ? options.timeoutMs : undefined,
+      };
+
+      return createCryptPadSheetInputProvider(typedOptions);
     }
     default:
       throw new Error(`Unsupported input provider: "${providerId}"`);
