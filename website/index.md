@@ -6,17 +6,20 @@ hero:
   text: "Provider-first Translation\nOperations"
   tagline: >
     Build reliable localization pipelines with explicit input, output, and sync providers.
-    Use Google Sheets for full sync workflows and CryptPad CSV for no-auth ingestion.
+    Use Google Sheets for full sync workflows and CryptPad CSV for privacy-first, zero-auth ingestion.
   image:
     src: /logo.svg
     alt: google-sheet-translations
   actions:
     - theme: brand
-      text: Start with v3 Runtime →
-      link: /guide/provider-runtime
+      text: What's New in v3 →
+      link: /guide/v3-overview
     - theme: alt
       text: Migrate from v2
       link: /guide/provider-migration-v3
+    - theme: alt
+      text: CryptPad & Providers
+      link: /guide/non-google-providers
     - theme: alt
       text: GitHub Action
       link: /guide/github-actions
@@ -25,24 +28,29 @@ hero:
       link: /v2/
 
 features:
-  - title: Provider Runtime Architecture (v3)
+  - title: Universal Provider Architecture (v3)
     details: Select input, output, and sync providers explicitly. Capability checks prevent unsupported operations before they can run.
     link: /guide/provider-runtime
     linkText: Learn more
 
-  - title: Migration Command and Transition Path
-    details: Move from legacy action inputs to provider config using gst-migrate-v3, with dry-run mode and optional workflow rewrites.
+  - title: Seamless v2 to v3 Migration
+    details: Move from legacy action inputs to provider config using the gst-migrate-v3 CLI, with dry-run mode, parity checking, and workflow rewrites.
     link: /guide/provider-migration-v3
     linkText: Learn more
 
-  - title: CryptPad CSV Input (v3)
-    details: Pull translation tables from CryptPad CSV exports or public endpoints and process them through the same transformation core.
-    link: /guide/provider-runtime#cryptpad-csv-mvp
+  - title: Privacy-First with CryptPad (v3)
+    details: Pull translation tables from CryptPad CSV exports with zero authentication, sync with 3-way conflict policies, and download remote media assets.
+    link: /guide/non-google-providers
     linkText: Learn more
 
   - title: Google Sheets Full Workflow
     details: Read, transform, write, and sync translation data with mature Google provider adapters and locale-aware processing.
     link: /guide/bidirectional-sync
+    linkText: Learn more
+
+  - title: Extensible Custom Providers
+    details: Implement simple TypeScript contracts for custom backends (Airtable, Notion, CSV, local DB) without vendor lock-in.
+    link: /guide/non-google-providers#building-a-custom-provider
     linkText: Learn more
 
   - title: GitHub Action Automation
@@ -56,13 +64,8 @@ features:
     linkText: Learn more
 
   - title: Public Read Mode (No Auth)
-    details: Ingest from public Google Sheets without service-account credentials for lightweight read-only workflows.
+    details: Ingest from public Google Sheets or CryptPad without service-account credentials for lightweight read-only workflows.
     link: /guide/public-sheets
-    linkText: Learn more
-
-  - title: Extensible Custom Providers
-    details: Implement simple TypeScript contracts for custom backends (Airtable, Notion, CSV, local DB) without vendor lock-in.
-    link: /guide/provider-runtime#implementing-custom-providers
     linkText: Learn more
 
   - title: Type-safe Core and Stable Outputs
@@ -164,10 +167,11 @@ const result = await runProviderPipeline({
 console.log(result.locales);
 ```
 
-See [Provider Runtime (v3)](/guide/provider-runtime) and the [v3 migration guide](/guide/provider-migration-v3).
+See [Provider Runtime (v3)](/guide/provider-runtime), [Non-Google Providers](/guide/non-google-providers), and the [v3 migration guide](/guide/provider-migration-v3).
 
 ## Docs versioning
 
-::: warning Legacy docs still available
-Need the old integration model? Use the [v2 docs archive](/v2/) for legacy setup and workflows. New projects should use v3 provider runtime docs.
+::: warning Seamless Transition to v3
+Migrating from v2? Follow the [Step-by-Step Migration Guide](/guide/provider-migration-v3) or use `npx gst-migrate-v3 --dry-run` to test your setup.
+Need the old v2 reference documentation? The complete [v2 docs archive](/v2/) is permanently preserved.
 :::

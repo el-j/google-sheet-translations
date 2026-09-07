@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useData } from 'vitepress'
 
 const { site } = useData()
@@ -9,16 +9,43 @@ const isPreview = computed(() => {
   }
   return site.value.base.includes('/next/')
 })
+
+const STABLE_URL = 'https://el-j.github.io/google-sheet-translations/'
+
+function goToStable(event: MouseEvent) {
+  event.preventDefault()
+  if (typeof window !== 'undefined') {
+    window.location.assign(STABLE_URL)
+  }
+}
+
+onMounted(() => {
+  if (isPreview.value) {
+    document.documentElement.classList.add('has-preview-banner')
+    document.documentElement.style.setProperty('--vp-layout-top-height', '40px')
+  }
+})
+
+onUnmounted(() => {
+  document.documentElement.classList.remove('has-preview-banner')
+  document.documentElement.style.removeProperty('--vp-layout-top-height')
+})
 </script>
 
 <template>
-  <div v-if="isPreview" class="v3-preview-banner">
+  <div v-if="isPreview" class="v3-preview-banner vp-raw">
     <div class="v3-preview-banner__content">
       <span class="v3-preview-badge">v3-beta Preview</span>
       <span class="v3-preview-text">
         You are browsing the preview documentation for <strong>v3.0 (Beta)</strong>.
       </span>
-      <a href="https://el-j.github.io/google-sheet-translations/" class="v3-preview-link">
+      <a
+        :href="STABLE_URL"
+        target="_self"
+        rel="noreferrer"
+        class="v3-preview-link"
+        @click="goToStable"
+      >
         Switch to Stable (v2.2.0) →
       </a>
     </div>
@@ -27,18 +54,27 @@ const isPreview = computed(() => {
 
 <style scoped>
 .v3-preview-banner {
-  background: linear-gradient(90deg, #1e293b, #0f172a);
-  border-bottom: 1px solid rgba(14, 165, 233, 0.3);
-  padding: 8px 16px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 40px;
+  background: linear-gradient(90deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+  border-bottom: 1px solid rgba(14, 165, 233, 0.35);
+  padding: 0 16px;
   font-size: 13px;
   color: #e2e8f0;
-  text-align: center;
-  position: relative;
-  z-index: 50;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .v3-preview-banner__content {
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -64,9 +100,10 @@ const isPreview = computed(() => {
 
 .v3-preview-link {
   color: #38bdf8;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
+  cursor: pointer;
   transition: color 0.15s ease;
 }
 

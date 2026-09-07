@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module'
-import { defineConfig } from 'vitepress'
+import { defineConfig, type HeadConfig } from 'vitepress'
 
 const require = createRequire(import.meta.url)
 const pkg = require('../../package.json') as { version: string }
@@ -9,12 +9,26 @@ const outDir = process.env.DOCS_OUT_DIR || undefined
 const isPreview = base.includes('/next/') || process.env.DOCS_ENV === 'preview'
 const isBeta = pkg.version.includes('beta') || pkg.version.includes('alpha') || pkg.version.includes('rc')
 const stableVersion = process.env.DOCS_STABLE_VERSION || (isBeta ? 'v2.2.0' : `v${pkg.version}`)
-const previewVersion = process.env.DOCS_PREVIEW_VERSION || (isBeta ? `v${pkg.version}` : 'v3.0.0-beta.2')
+const previewVersion = process.env.DOCS_PREVIEW_VERSION || (isBeta ? `v${pkg.version}` : 'v3.0.0-beta.3')
 const currentVersionLabel = isPreview ? `${previewVersion} (preview)` : `${stableVersion}`
+
+const headConfigs: HeadConfig[] = [
+  ['meta', { name: 'theme-color', content: '#0ea5e9' }],
+  ['meta', { name: 'og:type', content: 'website' }],
+  ['meta', { name: 'og:locale', content: 'en' }],
+  ['meta', { name: 'og:title', content: '@el-j/google-sheet-translations' }],
+  ['meta', { name: 'og:description', content: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Modular provider platform with full bidirectional sync and asset management.' }],
+  ['meta', { name: 'og:site_name', content: '@el-j/google-sheet-translations' }],
+  ['link', { rel: 'icon', href: `${base}favicon.ico` }],
+]
+
+if (isPreview) {
+  headConfigs.push(['style', {}, ':root { --vp-layout-top-height: 40px; }'])
+}
 
 export default defineConfig({
   title: '@el-j/google-sheet-translations',
-  description: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
+  description: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
 
   // GitHub Pages base path
   base,
@@ -24,24 +38,16 @@ export default defineConfig({
   cleanUrls: true,
 
   // Head tags
-  head: [
-    ['meta', { name: 'theme-color', content: '#0ea5e9' }],
-    ['meta', { name: 'og:type', content: 'website' }],
-    ['meta', { name: 'og:locale', content: 'en' }],
-    ['meta', { name: 'og:title', content: '@el-j/google-sheet-translations' }],
-    ['meta', { name: 'og:description', content: 'Fetch, sync and manage translations from Google Spreadsheets with TypeScript. Drive folder management, image sync, bidirectional sync, auto-translation, and Next.js integration.' }],
-    ['meta', { name: 'og:site_name', content: '@el-j/google-sheet-translations' }],
-    ['link', { rel: 'icon', href: `${base}favicon.ico` }],
-  ],
+  head: headConfigs,
 
   themeConfig: {
     logo: { src: '/logo.svg', width: 24, height: 24 },
 
     nav: [
-      { text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+      { text: 'Guide', link: '/guide/getting-started', activeMatch: '^/guide/(getting-started|configuration|introduction)' },
+      { text: 'v3 Platform & Migration', link: '/guide/v3-overview', activeMatch: '^/guide/(v3-overview|provider-migration-v3|non-google-providers|provider-runtime|full-sync-operations-v3)' },
+      { text: 'CryptPad & Providers', link: '/guide/non-google-providers' },
       { text: 'API', link: '/api/', activeMatch: '/api/' },
-      { text: 'Provider Runtime', link: '/guide/provider-runtime' },
-      { text: 'v3 Migration', link: '/guide/provider-migration-v3' },
       { text: 'GitHub Action', link: '/guide/github-actions' },
       {
         text: currentVersionLabel,
@@ -86,6 +92,16 @@ export default defineConfig({
           ],
         },
         {
+          text: 'v3 Platform & Migration',
+          items: [
+            { text: 'What is New in v3?', link: '/guide/v3-overview' },
+            { text: 'Migrating from v2 to v3', link: '/guide/provider-migration-v3' },
+            { text: 'Non-Google Providers (CryptPad)', link: '/guide/non-google-providers' },
+            { text: 'Provider Runtime Architecture', link: '/guide/provider-runtime' },
+            { text: 'Full Sync & Conflict Policies', link: '/guide/full-sync-operations-v3' },
+          ],
+        },
+        {
           text: 'Setup & Auth',
           items: [
             { text: 'Service Account Setup', link: '/guide/service-account-setup' },
@@ -98,9 +114,6 @@ export default defineConfig({
           text: 'Guides & Integrations',
           items: [
             { text: 'GitHub Actions', link: '/guide/github-actions' },
-            { text: 'Provider Runtime (v3)', link: '/guide/provider-runtime' },
-            { text: 'Migration to v3', link: '/guide/provider-migration-v3' },
-            { text: 'Full Sync Operations (v3)', link: '/guide/full-sync-operations-v3' },
             { text: 'Bidirectional Sync', link: '/guide/bidirectional-sync' },
             { text: 'Auto-Translation', link: '/guide/auto-translation' },
             { text: 'Google Docs Ingestion', link: '/guide/google-docs-ingestion' },
