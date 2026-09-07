@@ -34,7 +34,7 @@
     "build:types": "tsc --emitDeclarationOnly",
     "build:cjs": "rolldown -c --environment BUILD_TARGET:cjs",
     "build:esm": "rolldown -c --environment BUILD_TARGET:esm && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",
-    "build": "npm run build:types && npm run build:cjs && npm run build:esm && npm run build:cli",
+    "build": "npm run build:types && npm run build:cjs && npm run build:esm && npm run build:cli && npm run build:action",
     "clean": "rimraf dist",
     "prebuild": "npm run clean",
     "prepare": "npm run build && (husky || true)",

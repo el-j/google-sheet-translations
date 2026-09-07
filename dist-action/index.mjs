@@ -45809,6 +45809,10 @@ const COMMON_LOCALE_PATTERNS = [
 	/^[a-z]{2}-[a-z]{2}-[a-z]+$/
 ];
 const NON_LOCALE_KEYWORDS = [
+	"var",
+	"vars",
+	"variable",
+	"variables",
 	"key",
 	"keys",
 	"id",
@@ -52047,6 +52051,7 @@ function convertCellsToSheetRows(cells) {
 		const rowCells = rowMap.get(rowIdx);
 		const sheetRow = {};
 		for (const [col, headerName] of colToHeaderName.entries()) sheetRow[headerName] = rowCells.get(col) ?? "";
+		if (sheetRow.var !== void 0 && sheetRow.key === void 0) sheetRow.key = sheetRow.var;
 		if (Object.values(sheetRow).some((v) => typeof v === "string" && v.trim().length > 0)) resultRows.push(sheetRow);
 	}
 	return resultRows;
@@ -52201,9 +52206,19 @@ var CryptPadClient = class {
 	async writeSheetRows(sheetName, rows, options = {}) {
 		if (rows.length === 0) return 0;
 		const existingRows = (await this.fetchSheetData(options.signal)).sheets[sheetName]?.rows ?? [];
-		const colNamesSet = /* @__PURE__ */ new Set(["key"]);
-		for (const r of existingRows) for (const k of Object.keys(r)) colNamesSet.add(k);
-		for (const r of rows) for (const k of Object.keys(r)) colNamesSet.add(k);
+		let keyColName = "var";
+		const firstExisting = existingRows[0];
+		const firstIncoming = rows[0];
+		if (firstExisting) {
+			if ("var" in firstExisting) keyColName = "var";
+			else if ("key" in firstExisting) keyColName = "key";
+		} else if (firstIncoming) {
+			if ("var" in firstIncoming) keyColName = "var";
+			else if ("key" in firstIncoming) keyColName = "key";
+		}
+		const colNamesSet = /* @__PURE__ */ new Set([keyColName]);
+		for (const r of existingRows) for (const k of Object.keys(r)) if (k !== "key" && k !== "var") colNamesSet.add(k);
+		for (const r of rows) for (const k of Object.keys(r)) if (k !== "key" && k !== "var") colNamesSet.add(k);
 		const colNames = Array.from(colNamesSet);
 		const updates = [];
 		colNames.forEach((name, idx) => {
@@ -52216,17 +52231,20 @@ var CryptPadClient = class {
 		});
 		const keyToRowIdx = /* @__PURE__ */ new Map();
 		existingRows.forEach((r, idx) => {
-			if (r.key) keyToRowIdx.set(r.key, idx + 2);
+			const rowKey = r.var ?? r.key ?? r[keyColName];
+			if (rowKey) keyToRowIdx.set(rowKey, idx + 2);
 		});
 		let nextAvailableRow = existingRows.length + 2;
 		for (const row of rows) {
-			if (!row.key) continue;
-			const targetRow = keyToRowIdx.get(row.key) ?? nextAvailableRow++;
-			keyToRowIdx.set(row.key, targetRow);
+			const rowKey = row.var ?? row.key ?? row[keyColName];
+			if (!rowKey) continue;
+			const targetRow = keyToRowIdx.get(rowKey) ?? nextAvailableRow++;
+			keyToRowIdx.set(rowKey, targetRow);
 			for (const [colName, val] of Object.entries(row)) {
-				const colIdx = colNames.indexOf(colName);
+				const mappedColName = colName === "key" || colName === "var" ? keyColName : colName;
+				const colIdx = colNames.indexOf(mappedColName);
 				if (colIdx >= 0 && val !== void 0) {
-					const existingVal = existingRows[targetRow - 2]?.[colName];
+					const existingVal = existingRows[targetRow - 2]?.[mappedColName];
 					if (options.override || !existingVal || existingVal.trim().length === 0) updates.push({
 						sheet: sheetName,
 						col: colIndexToLetter(colIdx),
@@ -52323,7 +52341,7 @@ const CRYPTPAD_SHEET_OUTPUT_CAPABILITIES = createCapabilitySet({ writeTables: tr
 * Converts nested TranslationData `[locale][sheet][key] = value` into
 * tabular rows `Record<sheetName, SheetRow[]>`.
 */
-function convertTranslationsToSheetRows(translations, localeMapping = {}) {
+function convertTranslationsToSheetRows(translations, localeMapping = {}, keyColumnName = "key") {
 	const reverseMapping = {};
 	for (const [header, norm] of Object.entries(localeMapping)) reverseMapping[norm] = header;
 	const sheetRowsMap = {};
@@ -52332,7 +52350,7 @@ function convertTranslationsToSheetRows(translations, localeMapping = {}) {
 		for (const [sheetName, keys] of Object.entries(sheets)) {
 			if (!sheetRowsMap[sheetName]) sheetRowsMap[sheetName] = /* @__PURE__ */ new Map();
 			for (const [key, value] of Object.entries(keys)) {
-				if (!sheetRowsMap[sheetName].has(key)) sheetRowsMap[sheetName].set(key, { key });
+				if (!sheetRowsMap[sheetName].has(key)) sheetRowsMap[sheetName].set(key, { [keyColumnName]: key });
 				sheetRowsMap[sheetName].get(key)[colHeader] = String(value);
 			}
 		}
@@ -52362,7 +52380,7 @@ function createCryptPadSheetOutputProvider(options = {}) {
 				timeoutMs: options.timeoutMs
 			});
 			const effectiveMapping = options.localeMapping ?? payload.localeMapping ?? {};
-			const sheetRowsMap = convertTranslationsToSheetRows(payload.translations, effectiveMapping);
+			const sheetRowsMap = convertTranslationsToSheetRows(payload.translations, effectiveMapping, options.keyColumnName ?? "key");
 			const updatedSheets = [];
 			let totalUpdatedCells = 0;
 			for (const [sheetName, rows] of Object.entries(sheetRowsMap)) {
