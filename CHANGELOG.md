@@ -1,3 +1,20 @@
+## [3.0.0-beta.5](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2026-09-07)
+
+### 🚀 Features
+
+* **cryptpad:** add full bidirectional sync, multi-sheet tabs, and drive folder support ([fa73f78](https://github.com/el-j/google-sheet-translations/commit/fa73f783b26e5df645513c98a2f304317cd2ab38))
+* **cryptpad:** support 'var' and 'key' header row conventions interchangeably with Google Sheets parity ([39e0358](https://github.com/el-j/google-sheet-translations/commit/39e035831aa87ada3db577c904419c75b21565a5))
+
+### 🐛 Bug Fixes
+
+* **ci:** update dist-action bundle and automate in pre-commit hook ([9f91365](https://github.com/el-j/google-sheet-translations/commit/9f91365206b63bf8d6a125bbaac298ddb8d147a7))
+* **release:** downgrade conventional-changelog-conventionalcommits to 8.0.0 for semantic-release compatibility ([9a5dd9b](https://github.com/el-j/google-sheet-translations/commit/9a5dd9bda76e9a655ad1f16a32450adaadf94508))
+* **release:** preserve develop package dependencies during main back-merge ([7d91345](https://github.com/el-j/google-sheet-translations/commit/7d9134571b7b235f47e16cebb35ad6ca39cf5ad6))
+
+### ♻️ Refactoring
+
+* simplify test expectation formatting for sheet rows ([da43c7b](https://github.com/el-j/google-sheet-translations/commit/da43c7be3a5d819b92ae15f2aeb8c41fd10161fe))
+
 ## [3.0.0-beta.4](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2026-09-07)
 
 ### 🚀 Features
