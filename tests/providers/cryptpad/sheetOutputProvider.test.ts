@@ -48,9 +48,7 @@ describe('cryptpad sheet output provider', () => {
     };
 
     const sheetRows = convertTranslationsToSheetRows(translations, {}, 'var');
-    expect(sheetRows.saeulen).toEqual([
-      { var: 'title', de: 'Säulen', en: 'Pillars' },
-    ]);
+    expect(sheetRows.saeulen).toEqual([{ var: 'title', de: 'Säulen', en: 'Pillars' }]);
   });
 
   it('writes translations via CryptPadClient writeSheetRows mock', async () => {
