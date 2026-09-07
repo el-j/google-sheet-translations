@@ -7,8 +7,7 @@ yarn-error.log*
 # Distribution directories
 dist/
 dist-cli/
-dist-action/*
-!dist-action/index.mjs
+dist-action/
 lib/
 build/
 
@@ -51,3 +50,4 @@ website/public/translations/
 tmp/
 
 /.vitepress
+
