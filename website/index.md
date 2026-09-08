@@ -18,8 +18,8 @@ hero:
       text: Migrate from v2
       link: /guide/provider-migration-v3
     - theme: alt
-      text: CryptPad & Providers
-      link: /guide/non-google-providers
+      text: CryptPad Full Sync
+      link: /guide/cryptpad-full-sync
     - theme: alt
       text: GitHub Action
       link: /guide/github-actions
@@ -38,9 +38,9 @@ features:
     link: /guide/provider-migration-v3
     linkText: Learn more
 
-  - title: Privacy-First with CryptPad (v3)
-    details: Pull translation tables from CryptPad CSV exports with zero authentication, sync with 3-way conflict policies, and download remote media assets.
-    link: /guide/non-google-providers
+  - title: Privacy-First CryptPad Sheets & Drive (v3)
+    details: Full bidirectional E2EE push/pull with password protection, pure Netflux WebSockets, headless auto-initialization, multi-sheet tabs, and encrypted Drive discovery.
+    link: /guide/cryptpad-full-sync
     linkText: Learn more
 
   - title: Google Sheets Full Workflow
