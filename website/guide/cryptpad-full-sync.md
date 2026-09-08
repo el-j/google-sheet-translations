@@ -64,6 +64,10 @@ CryptPad spreadsheets use the exact same tabular convention as Google Sheets:
 > [!TIP]
 > Both `"var"` and `"key"` are supported interchangeably as the key header. When reading or writing, the provider recognizes either format without requiring configuration changes.
 
+> [!TIP]
+> **Headless RT-Channel Auto-Initialization (Zero Browser Required)**:
+> Newly created CryptPad spreadsheets that have never been opened in OnlyOffice are automatically detected and initialized headlessly via pure Netflux protocol handshake on first write or push. No manual browser interaction or browser automation is ever required!
+
 ---
 
 ## 1. Quickstart: CLI Tooling
