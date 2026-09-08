@@ -20,10 +20,24 @@ function parseArgs(argv: string[]): { command: string; options: Record<string, s
   const command = args[0] && !args[0].startsWith('--') ? args[0] : 'pull';
   const options: Record<string, string> = {};
 
-  for (const arg of args) {
-    const match = arg.match(/^--([^=]+)(?:=(.*))?$/);
-    if (match) {
-      options[match[1]] = match[2] ?? 'true';
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg.startsWith('--')) {
+      const eqIdx = arg.indexOf('=');
+      if (eqIdx !== -1) {
+        const key = arg.slice(2, eqIdx);
+        const val = arg.slice(eqIdx + 1);
+        options[key] = val;
+      } else {
+        const key = arg.slice(2);
+        const nextArg = args[i + 1];
+        if (nextArg && !nextArg.startsWith('--')) {
+          options[key] = nextArg;
+          i++;
+        } else {
+          options[key] = 'true';
+        }
+      }
     }
   }
 

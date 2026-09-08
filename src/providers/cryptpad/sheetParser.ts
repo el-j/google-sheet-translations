@@ -51,28 +51,55 @@ export function extractOnlyOfficeChannelId(metadataMessages: string[]): string |
   for (const raw of metadataMessages) {
     try {
       const parsed = JSON.parse(raw);
-      // Format 1: [seq, [[offset, len, jsonStr]]]
+
+      // Format 1: direct object
+      if (parsed?.content?.channel && typeof parsed.content.channel === 'string') {
+        return parsed.content.channel;
+      }
+
+      // Format 2: ChainPad message [type, patchContent, lastMsgHash]
+      // Where patchContent is either [operations, parentHash] (ChainPad PATCH/CHECKPOINT)
+      // or legacy/mock operations array [[offset, len, jsonStr]]
       if (Array.isArray(parsed) && Array.isArray(parsed[1])) {
-        for (const edit of parsed[1]) {
-          if (Array.isArray(edit) && typeof edit[2] === 'string') {
-            try {
-              const inner = JSON.parse(edit[2]);
-              if (inner?.content?.channel && typeof inner.content.channel === 'string') {
-                return inner.content.channel;
+        const candidateContainers = [
+          parsed[1],
+          Array.isArray(parsed[1][0]) ? parsed[1][0] : null,
+        ].filter(Boolean) as unknown[][];
+
+        for (const container of candidateContainers) {
+          for (const item of container) {
+            if (Array.isArray(item)) {
+              for (const elem of item) {
+                if (typeof elem === 'string' && elem.includes('channel')) {
+                  try {
+                    const inner = JSON.parse(elem);
+                    if (inner?.content?.channel && typeof inner.content.channel === 'string') {
+                      return inner.content.channel;
+                    }
+                  } catch {
+                    // Continue to regex
+                  }
+                }
               }
-            } catch {
-              // Continue
             }
           }
         }
       }
 
-      // Format 2: direct object
-      if (parsed?.content?.channel && typeof parsed.content.channel === 'string') {
-        return parsed.content.channel;
+      // Format 3: Regex match for 32-hex channel ID in payload (handles escaped or raw JSON)
+      if (typeof raw === 'string') {
+        const match = raw.match(/\\?"channel\\?"\s*:\s*\\?"([a-f0-9]{32})\\?"/i);
+        if (match) {
+          return match[1];
+        }
       }
     } catch {
-      // Continue
+      if (typeof raw === 'string') {
+        const match = raw.match(/\\?"channel\\?"\s*:\s*\\?"([a-f0-9]{32})\\?"/i);
+        if (match) {
+          return match[1];
+        }
+      }
     }
   }
 
@@ -157,15 +184,29 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
               }
 
               // Case B: binary range coordinates in change header (r1, c1, r2, c2)
-              // OnlyOffice stores r1, c1, r2, c2 at bytes 14..29 in certain change packets
-              if (buf.length >= 30 && i >= 40) {
+              // OnlyOffice stores r1, c1, r2, c2 at bytes 15..30 when magic header is 0x01291001 (AscCH.historyitem_Cell_ChangeValue)
+              if (buf.length >= 31 && buf.readUInt32BE(4) === 0x01291001 && buf[14] === 0x01) {
+                try {
+                  const c1 = buf.readUInt32LE(15);
+                  const r1 = buf.readUInt32LE(19);
+                  if (r1 < 100000 && c1 < 200) {
+                    const colLetter = colIndexToLetter(c1);
+                    const cellRef = `${colLetter}${r1 + 1}`;
+                    if (str.trim().length > 0 && !str.includes('!')) {
+                      cells[cellRef] = str;
+                    }
+                  }
+                } catch {
+                  // Ignore
+                }
+              } else if (buf.length >= 30 && i >= 40 && buf.readUInt32BE(4) === 0) {
                 try {
                   const c1 = buf.readUInt32LE(14);
                   const r1 = buf.readUInt32LE(18);
                   if (r1 < 100000 && c1 < 200) {
                     const colLetter = colIndexToLetter(c1);
                     const cellRef = `${colLetter}${r1 + 1}`;
-                    if (!cells[cellRef] && str.trim().length > 0 && !str.includes('!')) {
+                    if (str.trim().length > 0 && !str.includes('!')) {
                       cells[cellRef] = str;
                     }
                   }
@@ -318,12 +359,63 @@ export interface OnlyOfficeCellUpdate {
 }
 
 /**
- * Encodes a single cell update record into OnlyOffice binary format (0x08 prefix + UTF-16LE string).
+ * Encodes a single cell update record into OnlyOffice binary format:
+ * - Native AscCH.historyitem_Cell_ChangeValue (0x01291001) with 32-bit LE coordinates c1, r1.
+ * - Explicit UTF-16LE cell reference tags for backward-compatibility and multi-sheet routing.
  */
-export function encodeOnlyOfficeCellRecord(cellRef: string, value: string): Buffer {
-  const refBuf = Buffer.from(cellRef, 'utf16le');
-  const valBuf = Buffer.from(value, 'utf16le');
+export function encodeOnlyOfficeCellRecord(cellRef: string, value: string, sheetId = 6): Buffer {
+  let c1 = 0;
+  let r1 = 0;
+  const parsed = parseCellRef(cellRef);
+  if (parsed) {
+    c1 = letterToColIndex(parsed.col);
+    r1 = Math.max(0, parsed.row - 1);
+  }
 
+  const valBuf = Buffer.from(value, 'utf16le');
+  const L = valBuf.length;
+
+  const tail = Buffer.from([0x01, 0x00, 0x02, 0x00, 0x03, 0x02, 0x01, 0x02, 0x00, 0x03, 0x01]);
+
+  const body = Buffer.alloc(60 + L + tail.length);
+  body.writeUInt32BE(0x01291001, 0); // 4..7 (historyitem_Cell_ChangeValue)
+  body.writeUInt32LE(0x02, 4); // 8..11
+  body[8] = 0x30 + (sheetId % 10); // 12 (ascii sheet ID digit)
+  body[9] = 0x00; // 13
+  body[10] = 0x01; // 14
+  body.writeUInt32LE(c1, 11); // 15..18 (c1)
+  body.writeUInt32LE(r1, 15); // 19..22 (r1)
+  body.writeUInt32LE(c1, 19); // 23..26 (c2)
+  body.writeUInt32LE(r1, 23); // 27..30 (r2)
+  body[27] = 0x00; // 31
+  body.writeUInt32LE(0x27 + L, 28); // 32..35
+  body[32] = 0x00; // 36
+  body[33] = 0x02; // 37
+  body[34] = r1 & 0xff; // 38
+  body[35] = 0x01; // 39
+  body[36] = 0x02; // 40
+  body[37] = c1 & 0xff; // 41
+  body[38] = 0x02; // 42
+  body[39] = 0x09; // 43
+  body[40] = 0x03; // 44
+  body.writeUInt32LE(0x1a + L, 41); // 45..48
+  body[45] = 0x00; // 49
+  body[46] = 0x00; // 50
+  body[47] = 0x01; // 51
+  body[48] = 0x09; // 52
+  body[49] = 0x01; // 53
+  body.writeUInt32LE(0x0d + L, 50); // 54..57
+  body[54] = 0x00; // 58
+  body[55] = 0x08; // 59 (UTF-16LE string tag)
+  body.writeUInt32LE(L, 56); // 60..63 (string byte length)
+  valBuf.copy(body, 60); // 64..64+L
+  tail.copy(body, 60 + L);
+
+  const header = Buffer.alloc(4);
+  header.writeUInt32LE(body.length, 0);
+  const nativeBuf = Buffer.concat([header, body]);
+
+  const refBuf = Buffer.from(cellRef, 'utf16le');
   const refHeader = Buffer.alloc(5);
   refHeader[0] = 0x08;
   refHeader.writeUInt32LE(refBuf.length, 1);
@@ -332,13 +424,15 @@ export function encodeOnlyOfficeCellRecord(cellRef: string, value: string): Buff
   valHeader[0] = 0x08;
   valHeader.writeUInt32LE(valBuf.length, 1);
 
-  return Buffer.concat([refHeader, refBuf, valHeader, valBuf]);
+  return Buffer.concat([nativeBuf, refHeader, refBuf, valHeader, valBuf]);
 }
 
 /**
  * Formats a list of cell updates into an OnlyOffice change transaction JSON string.
  */
 export function buildOnlyOfficeChangePayload(updates: OnlyOfficeCellUpdate[]): string {
+  const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
+
   const records = updates.map((u) => {
     const colStr = typeof u.col === 'number' ? colIndexToLetter(u.col) : u.col.toUpperCase();
     const sheetPrefix = u.sheet && u.sheet.trim().length > 0 ? `${u.sheet.trim()}!` : '';
@@ -346,15 +440,19 @@ export function buildOnlyOfficeChangePayload(updates: OnlyOfficeCellUpdate[]): s
     return encodeOnlyOfficeCellRecord(ref, u.value);
   });
 
-  const fullPayload = Buffer.concat(records);
+  const fullPayload = Buffer.concat([txOpen, ...records]);
   const base64Data = fullPayload.toString('base64');
   const changeEntry = `asc_1;${base64Data}`;
 
   return JSON.stringify({
+    type: 'saveChanges',
     changes: [
       {
         change: changeEntry,
       },
     ],
+    startSaveChanges: true,
+    endSaveChanges: true,
+    isExcel: true,
   });
 }

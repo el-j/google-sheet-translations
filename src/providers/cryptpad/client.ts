@@ -141,10 +141,28 @@ export class CryptPadClient {
     const newRtChannel = crypto.randomBytes(16).toString('hex');
 
     // Build the metadata patch CryptPad's OnlyOffice client writes on first open.
-    // Format: { content: { channel: "<32hexId>" } }
-    // CryptPad wraps this in an edit-sequence envelope: [1, [[0, 0, jsonStr]]]
-    const innerJson = JSON.stringify({ content: { channel: newRtChannel } });
-    const envelope = JSON.stringify([1, [[0, 0, innerJson]]]);
+    // CryptPad's metadata channel is governed by ChainPad (SmartJSONTransformer).
+    // A valid initial ChainPad patch has the structure:
+    // [2, [[[0, 0, innerJsonString]], EMPTY_STR_HASH], ZERO_MSG_HASH]
+    // where 2 is Message.PATCH, EMPTY_STR_HASH is sha256(''), and ZERO_MSG_HASH is the initial zeroMsg hash.
+    // OnlyOffice requires content.version: 9 and metadata.type: 'oo' to attach to the RT channel
+    // and render real-time changes when opened in a browser.
+    const innerJson = JSON.stringify({
+      content: {
+        hashes: {},
+        ids: {},
+        mediasSources: {},
+        originalVersion: 9,
+        version: 9,
+        channel: newRtChannel,
+      },
+      metadata: {
+        type: 'oo',
+      },
+    });
+    const EMPTY_STR_HASH = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+    const ZERO_MSG_HASH = 'a4b411975be1d48a91f0ebfcd967add000f69564b2dc5ee644b87bf2bbfd786f';
+    const envelope = JSON.stringify([2, [[[0, 0, innerJson]], EMPTY_STR_HASH], ZERO_MSG_HASH]);
 
     await broadcastChannelMessage(wsUrl, channelHex, cryptKey, envelope, {
       timeoutMs: this.timeoutMs,
@@ -238,12 +256,20 @@ export class CryptPadClient {
    *
    * @param updates - Array of cell updates containing coordinates and text values.
    * @param signal - Optional AbortSignal to cancel the broadcast.
+   * @param existingRtChannel - Optional pre-fetched RT channel ID to avoid refetching sheet data.
    */
-  async sendCellUpdates(updates: OnlyOfficeCellUpdate[], signal?: AbortSignal): Promise<void> {
+  async sendCellUpdates(
+    updates: OnlyOfficeCellUpdate[],
+    signal?: AbortSignal,
+    existingRtChannel?: string,
+  ): Promise<void> {
     if (updates.length === 0) return;
 
-    const data = await this.fetchSheetData(signal);
-    let rtChannel = data.metadata.rtChannelId;
+    let rtChannel = existingRtChannel;
+    if (!rtChannel) {
+      const data = await this.fetchSheetData(signal);
+      rtChannel = data.metadata.rtChannelId;
+    }
 
     if (!rtChannel) {
       // Sheet was created but never opened in a browser — initialize the RT channel headlessly.
@@ -258,12 +284,13 @@ export class CryptPadClient {
     }
 
     const wsUrl = await this.getWebsocketUrl(signal);
-    const { cryptKey } = this.getKeys();
+    const { cryptKey, signKey } = this.getKeys();
     const payload = buildOnlyOfficeChangePayload(updates);
 
     await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
       timeoutMs: this.timeoutMs,
       signal,
+      signKey,
     });
   }
 
@@ -356,7 +383,7 @@ export class CryptPadClient {
       }
     }
 
-    await this.sendCellUpdates(updates, options.signal);
+    await this.sendCellUpdates(updates, options.signal, data.metadata.rtChannelId);
     return updates.length;
   }
 }

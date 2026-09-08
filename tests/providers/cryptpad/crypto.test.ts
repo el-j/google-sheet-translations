@@ -66,6 +66,13 @@ describe('CryptPad crypto utilities', () => {
       );
     });
 
+    it('throws descriptive error on version 3 safe link URLs', () => {
+      const v3Url = 'https://cryptpad.fr/sheet/#/3/sheet/edit/7fbac93454e9aca34f40bdd2ecf446af/p/';
+      expect(() => parsePadUrl(v3Url)).toThrow(
+        /version 3 "safe link" \(hidden hash\) which omits the encryption key/,
+      );
+    });
+
     it('throws on non-URL string', () => {
       expect(() => parsePadUrl('not a valid url')).toThrow('Invalid CryptPad URL');
     });
@@ -83,14 +90,18 @@ describe('CryptPad crypto utilities', () => {
   describe('deriveCryptPadKeys', () => {
     const seed = 'J+EXDQVGUsSiBg5P1cun03BJ';
 
-    it('derives deterministic channel hex and 32-byte key without password', () => {
+    it('derives deterministic channel hex, 32-byte key, and signing keypair without password', () => {
       const keys1 = deriveCryptPadKeys(seed);
       const keys2 = deriveCryptPadKeys(seed);
 
       expect(keys1.channelHex).toHaveLength(32); // 16 bytes hex
       expect(keys1.cryptKey).toHaveLength(32);
+      expect(keys1.signKey).toHaveLength(64);
+      expect(keys1.validateKey).toHaveLength(32);
       expect(keys1.channelHex).toBe(keys2.channelHex);
       expect(keys1.cryptKey).toEqual(keys2.cryptKey);
+      expect(keys1.signKey).toEqual(keys2.signKey);
+      expect(keys1.validateKey).toEqual(keys2.validateKey);
     });
 
     it('derives different deterministic channel and key with password', () => {
@@ -100,13 +111,17 @@ describe('CryptPad crypto utilities', () => {
 
       expect(keysProtected.channelHex).toHaveLength(32);
       expect(keysProtected.cryptKey).toHaveLength(32);
+      expect(keysProtected.signKey).toHaveLength(64);
+      expect(keysProtected.validateKey).toHaveLength(32);
       expect(keysProtected.channelHex).not.toBe(keysUnprotected.channelHex);
       expect(keysProtected.cryptKey).not.toEqual(keysUnprotected.cryptKey);
+      expect(keysProtected.signKey).not.toEqual(keysUnprotected.signKey);
 
       // Verify idempotency
       const keysProtectedAgain = deriveCryptPadKeys(seed, password);
       expect(keysProtected.channelHex).toBe(keysProtectedAgain.channelHex);
       expect(keysProtected.cryptKey).toEqual(keysProtectedAgain.cryptKey);
+      expect(keysProtected.signKey).toEqual(keysProtectedAgain.signKey);
     });
   });
 
@@ -119,6 +134,19 @@ describe('CryptPad crypto utilities', () => {
       expect(ciphertext).toContain('|');
 
       const decrypted = decryptCryptPadPayload(ciphertext, key);
+      expect(decrypted).toBe(plaintext);
+    });
+
+    it('encrypts with Ed25519 signature when signKey is provided and decrypts cleanly', () => {
+      const key = nacl.randomBytes(32);
+      const signKp = nacl.sign.keyPair();
+      const plaintext = JSON.stringify({ changes: [{ col: 0, row: 1, val: 'signed' }] });
+
+      const signedPayload = encryptCryptPadPayload(plaintext, key, signKp.secretKey);
+      // Signed payload is base64 encoded and does not contain a raw unencoded pipe at top-level
+      expect(signedPayload).not.toContain('|');
+
+      const decrypted = decryptCryptPadPayload(signedPayload, key);
       expect(decrypted).toBe(plaintext);
     });
 

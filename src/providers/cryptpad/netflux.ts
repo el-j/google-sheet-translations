@@ -4,6 +4,7 @@ import { decryptCryptPadPayload, encryptCryptPadPayload } from './crypto';
 export interface NetfluxBroadcastOptions {
   timeoutMs?: number;
   signal?: AbortSignal;
+  signKey?: Uint8Array;
 }
 
 export interface NetfluxHistoryOptions {
@@ -148,7 +149,7 @@ export function fetchChannelHistory(
                 seq++,
                 'MSG',
                 peerId,
-                JSON.stringify(['GET_HISTORY', channelHex, {}]),
+                JSON.stringify(['GET_FULL_HISTORY', channelHex]),
               ]),
             );
             resetQuietTimer();
@@ -165,7 +166,18 @@ export function fetchChannelHistory(
 
           try {
             const parsed = JSON.parse(encStr);
-            if (Array.isArray(parsed) && parsed[2] === 'MSG' && typeof parsed[4] === 'string') {
+            // Case A: FULL_HISTORY streaming frames from GET_FULL_HISTORY
+            if (Array.isArray(parsed) && parsed[0] === 'FULL_HISTORY' && Array.isArray(parsed[1])) {
+              encStr = parsed[1][4];
+            } else if (Array.isArray(parsed) && parsed[0] === 'FULL_HISTORY_END') {
+              // Entire history received: finish immediately
+              finish(decryptedMessages);
+              return;
+            } else if (
+              Array.isArray(parsed) &&
+              parsed[2] === 'MSG' &&
+              typeof parsed[4] === 'string'
+            ) {
               encStr = parsed[4];
             }
           } catch {
@@ -185,9 +197,14 @@ export function fetchChannelHistory(
       }
     };
 
-    ws.onerror = (err) => {
+    ws.onerror = (err: unknown) => {
       cleanup();
-      reject(new Error(`CryptPad WebSocket error: ${String(err)}`));
+      const errObj = err as { message?: string; error?: { message?: string } | string } | undefined;
+      const detail =
+        errObj?.message ||
+        errObj?.error?.message ||
+        (errObj?.error ? String(errObj.error) : String(err));
+      reject(new Error(`CryptPad WebSocket error: ${detail}`));
     };
   });
 }
@@ -279,7 +296,7 @@ export function broadcastChannelMessage(
         // When JOIN is acknowledged by history keeper or channel peer
         if (cmd === 'JOIN' && typeof peerId === 'string' && !sent) {
           sent = true;
-          const encrypted = encryptCryptPadPayload(message, cryptKey);
+          const encrypted = encryptCryptPadPayload(message, cryptKey, options.signKey);
           // Broadcast to channel
           ws.send(JSON.stringify([seq++, 'MSG', channelHex, encrypted]));
 
@@ -295,8 +312,13 @@ export function broadcastChannelMessage(
       }
     };
 
-    ws.onerror = (err) => {
-      rejectOnce(new Error(`CryptPad WebSocket broadcast error: ${String(err)}`));
+    ws.onerror = (err: unknown) => {
+      const errObj = err as { message?: string; error?: { message?: string } | string } | undefined;
+      const detail =
+        errObj?.message ||
+        errObj?.error?.message ||
+        (errObj?.error ? String(errObj.error) : String(err));
+      rejectOnce(new Error(`CryptPad WebSocket broadcast error: ${detail}`));
     };
   });
 }

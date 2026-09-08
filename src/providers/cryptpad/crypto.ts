@@ -14,6 +14,8 @@ export interface ParsedCryptPadUrl {
 export interface DerivedCryptPadKeys {
   channelHex: string;
   cryptKey: Uint8Array;
+  signKey: Uint8Array;
+  validateKey: Uint8Array;
 }
 
 /** Decodes CryptPad base64 string (which may have '-' instead of '/' and no padding). */
@@ -60,12 +62,18 @@ export function parsePadUrl(url: string): ParsedCryptPadUrl {
   }
 
   const [, versionStr, app, modeRaw, seed, passwordFlag] = match;
+  const version = parseInt(versionStr, 10);
+  if (version === 3) {
+    throw new Error(
+      `CryptPad URL "${url}" is a version 3 "safe link" (hidden hash) which omits the encryption key to protect it in browser address bars. Please use the original pad share URL (version 2 format: "https://.../#/2/${app}/${modeRaw}/<secret>/..."), which can be copied via CryptPad's "Share" -> "Link" menu.`,
+    );
+  }
   const mode = modeRaw === 'edit' ? 'edit' : 'view';
   const isPasswordProtected = Boolean(passwordFlag);
 
   return {
     origin: urlObj.origin,
-    version: parseInt(versionStr, 10),
+    version,
     app,
     mode,
     seed,
@@ -75,8 +83,9 @@ export function parsePadUrl(url: string): ParsedCryptPadUrl {
 }
 
 /**
- * Derives the Netflux channel ID (hex string) and symmetric encryption key (32 bytes)
- * from a CryptPad pad seed and optional password according to CryptPad's createEditCryptor2 / createViewCryptor2 protocol.
+ * Derives the Netflux channel ID (hex string), symmetric encryption key (32 bytes),
+ * and Ed25519 signing keypair from a CryptPad pad seed and optional password
+ * according to CryptPad's createEditCryptor2 / createViewCryptor2 protocol.
  */
 export function deriveCryptPadKeys(seedStr: string, password?: string): DerivedCryptPadKeys {
   const seed = b64Decode(seedStr);
@@ -84,12 +93,15 @@ export function deriveCryptPadKeys(seedStr: string, password?: string): DerivedC
   if (!password) {
     // Standard unpassworded derivation
     const hash = crypto.createHash('sha512').update(seed).digest();
+    const signKp = nacl.sign.keyPair.fromSeed(hash.subarray(0, 32));
     const seed2 = hash.subarray(32, 64);
     const hash2 = crypto.createHash('sha512').update(seed2).digest();
 
     return {
       channelHex: hash2.subarray(0, 16).toString('hex'),
       cryptKey: new Uint8Array(hash2.subarray(16, 48)),
+      signKey: signKp.secretKey,
+      validateKey: signKp.publicKey,
     };
   }
 
@@ -97,6 +109,7 @@ export function deriveCryptPadKeys(seedStr: string, password?: string): DerivedC
   const pwBytes = decodeUTF8(password);
   const superSeed1 = Buffer.concat([Buffer.from(pwBytes), Buffer.from(seed)]);
   const hash1 = crypto.createHash('sha512').update(superSeed1).digest();
+  const signKp = nacl.sign.keyPair.fromSeed(hash1.subarray(0, 32));
 
   const seed2 = hash1.subarray(32, 64);
   const superSeed2 = Buffer.concat([Buffer.from(pwBytes), Buffer.from(seed2)]);
@@ -105,6 +118,8 @@ export function deriveCryptPadKeys(seedStr: string, password?: string): DerivedC
   return {
     channelHex: hash2.subarray(0, 16).toString('hex'),
     cryptKey: new Uint8Array(hash2.subarray(16, 48)),
+    signKey: signKp.secretKey,
+    validateKey: signKp.publicKey,
   };
 }
 
@@ -156,11 +171,23 @@ export function decryptCryptPadPayload(payload: string, cryptKey: Uint8Array): s
 
 /**
  * Encrypts a plaintext message payload using TweetNaCl secretbox (XSalsa20-Poly1305).
- * Formats output as `base64(nonce)|base64(ciphertext)`.
+ * If signKey is provided, signs the `nonce|ciphertext` string using TweetNaCl Ed25519
+ * matching OnlyOffice / CryptPad real-time channel requirements.
  */
-export function encryptCryptPadPayload(plaintext: string, cryptKey: Uint8Array): string {
+export function encryptCryptPadPayload(
+  plaintext: string,
+  cryptKey: Uint8Array,
+  signKey?: Uint8Array,
+): string {
   const nonce = nacl.randomBytes(24);
   const msgBytes = decodeUTF8(plaintext);
   const cipher = nacl.secretbox(msgBytes, nonce, cryptKey);
-  return `${b64Encode(nonce)}|${b64Encode(cipher)}`;
+  const encStr = `${b64Encode(nonce)}|${b64Encode(cipher)}`;
+
+  if (signKey) {
+    const signed = nacl.sign(decodeUTF8(encStr), signKey);
+    return b64Encode(signed);
+  }
+
+  return encStr;
 }

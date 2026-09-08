@@ -117,6 +117,8 @@ export function createCryptPadSheetOutputProvider(
         });
         updatedSheets.push(sheetName);
         totalUpdatedCells += count;
+        // Brief quiet period to avoid rate-limiting on multi-sheet operations
+        await new Promise((r) => setTimeout(r, 400));
       }
 
       return {

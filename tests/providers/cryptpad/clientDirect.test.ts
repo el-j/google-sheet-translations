@@ -166,8 +166,8 @@ describe('CryptPadClient direct methods', () => {
 
     const broadcastCall = broadcastSpy.mock.calls[0];
     const envelope = JSON.parse(broadcastCall[3]);
-    expect(envelope[0]).toBe(1);
-    const innerJson = JSON.parse(envelope[1][0][2]);
+    expect(envelope[0]).toBe(2);
+    const innerJson = JSON.parse(envelope[1][0][0][2]);
     expect(innerJson.content.channel).toBe(channelId);
   });
 
