@@ -61,10 +61,15 @@ export function fetchChannelHistory(
     let quietTimer: ReturnType<typeof setTimeout> | null = null;
     let overallTimeout: ReturnType<typeof setTimeout> | null = null;
     let requestedHistory = false;
+    let abortListener: (() => void) | null = null;
+    let settled = false;
 
     const cleanup = () => {
       if (quietTimer) clearTimeout(quietTimer);
       if (overallTimeout) clearTimeout(overallTimeout);
+      if (signal && abortListener) {
+        signal.removeEventListener('abort', abortListener);
+      }
       try {
         ws.close();
       } catch {
@@ -72,22 +77,40 @@ export function fetchChannelHistory(
       }
     };
 
-    const finish = () => {
+    const finish = (result: string[]) => {
+      if (settled) return;
+      settled = true;
       cleanup();
-      resolve(decryptedMessages);
+      resolve(result);
+    };
+
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
     };
 
     const resetQuietTimer = () => {
       if (quietTimer) clearTimeout(quietTimer);
-      quietTimer = setTimeout(finish, quietPeriodMs);
+      quietTimer = setTimeout(() => {
+        if (decryptedMessages.length > 0) {
+          finish(decryptedMessages);
+        } else {
+          rejectOnce(
+            new Error(
+              `Timeout after ${timeoutMs}ms waiting for CryptPad channel "${channelHex}" history.`,
+            ),
+          );
+        }
+      }, quietPeriodMs);
     };
 
     overallTimeout = setTimeout(() => {
-      cleanup();
       if (decryptedMessages.length > 0) {
-        resolve(decryptedMessages);
+        finish(decryptedMessages);
       } else {
-        reject(
+        rejectOnce(
           new Error(
             `Timeout after ${timeoutMs}ms waiting for CryptPad channel "${channelHex}" history.`,
           ),
@@ -96,10 +119,10 @@ export function fetchChannelHistory(
     }, timeoutMs);
 
     if (signal) {
-      signal.addEventListener('abort', () => {
-        cleanup();
-        reject(new Error('Operation aborted'));
-      });
+      abortListener = () => {
+        rejectOnce(new Error('Operation aborted'));
+      };
+      signal.addEventListener('abort', abortListener);
     }
 
     ws.onopen = () => {
@@ -191,9 +214,14 @@ export function broadcastChannelMessage(
     let seq = 1;
     let timeout: ReturnType<typeof setTimeout> | null = null;
     let sent = false;
+    let abortListener: (() => void) | null = null;
+    let settled = false;
 
     const cleanup = () => {
       if (timeout) clearTimeout(timeout);
+      if (signal && abortListener) {
+        signal.removeEventListener('abort', abortListener);
+      }
       try {
         ws.close();
       } catch {
@@ -201,12 +229,25 @@ export function broadcastChannelMessage(
       }
     };
 
-    timeout = setTimeout(() => {
+    const resolveOnce = () => {
+      if (settled) return;
+      settled = true;
       cleanup();
+      resolve();
+    };
+
+    const rejectOnce = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+
+    timeout = setTimeout(() => {
       if (sent) {
-        resolve();
+        resolveOnce();
       } else {
-        reject(
+        rejectOnce(
           new Error(
             `Timeout after ${timeoutMs}ms broadcasting message to CryptPad channel "${channelHex}".`,
           ),
@@ -215,10 +256,10 @@ export function broadcastChannelMessage(
     }, timeoutMs);
 
     if (signal) {
-      signal.addEventListener('abort', () => {
-        cleanup();
-        reject(new Error('Operation aborted'));
-      });
+      abortListener = () => {
+        rejectOnce(new Error('Operation aborted'));
+      };
+      signal.addEventListener('abort', abortListener);
     }
 
     ws.onopen = () => {

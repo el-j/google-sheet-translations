@@ -37,7 +37,7 @@ export const CRYPTPAD_SHEET_OUTPUT_CAPABILITIES: ProviderCapabilitySet = createC
 export function convertTranslationsToSheetRows(
   translations: TranslationData,
   localeMapping: Record<string, string> = {},
-  keyColumnName: string = 'key',
+  keyColumnName: string = 'var',
 ): Record<string, SheetRow[]> {
   // Map reverse: normalizedLocale -> originalHeader
   const reverseMapping: Record<string, string> = {};
@@ -106,7 +106,7 @@ export function createCryptPadSheetOutputProvider(
       const sheetRowsMap = convertTranslationsToSheetRows(
         payload.translations,
         effectiveMapping,
-        options.keyColumnName ?? 'key',
+        options.keyColumnName ?? 'var',
       );
       const updatedSheets: string[] = [];
       let totalUpdatedCells = 0;

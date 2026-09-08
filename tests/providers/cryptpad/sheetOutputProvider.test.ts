@@ -29,12 +29,26 @@ describe('cryptpad sheet output provider', () => {
 
     const commonRows = sheetRows.common;
     expect(commonRows).toHaveLength(2);
-    expect(commonRows).toContainEqual({ key: 'btn.save', en: 'Save', de: 'Speichern' });
-    expect(commonRows).toContainEqual({ key: 'btn.cancel', en: 'Cancel', de: 'Abbrechen' });
+    expect(commonRows).toContainEqual({ var: 'btn.save', en: 'Save', de: 'Speichern' });
+    expect(commonRows).toContainEqual({ var: 'btn.cancel', en: 'Cancel', de: 'Abbrechen' });
 
     const authRows = sheetRows.auth;
     expect(authRows).toHaveLength(1);
-    expect(authRows).toEqual([{ key: 'login.title', en: 'Welcome', de: 'Willkommen' }]);
+    expect(authRows).toEqual([{ var: 'login.title', en: 'Welcome', de: 'Willkommen' }]);
+  });
+
+  it('defaults to the Google Sheets "var" convention for the key column', () => {
+    const translations = {
+      en: {
+        common: { 'btn.save': 'Save' },
+      },
+      de: {
+        common: { 'btn.save': 'Speichern' },
+      },
+    };
+
+    const sheetRows = convertTranslationsToSheetRows(translations);
+    expect(sheetRows.common).toEqual([{ var: 'btn.save', en: 'Save', de: 'Speichern' }]);
   });
 
   it('supports custom keyColumnName = "var" matching Google Sheets header convention', () => {
@@ -70,7 +84,7 @@ describe('cryptpad sheet output provider', () => {
       locales: ['en'],
     });
 
-    expect(mockWriteSheetRows).toHaveBeenCalledWith('common', [{ key: 'save', en: 'Save' }], {
+    expect(mockWriteSheetRows).toHaveBeenCalledWith('common', [{ var: 'save', en: 'Save' }], {
       override: true,
     });
     expect(result.wroteFiles).toEqual([
