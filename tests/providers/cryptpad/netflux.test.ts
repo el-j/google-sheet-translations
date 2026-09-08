@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   resolveCryptPadWebsocketUrl,
@@ -119,6 +120,16 @@ describe('fetchChannelHistory with Mock WebSocket', () => {
     ).rejects.toThrow('Operation aborted');
   });
 
+  it('rejects if channel history does not reply before timeout', async () => {
+    const key = nacl.randomBytes(32);
+    await expect(
+      fetchChannelHistory('wss://test.cryptpad/ws', 'testchan', key, {
+        timeoutMs: 50,
+        quietPeriodMs: 10,
+      }),
+    ).rejects.toThrow('Timeout after 50ms waiting for CryptPad channel "testchan" history.');
+  });
+
   it('handles WebSocket error', async () => {
     const key = nacl.randomBytes(32);
     const promise = fetchChannelHistory('wss://test.cryptpad/ws', 'testchan', key, {
@@ -133,6 +144,250 @@ describe('fetchChannelHistory with Mock WebSocket', () => {
     }, 15);
 
     await expect(promise).rejects.toThrow('CryptPad WebSocket error');
+  });
+});
+
+describe('broadcastChannelMessage timeout and abort handling', () => {
+  class MockBroadcastSocket {
+    static instances: MockBroadcastSocket[] = [];
+    onopen: (() => void) | null = null;
+    onmessage: ((event: { data: string }) => void) | null = null;
+    onerror: ((err: unknown) => void) | null = null;
+    closed = false;
+
+    constructor(public url: string) {
+      MockBroadcastSocket.instances.push(this);
+      setTimeout(() => this.onopen?.(), 5);
+    }
+
+    send(msg: string) {
+      if (msg.includes('JOIN')) {
+        setTimeout(() => {
+          this.onmessage?.({
+            data: JSON.stringify([0, 'peer123', 'JOIN', 'channel123']),
+          });
+        }, 10);
+      }
+    }
+
+    close() {
+      this.closed = true;
+    }
+  }
+
+  const originalWs = globalThis.WebSocket;
+
+  beforeEach(() => {
+    MockBroadcastSocket.instances = [];
+    vi.stubGlobal('WebSocket', MockBroadcastSocket as any);
+  });
+
+  afterEach(() => {
+    vi.stubGlobal('WebSocket', originalWs);
+    vi.unstubAllGlobals();
+  });
+
+  it('broadcasts and resolves after join acknowledgement', async () => {
+    const key = nacl.randomBytes(32);
+    await expect(
+      import('../../../src/providers/cryptpad/netflux').then(({ broadcastChannelMessage }) =>
+        broadcastChannelMessage('wss://test.cryptpad/ws', 'channel123', key, 'hello world', {
+          timeoutMs: 500,
+        }),
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects when broadcast is immediately aborted with pre-aborted signal', async () => {
+    const key = nacl.randomBytes(32);
+    const controller = new AbortController();
+    controller.abort();
+
+    const { broadcastChannelMessage } = await import('../../../src/providers/cryptpad/netflux');
+    await expect(
+      broadcastChannelMessage('wss://test.cryptpad/ws', 'channel123', key, 'hello world', {
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow('Operation aborted');
+  });
+
+  it('rejects when broadcast times out before JOIN is acknowledged', async () => {
+    const key = nacl.randomBytes(32);
+
+    // Custom socket that never replies to JOIN
+    class SilentSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: string }) => void) | null = null;
+      onerror: ((err: unknown) => void) | null = null;
+      closed = false;
+      constructor() {
+        setTimeout(() => this.onopen?.(), 5);
+      }
+      send() {}
+      close() {
+        this.closed = true;
+      }
+    }
+    vi.stubGlobal('WebSocket', SilentSocket as any);
+
+    const { broadcastChannelMessage } = await import('../../../src/providers/cryptpad/netflux');
+    await expect(
+      broadcastChannelMessage('wss://test.cryptpad/ws', 'channel123', key, 'hello world', {
+        timeoutMs: 30,
+      }),
+    ).rejects.toThrow('Timeout after 30ms broadcasting message to CryptPad channel "channel123".');
+  });
+
+  it('rejects when WebSocket encounters an error during broadcast', async () => {
+    const key = nacl.randomBytes(32);
+
+    class ErrorSocket {
+      onopen: (() => void) | null = null;
+      onerror: ((err: unknown) => void) | null = null;
+      closed = false;
+      constructor() {
+        setTimeout(() => {
+          this.onerror?.(new Error('Socket network failed'));
+        }, 5);
+      }
+      send() {}
+      close() {
+        this.closed = true;
+      }
+    }
+    vi.stubGlobal('WebSocket', ErrorSocket as any);
+
+    const { broadcastChannelMessage } = await import('../../../src/providers/cryptpad/netflux');
+    await expect(
+      broadcastChannelMessage('wss://test.cryptpad/ws', 'channel123', key, 'hello world', {
+        timeoutMs: 500,
+      }),
+    ).rejects.toThrow('CryptPad WebSocket broadcast error');
+  });
+
+  it('ignores malformed messages received over broadcast WebSocket', async () => {
+    const key = nacl.randomBytes(32);
+
+    class MalformedMessageSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: any }) => void) | null = null;
+      closed = false;
+      constructor() {
+        setTimeout(() => {
+          this.onopen?.();
+          // Send non-json string
+          this.onmessage?.({ data: 'NOT_JSON' });
+          // Send non-array json
+          this.onmessage?.({ data: JSON.stringify({ not: 'an array' }) });
+          // Send actual join acknowledgement
+          this.onmessage?.({
+            data: JSON.stringify([0, 'peer123', 'JOIN', 'channel123']),
+          });
+        }, 5);
+      }
+      send() {}
+      close() {
+        this.closed = true;
+      }
+    }
+    vi.stubGlobal('WebSocket', MalformedMessageSocket as any);
+
+    const { broadcastChannelMessage } = await import('../../../src/providers/cryptpad/netflux');
+    await expect(
+      broadcastChannelMessage('wss://test.cryptpad/ws', 'channel123', key, 'hello world', {
+        timeoutMs: 500,
+      }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('rejects when broadcast signal aborts while in-flight', async () => {
+    const key = nacl.randomBytes(32);
+    const controller = new AbortController();
+
+    class StalledSocket {
+      onopen: (() => void) | null = null;
+      closed = false;
+      constructor() {
+        setTimeout(() => {
+          this.onopen?.();
+          controller.abort();
+        }, 5);
+      }
+      send() {}
+      close() {
+        this.closed = true;
+      }
+    }
+    vi.stubGlobal('WebSocket', StalledSocket as any);
+
+    const { broadcastChannelMessage } = await import('../../../src/providers/cryptpad/netflux');
+    await expect(
+      broadcastChannelMessage('wss://test.cryptpad/ws', 'channel123', key, 'hello world', {
+        signal: controller.signal,
+        timeoutMs: 500,
+      }),
+    ).rejects.toThrow('Operation aborted');
+  });
+
+  it('resolves when timeout fires after message is marked sent', async () => {
+    const key = nacl.randomBytes(32);
+
+    class FastSendSocket {
+      onopen: (() => void) | null = null;
+      onmessage: ((event: { data: any }) => void) | null = null;
+      closed = false;
+      constructor() {
+        setTimeout(() => {
+          this.onopen?.();
+          this.onmessage?.({
+            data: JSON.stringify([0, 'peer123', 'JOIN', 'channel123']),
+          });
+        }, 2);
+      }
+      send() {}
+      close() {
+        this.closed = true;
+      }
+    }
+    vi.stubGlobal('WebSocket', FastSendSocket as any);
+
+    const { broadcastChannelMessage } = await import('../../../src/providers/cryptpad/netflux');
+    // Set timeout to 50ms (shorter than the 350ms frame flush timer, but after message is sent)
+    await expect(
+      broadcastChannelMessage('wss://test.cryptpad/ws', 'channel123', key, 'hello world', {
+        timeoutMs: 50,
+      }),
+    ).resolves.toBeUndefined();
+  });
+});
+
+describe('resolveCryptPadWebsocketUrl', () => {
+  it('discovers custom websocketPath from /api/config', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('{"websocketPath": "wss://custom.cryptpad/ws_endpoint"}'),
+    } as any);
+
+    const { resolveCryptPadWebsocketUrl } = await import('../../../src/providers/cryptpad/netflux');
+    const wsUrl = await resolveCryptPadWebsocketUrl('https://cryptpad.fr');
+    expect(wsUrl).toBe('wss://custom.cryptpad/ws_endpoint');
+
+    globalThis.fetch = originalFetch;
+  });
+
+  it('falls back to default guess on fetch failure or missing path', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+    const { resolveCryptPadWebsocketUrl } = await import('../../../src/providers/cryptpad/netflux');
+    const httpsWs = await resolveCryptPadWebsocketUrl('https://cryptpad.fr');
+    expect(httpsWs).toBe('wss://cryptpad.fr/cryptpad_websocket');
+
+    const httpWs = await resolveCryptPadWebsocketUrl('http://localhost:3000');
+    expect(httpWs).toBe('ws://localhost:3000/cryptpad_websocket');
+
+    globalThis.fetch = originalFetch;
   });
 });
 

@@ -405,6 +405,41 @@ describe('action-entrypoint', () => {
         }),
       );
     });
+
+    it('loads config from provider-config-path and handles singular asset entry log', async () => {
+      const fs = await import('node:fs');
+      const readSpy = vi.spyOn(fs.default, 'readFileSync').mockReturnValue(
+        JSON.stringify({
+          input: { provider: 'cryptpad-csv', options: { sources: [] } },
+        }),
+      );
+
+      mockRunProviderPipeline.mockResolvedValueOnce({
+        translations: {},
+        locales: [],
+        localeMapping: {},
+        originalLocaleMapping: {},
+        inputTableCount: 1,
+        assetSyncResult: {
+          manifestCount: 1,
+          downloaded: ['file.png'],
+          updated: [],
+          deleted: [],
+          skipped: [],
+        },
+      });
+
+      const inputs = makeInputs({
+        'provider-config-path': 'custom.config.json',
+      });
+      mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+      await run();
+
+      expect(readSpy).toHaveBeenCalledWith(expect.stringContaining('custom.config.json'), 'utf8');
+      expect(mockInfo).toHaveBeenCalledWith(expect.stringContaining('1 manifest entry'));
+      readSpy.mockRestore();
+    });
   });
 
   describe('drive-folder mode', () => {
