@@ -45,16 +45,24 @@ export function parseCellRef(ref: string): { sheet?: string; col: string; row: n
 }
 
 /**
- * Extracts the OnlyOffice real-time collaboration channel ID from decrypted pad metadata messages.
+ * Extracts the most recently registered OnlyOffice real-time collaboration channel ID
+ * from decrypted pad metadata messages.
+ *
+ * CryptPad metadata channels are governed by ChainPad, an append-only log. The most
+ * recent registration (last message in history) always wins — this is critical for
+ * initializeRtChannel() to take effect after writing a new RT channel pointer.
  */
 export function extractOnlyOfficeChannelId(metadataMessages: string[]): string | null {
+  let lastFound: string | null = null;
+
   for (const raw of metadataMessages) {
     try {
       const parsed = JSON.parse(raw);
 
       // Format 1: direct object
       if (parsed?.content?.channel && typeof parsed.content.channel === 'string') {
-        return parsed.content.channel;
+        lastFound = parsed.content.channel;
+        continue;
       }
 
       // Format 2: ChainPad message [type, patchContent, lastMsgHash]
@@ -74,7 +82,7 @@ export function extractOnlyOfficeChannelId(metadataMessages: string[]): string |
                   try {
                     const inner = JSON.parse(elem);
                     if (inner?.content?.channel && typeof inner.content.channel === 'string') {
-                      return inner.content.channel;
+                      lastFound = inner.content.channel;
                     }
                   } catch {
                     // Continue to regex
@@ -90,20 +98,20 @@ export function extractOnlyOfficeChannelId(metadataMessages: string[]): string |
       if (typeof raw === 'string') {
         const match = raw.match(/\\?"channel\\?"\s*:\s*\\?"([a-f0-9]{32})\\?"/i);
         if (match) {
-          return match[1];
+          lastFound = match[1];
         }
       }
     } catch {
       if (typeof raw === 'string') {
         const match = raw.match(/\\?"channel\\?"\s*:\s*\\?"([a-f0-9]{32})\\?"/i);
         if (match) {
-          return match[1];
+          lastFound = match[1];
         }
       }
     }
   }
 
-  return null;
+  return lastFound;
 }
 
 /**
@@ -359,9 +367,12 @@ export interface OnlyOfficeCellUpdate {
 }
 
 /**
- * Encodes a single cell update record into OnlyOffice binary format:
- * - Native AscCH.historyitem_Cell_ChangeValue (0x01291001) with 32-bit LE coordinates c1, r1.
- * - Explicit UTF-16LE cell reference tags for backward-compatibility and multi-sheet routing.
+ * Encodes a single cell update record into the native OnlyOffice binary format:
+ * AscCH.historyitem_Cell_ChangeValue (magic 0x01291001) with 32-bit LE coordinates c1, r1.
+ *
+ * The returned buffer is a standalone, self-contained record ready to be base64-encoded
+ * and placed as a single `changes` entry in an OnlyOffice `saveChanges` message.
+ * Format: 4-byte LE record length + body bytes (magic, coordinates, value).
  */
 export function encodeOnlyOfficeCellRecord(cellRef: string, value: string, sheetId = 6): Buffer {
   let c1 = 0;
@@ -413,44 +424,52 @@ export function encodeOnlyOfficeCellRecord(cellRef: string, value: string, sheet
 
   const header = Buffer.alloc(4);
   header.writeUInt32LE(body.length, 0);
-  const nativeBuf = Buffer.concat([header, body]);
-
-  const refBuf = Buffer.from(cellRef, 'utf16le');
-  const refHeader = Buffer.alloc(5);
-  refHeader[0] = 0x08;
-  refHeader.writeUInt32LE(refBuf.length, 1);
-
-  const valHeader = Buffer.alloc(5);
-  valHeader[0] = 0x08;
-  valHeader.writeUInt32LE(valBuf.length, 1);
-
-  return Buffer.concat([nativeBuf, refHeader, refBuf, valHeader, valBuf]);
+  // Return ONLY the pure native record buffer — no extra UTF-16LE tags appended.
+  return Buffer.concat([header, body]);
 }
 
 /**
- * Formats a list of cell updates into an OnlyOffice change transaction JSON string.
+ * Formats a list of cell updates into an OnlyOffice `saveChanges` message.
+ *
+ * ### OnlyOffice Real-Time Change Protocol
+ * OnlyOffice broadcasts changes as a JSON `saveChanges` message with a `changes` array.
+ * Each entry in `changes` is an independent document record:
+ * - The first entry is always `txOpen` (transaction open marker, 14 bytes).
+ * - Each subsequent entry is a single cell update record.
+ *
+ * Each `change` value is a JSON-encoded string of the format `"<byteLength>;<base64>"`
+ * where `byteLength` is the binary buffer length and `<base64>` is the base64-encoded buffer.
+ *
+ * This matches the exact wire format used by real OnlyOffice collaborative sessions
+ * and ensures CryptPad's OnlyOffice integration can parse each record independently.
  */
 export function buildOnlyOfficeChangePayload(updates: OnlyOfficeCellUpdate[]): string {
   const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
+  const now = Date.now();
 
-  const records = updates.map((u) => {
+  const changeItems: Array<{ change: string; time: number }> = [];
+
+  // First entry: transaction open marker
+  changeItems.push({
+    change: JSON.stringify(`${txOpen.length};${txOpen.toString('base64')}`),
+    time: now,
+  });
+
+  // One changes entry per cell record
+  for (const u of updates) {
     const colStr = typeof u.col === 'number' ? colIndexToLetter(u.col) : u.col.toUpperCase();
     const sheetPrefix = u.sheet && u.sheet.trim().length > 0 ? `${u.sheet.trim()}!` : '';
     const ref = `${sheetPrefix}${colStr}${u.row}`;
-    return encodeOnlyOfficeCellRecord(ref, u.value);
-  });
-
-  const fullPayload = Buffer.concat([txOpen, ...records]);
-  const base64Data = fullPayload.toString('base64');
-  const changeEntry = `asc_1;${base64Data}`;
+    const rec = encodeOnlyOfficeCellRecord(ref, u.value);
+    changeItems.push({
+      change: JSON.stringify(`${rec.length};${rec.toString('base64')}`),
+      time: now,
+    });
+  }
 
   return JSON.stringify({
     type: 'saveChanges',
-    changes: [
-      {
-        change: changeEntry,
-      },
-    ],
+    changes: changeItems,
     startSaveChanges: true,
     endSaveChanges: true,
     isExcel: true,

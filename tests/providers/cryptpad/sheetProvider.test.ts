@@ -235,13 +235,20 @@ describe('cryptpad sheet coordinate and cell parser', () => {
     ];
 
     const jsonPayload = buildOnlyOfficeChangePayload(updates);
-    expect(jsonPayload).toContain('asc_1;');
+    const parsed = JSON.parse(jsonPayload);
+    // One txOpen + one entry per update
+    expect(parsed.changes).toHaveLength(updates.length + 1);
+    // Each change is in "<byteLen>;<base64>" format (not asc_1;)
+    const firstCellChange = JSON.parse(parsed.changes[1].change);
+    expect(firstCellChange).toMatch(/^\d+;[A-Za-z0-9+/]+=*$/);
 
     const parsedCells = parseOnlyOfficeChanges([jsonPayload]);
-    expect(parsedCells['common!A1']).toBe('key');
-    expect(parsedCells['common!B1']).toBe('en');
-    expect(parsedCells['common!A2']).toBe('welcome');
-    expect(parsedCells['common!B2']).toBe('Hello World');
+    // Native binary encodes coordinates only — sheet prefix is in the WebSocket
+    // routing layer, not the binary record, so the parser returns bare A1-style refs.
+    expect(parsedCells['A1']).toBe('key');
+    expect(parsedCells['B1']).toBe('en');
+    expect(parsedCells['A2']).toBe('welcome');
+    expect(parsedCells['B2']).toBe('Hello World');
   });
 });
 

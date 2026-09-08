@@ -135,7 +135,7 @@ export class CryptPadClient {
    */
   async initializeRtChannel(signal?: AbortSignal): Promise<string> {
     const wsUrl = await this.getWebsocketUrl(signal);
-    const { channelHex, cryptKey } = this.getKeys();
+    const { channelHex, cryptKey, signKey } = this.getKeys();
 
     // Generate a fresh 32-char hex channel ID (same length CryptPad uses)
     const newRtChannel = crypto.randomBytes(16).toString('hex');
@@ -164,9 +164,12 @@ export class CryptPadClient {
     const ZERO_MSG_HASH = 'a4b411975be1d48a91f0ebfcd967add000f69564b2dc5ee644b87bf2bbfd786f';
     const envelope = JSON.stringify([2, [[[0, 0, innerJson]], EMPTY_STR_HASH], ZERO_MSG_HASH]);
 
+    // signKey is required: CryptPad's historyKeeper verifies Ed25519 signatures on
+    // metadata channel messages and silently drops unsigned messages.
     await broadcastChannelMessage(wsUrl, channelHex, cryptKey, envelope, {
       timeoutMs: this.timeoutMs,
       signal,
+      signKey,
     });
 
     return newRtChannel;

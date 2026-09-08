@@ -66,10 +66,31 @@ describe('CryptPad sheetParser unit tests', () => {
       const badInner = [JSON.stringify([1, [[0, 0, 'NOT_JSON']]])];
       expect(extractOnlyOfficeChannelId(badInner)).toBeNull();
     });
+
+    it('returns the LAST registered channel when multiple registrations exist (append-only log)', () => {
+      // Simulates initializeRtChannel() appending a new channel to the metadata history
+      const metadata = [
+        JSON.stringify({ content: { channel: 'aaaabbbbccccdddd0000111122223333' } }),
+        JSON.stringify({ content: { channel: 'deadbeef00112233445566778899aabb' } }),
+        JSON.stringify([
+          2,
+          [
+            [[0, 0, JSON.stringify({ content: { channel: 'ffff0000111122223333444455556666' } })]],
+            'hashA',
+          ],
+          'hashB',
+        ]),
+      ];
+      expect(extractOnlyOfficeChannelId(metadata)).toBe('ffff0000111122223333444455556666');
+    });
   });
 
   describe('parseOnlyOfficeChanges and binary decoding', () => {
-    it('parses Case A explicit cell coordinates with sheet prefix', () => {
+    it('parses cell coordinates from native binary (Case B: coordinates in header)', () => {
+      // The corrected encodeOnlyOfficeCellRecord produces native OnlyOffice binary
+      // where coordinates are stored as 32-bit LE integers at bytes 15/19, NOT as
+      // UTF-16LE string refs. Sheet prefix routing happens at the websocket message
+      // level, not inside the binary record — so round-trip yields bare A1-style refs.
       const payload = buildOnlyOfficeChangePayload([
         { sheet: 'common', col: 'A', row: 1, value: 'var' },
         { sheet: 'common', col: 'B', row: 1, value: 'en' },
@@ -78,10 +99,11 @@ describe('CryptPad sheetParser unit tests', () => {
       ]);
 
       const grid = parseOnlyOfficeChanges([payload]);
-      expect(grid['common!A1']).toBe('var');
-      expect(grid['common!B1']).toBe('en');
-      expect(grid['common!A2']).toBe('save');
-      expect(grid['common!B2']).toBe('Save');
+      // Case B decodes binary coordinates: c1=0→A, r1=0→row1 etc.
+      expect(grid['A1']).toBe('var');
+      expect(grid['B1']).toBe('en');
+      expect(grid['A2']).toBe('save');
+      expect(grid['B2']).toBe('Save');
     });
 
     it('parses Case B binary range coordinates in change header (r1, c1)', () => {
@@ -198,17 +220,41 @@ describe('CryptPad sheetParser unit tests', () => {
       expect(rows[0].en).toBe('Hello');
     });
 
-    it('builds OnlyOffice change payload with string and numeric columns, with and without sheet prefixes', async () => {
+    it('builds OnlyOffice change payload with correct per-record format', async () => {
       const { buildOnlyOfficeChangePayload } =
         await import('../../../src/providers/cryptpad/sheetParser');
-      const json = buildOnlyOfficeChangePayload([
+      const updates = [
         { sheet: 'Settings', col: 'b', row: 5, value: 'dark' },
         { sheet: '', col: 0, row: 2, value: 'zero_col' },
         { sheet: '   ', col: 1, row: 3, value: 'trimmed_col' },
-      ]);
+      ];
+      const json = buildOnlyOfficeChangePayload(updates);
       const parsed = JSON.parse(json);
-      expect(parsed.changes).toHaveLength(1);
-      expect(parsed.changes[0].change.startsWith('asc_1;')).toBe(true);
+
+      // One txOpen + one entry per cell update
+      expect(parsed.changes).toHaveLength(updates.length + 1);
+      expect(parsed.type).toBe('saveChanges');
+      expect(parsed.startSaveChanges).toBe(true);
+      expect(parsed.endSaveChanges).toBe(true);
+
+      // txOpen entry: format is JSON-encoded "<byteLen>;<base64>"
+      const txOpenStr = JSON.parse(parsed.changes[0].change);
+      expect(txOpenStr).toMatch(/^\d+;[A-Za-z0-9+/]+=*$/);
+
+      // Cell entries: each is a separate JSON-encoded "<byteLen>;<base64>"
+      for (let i = 1; i < parsed.changes.length; i++) {
+        const cellStr = JSON.parse(parsed.changes[i].change);
+        expect(cellStr).toMatch(/^\d+;[A-Za-z0-9+/]+=*$/);
+      }
+    });
+
+    it('encodeOnlyOfficeCellRecord matches known-good reference binary for A1="Key"', () => {
+      const ref = Buffer.from(
+        'TQAAAAEpEAECAAAANgABAAAAAAAAAAAAAAAAAAAAAAAtAAAAAAIAAQIAAgkDIAAAAAAAAQkBEwAAAAAIBgAAAEsAZQB5AAEAAgADAgECAAMB',
+        'base64',
+      );
+      const result = encodeOnlyOfficeCellRecord('A1', 'Key');
+      expect(result.equals(ref)).toBe(true);
     });
 
     it('ignores empty and whitespace-only column headers in convertCellsToSheetRows', () => {
