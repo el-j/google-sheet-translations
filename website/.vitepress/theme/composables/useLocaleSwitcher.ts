@@ -51,12 +51,18 @@ export interface UseLocaleSwitcherReturn {
   handleOptionKeydown: (e: KeyboardEvent, locale: string, index: number) => void
 }
 
+// Shared singleton reactive state so all components and layouts share the active locale
+const globalSelectedLocale = ref<string>('')
+
 export function useLocaleSwitcher({
   locales,
   storageKey = 'gst-lang',
   optionSelector = '.lang-switcher__option',
 }: UseLocaleSwitcherOptions): UseLocaleSwitcherReturn {
-  const selectedLocale = ref<string>(locales[0] ?? '')
+  if (!globalSelectedLocale.value && locales.length > 0) {
+    globalSelectedLocale.value = locales[0]
+  }
+
   const isOpen = ref(false)
 
   function handleGlobalKeydown(e: KeyboardEvent) {
@@ -66,11 +72,15 @@ export function useLocaleSwitcher({
   }
 
   onMounted(() => {
-    const saved = localStorage.getItem(storageKey)
-    if (saved && locales.includes(saved)) {
-      selectedLocale.value = saved
-    } else if (locales.length > 0) {
-      selectedLocale.value = locales[0]
+    try {
+      const saved = localStorage.getItem(storageKey)
+      if (saved && locales.includes(saved)) {
+        globalSelectedLocale.value = saved
+      } else if (!globalSelectedLocale.value && locales.length > 0) {
+        globalSelectedLocale.value = locales[0]
+      }
+    } catch {
+      // Ignore localStorage access issues
     }
     document.addEventListener('keydown', handleGlobalKeydown)
   })
@@ -80,8 +90,15 @@ export function useLocaleSwitcher({
   })
 
   function select(locale: string) {
-    selectedLocale.value = locale
-    localStorage.setItem(storageKey, locale)
+    globalSelectedLocale.value = locale
+    try {
+      localStorage.setItem(storageKey, locale)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('gst-locale-changed', { detail: locale }))
+      }
+    } catch {
+      // Ignore localStorage access issues
+    }
     isOpen.value = false
   }
 
@@ -114,7 +131,7 @@ export function useLocaleSwitcher({
   }
 
   return {
-    selectedLocale,
+    selectedLocale: globalSelectedLocale,
     isOpen,
     select,
     toggle,
