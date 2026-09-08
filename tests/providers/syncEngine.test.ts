@@ -260,4 +260,28 @@ describe('sync engine', () => {
     expect(plan.localChanges.map((c) => c.key)).toEqual(['k1']);
     expect(plan.remoteChanges.map((c) => c.key)).toEqual(['k2']);
   });
+
+  describe('isConflict direct unit tests', () => {
+    it('returns undefined when localValue equals remoteValue', async () => {
+      const { isConflict } = await import('../../src/providers/syncEngine');
+      expect(isConflict('base', 'val', 'val')).toBeUndefined();
+    });
+
+    it('returns undefined when baseValue equals localValue or remoteValue', async () => {
+      const { isConflict } = await import('../../src/providers/syncEngine');
+      expect(isConflict('val', 'val', 'remote')).toBeUndefined();
+      expect(isConflict('val', 'local', 'val')).toBeUndefined();
+    });
+
+    it('returns delete-vs-update when one side is deleted and the other updated', async () => {
+      const { isConflict } = await import('../../src/providers/syncEngine');
+      expect(isConflict('base', undefined, 'remote')).toBe('delete-vs-update');
+      expect(isConflict('base', 'local', undefined)).toBe('delete-vs-update');
+    });
+
+    it('returns diverged-update when both sides changed to different non-empty values', async () => {
+      const { isConflict } = await import('../../src/providers/syncEngine');
+      expect(isConflict('base', 'local', 'remote')).toBe('diverged-update');
+    });
+  });
 });

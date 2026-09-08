@@ -266,7 +266,7 @@ function toLegacyOptions(inputs: Record<string, string>): SpreadsheetOptions {
   };
 }
 
-function normalizeValue(value: unknown): unknown {
+export function normalizeValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(normalizeValue);
   }
@@ -283,7 +283,7 @@ function normalizeValue(value: unknown): unknown {
   return value;
 }
 
-function canonicalizeParityConfig(config: ProviderRuntimeConfig): ProviderRuntimeConfig {
+export function canonicalizeParityConfig(config: ProviderRuntimeConfig): ProviderRuntimeConfig {
   const clone: ProviderRuntimeConfig = JSON.parse(JSON.stringify(config));
 
   const inputOptions = clone.input?.options as Record<string, unknown> | undefined;
@@ -302,7 +302,11 @@ function canonicalizeParityConfig(config: ProviderRuntimeConfig): ProviderRuntim
   return clone;
 }
 
-function collectDifferences(actual: unknown, expected: unknown, atPath = 'config'): string[] {
+export function collectDifferences(
+  actual: unknown,
+  expected: unknown,
+  atPath = 'config',
+): string[] {
   if (Array.isArray(actual) && Array.isArray(expected)) {
     if (actual.length !== expected.length) {
       return [

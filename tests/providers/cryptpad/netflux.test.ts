@@ -130,6 +130,31 @@ describe('fetchChannelHistory with Mock WebSocket', () => {
     ).rejects.toThrow('Timeout after 50ms waiting for CryptPad channel "testchan" history.');
   });
 
+  it('finishes with decrypted messages if overallTimeout fires when messages exist', async () => {
+    const key = nacl.randomBytes(32);
+    const nonce = nacl.randomBytes(24);
+    const plaintext = JSON.stringify({ changes: [{ change: '"10;timeout-finish"' }] });
+    const cipher = nacl.secretbox(Buffer.from(plaintext, 'utf8'), nonce, key);
+    const encPayload = `${b64Encode(nonce)}|${b64Encode(cipher)}`;
+
+    const historyPromise = fetchChannelHistory('wss://test.cryptpad/ws', 'testchan', key, {
+      timeoutMs: 50,
+      quietPeriodMs: 300,
+    });
+
+    setTimeout(() => {
+      const wsInstance = MockWebSocket.instances[0];
+      if (wsInstance && wsInstance.onmessage) {
+        wsInstance.onmessage({
+          data: JSON.stringify([0, '0123456789abcdef', 'MSG', '', encPayload]),
+        });
+      }
+    }, 15);
+
+    const messages = await historyPromise;
+    expect(messages).toHaveLength(1);
+  });
+
   it('handles WebSocket error', async () => {
     const key = nacl.randomBytes(32);
     const promise = fetchChannelHistory('wss://test.cryptpad/ws', 'testchan', key, {
@@ -144,6 +169,66 @@ describe('fetchChannelHistory with Mock WebSocket', () => {
     }, 15);
 
     await expect(promise).rejects.toThrow('CryptPad WebSocket error');
+  });
+
+  it('aborts fetchChannelHistory when signal is aborted before start', async () => {
+    const key = nacl.randomBytes(32);
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      fetchChannelHistory('wss://test.cryptpad/ws', 'testchan', key, {
+        signal: controller.signal,
+      }),
+    ).rejects.toThrow('Operation aborted');
+  });
+
+  it('aborts fetchChannelHistory when signal is aborted during execution', async () => {
+    const key = nacl.randomBytes(32);
+    const controller = new AbortController();
+
+    const promise = fetchChannelHistory('wss://test.cryptpad/ws', 'testchan', key, {
+      timeoutMs: 5000,
+      signal: controller.signal,
+    });
+
+    setTimeout(() => {
+      controller.abort();
+    }, 15);
+
+    await expect(promise).rejects.toThrow('Operation aborted');
+  });
+
+  it('handles alternative message formats with payload in msg[3] and nested MSG array', async () => {
+    const key = nacl.randomBytes(32);
+    const nonce = nacl.randomBytes(24);
+    const plaintext = JSON.stringify({ changes: [{ change: '"10;alt-format"' }] });
+    const cipher = nacl.secretbox(Buffer.from(plaintext, 'utf8'), nonce, key);
+    const encPayload = `${b64Encode(nonce)}|${b64Encode(cipher)}`;
+
+    const historyPromise = fetchChannelHistory('wss://test.cryptpad/ws', 'testchan123', key, {
+      timeoutMs: 2000,
+      quietPeriodMs: 40,
+    });
+
+    setTimeout(() => {
+      const wsInstance = MockWebSocket.instances[0];
+      if (wsInstance && wsInstance.onmessage) {
+        // Format A: payload is empty, but msg[3] has length > 50
+        wsInstance.onmessage({
+          data: JSON.stringify([0, 'peer', 'MSG', encPayload]),
+        });
+
+        // Format B: nested MSG array
+        const nestedMsg = JSON.stringify([0, 'peer2', 'MSG', '', encPayload]);
+        wsInstance.onmessage({
+          data: JSON.stringify([0, 'peer', 'MSG', nestedMsg]),
+        });
+      }
+    }, 20);
+
+    const messages = await historyPromise;
+    expect(messages.length).toBeGreaterThanOrEqual(1);
   });
 });
 

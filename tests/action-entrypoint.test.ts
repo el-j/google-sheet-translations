@@ -292,6 +292,26 @@ describe('action-entrypoint', () => {
       expect(mockRunProviderPipeline).toHaveBeenCalled();
     });
 
+    it('fails when provider configuration requires Google auth and credentials are missing', async () => {
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      mockRequiresGoogleAuthForRuntimeConfig.mockReturnValueOnce(true);
+      const providerConfig = JSON.stringify({
+        input: { provider: 'google-sheet', options: { spreadsheetId: '123' } },
+      });
+      const inputs = makeInputs({
+        'google-client-email': '',
+        'google-private-key': '',
+        'provider-config': providerConfig,
+      });
+      mockGetInput.mockImplementation((name) => inputs[name] ?? '');
+
+      await run();
+
+      expect(mockSetFailed).toHaveBeenCalledWith(
+        expect.stringContaining('Authentication required for selected provider configuration'),
+      );
+    });
+
     it('fails when both provider-config and provider-config-path are set', async () => {
       const inputs = makeInputs({
         'provider-config': '{"input":{"provider":"cryptpad-csv","options":{"sources":[]}}}',

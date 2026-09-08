@@ -249,6 +249,61 @@ describe('CryptPadClient direct methods', () => {
     await client.writeSheetRows('empty', [{ key: 'intro.title', en: 'Hi' }]);
     expect(sendSpy).toHaveBeenCalledTimes(2);
   });
+
+  it('writeSheetRows skips rows without key and ignores undefined values', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {
+        common: {
+          cells: { A1: 'var', B1: 'en', A2: 'existing.key', B2: 'Existing Value' },
+          rows: [{ var: 'existing.key', en: 'Existing Value' }],
+        },
+      },
+      sheetNames: ['common'],
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [
+      { en: 'no key property' } as any,
+      { var: 'new.key', en: undefined as any, es: 'Nuevo' },
+    ]);
+
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const updates = sendSpy.mock.calls[0][0];
+    // Should only have created entries for header + new.key + es (not for undefined en)
+    expect(updates.some((u) => u.value === 'Nuevo')).toBe(true);
+  });
+
+  it('fetchSheetData handles sheets that have no cells in groupedCells', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    // Channel history returns metadata with RT channel and change for Sheet1 only
+    const metaMessage = JSON.stringify({
+      content: { channel: 'rt-chan-123' },
+    });
+    const rtPayload = JSON.stringify({
+      changes: [{ change: '10;{"Sheet1":[]}' }],
+    });
+
+    vi.spyOn(netfluxModule, 'fetchChannelHistory').mockImplementation(async (_ws, channel) => {
+      if (channel === 'rt-chan-123') return [rtPayload];
+      return [metaMessage];
+    });
+
+    const result = await client.fetchSheetData();
+    expect(result.sheets).toBeDefined();
+  });
 });
 
 describe('CryptPadDriveClient direct methods', () => {

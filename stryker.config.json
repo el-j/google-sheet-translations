@@ -3,7 +3,7 @@
   "packageManager": "npm",
   "reporters": ["clear-text", "progress"],
   "testRunner": "vitest",
-  "coverageAnalysis": "off",
+  "coverageAnalysis": "perTest",
   "mutate": [
     "src/providers/cryptpad/crypto.ts",
     "src/providers/syncEngine.ts"
