@@ -1,3 +1,13 @@
+## [3.0.0-beta.9](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.8...v3.0.0-beta.9) (2026-09-08)
+
+### 🚀 Features
+
+* implement Ed25519 signing for CryptPad real-time messages and update channel initialization protocols to ensure OnlyOffice compatibility. ([c633577](https://github.com/el-j/google-sheet-translations/commit/c633577c827a6a3cded42987a9f9f9933c3b00d6))
+
+### 📝 Documentation
+
+* highlight v3 provider platform, headless cryptpad sync, and update changelog ([#160](https://github.com/el-j/google-sheet-translations/issues/160)) ([17a980e](https://github.com/el-j/google-sheet-translations/commit/17a980e5678a6126a16788e6a9fb169698bbda8c))
+
 ## [3.0.0-beta.8](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2026-09-08)
 
 ### 🚀 Features
