@@ -11,10 +11,15 @@ spreadsheet and auto-translated via `GOOGLETRANSLATE` formulas — demonstrating
 the package working end-to-end on its own docs. ✅
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { data } from '../.vitepress/translations.data.ts'
+import { useLocaleSwitcher } from '../.vitepress/theme/composables/useLocaleSwitcher'
 
-const selectedLocale = ref(data.locales[0] ?? 'en')
+const { selectedLocale, select } = useLocaleSwitcher({ locales: data.locales })
+
+function getLocaleName(locale) {
+  return data.localeNames?.[locale] ?? locale
+}
 
 const t = computed(() => {
   const loc = selectedLocale.value
@@ -57,7 +62,7 @@ Click a locale to preview the landing-page content translated by the spreadsheet
   <button
     v-for="locale in data.locales"
     :key="locale"
-    @click="selectedLocale = locale"
+    @click="select(locale)"
     :style="{
       padding:'4px 14px',
       borderRadius:'6px',
@@ -67,10 +72,10 @@ Click a locale to preview the landing-page content translated by the spreadsheet
       cursor:'pointer',
       fontWeight: selectedLocale === locale ? '600' : '400'
     }"
-  >{{ locale }}</button>
+  >{{ getLocaleName(locale) }}</button>
 </div>
 
-### Hero — `{{ selectedLocale }}`
+### Hero — `{{ getLocaleName(selectedLocale) }} ({{ selectedLocale }})`
 
 <div v-if="t.hero_title" style="padding:1.5rem;background:var(--vp-c-bg-soft);border-radius:8px;margin:1rem 0">
   <p style="margin:0 0 0.25rem;font-size:1.4rem;font-weight:700">{{ t.hero_title }}</p>
@@ -88,7 +93,7 @@ Click a locale to preview the landing-page content translated by the spreadsheet
 
 </div>
 
-### Features — `{{ selectedLocale }}`
+### Features — `{{ getLocaleName(selectedLocale) }} ({{ selectedLocale }})`
 
 <div v-if="t.feature1_title" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;margin-top:1rem">
   <div v-for="i in 7" :key="i" style="padding:1rem;background:var(--vp-c-bg-soft);border-radius:6px">

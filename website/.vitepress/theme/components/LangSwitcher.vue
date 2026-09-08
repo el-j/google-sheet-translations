@@ -24,12 +24,12 @@ function getLocaleName(locale: string): string {
   <div v-if="data.locales.length > 1" class="lang-switcher">
     <button
       class="lang-switcher__trigger"
-      :aria-label="`Language: ${selectedLocale}`"
+      :aria-label="`Language: ${getLocaleName(selectedLocale)} (${selectedLocale})`"
       :aria-expanded="isOpen"
       aria-haspopup="listbox"
       @click="toggle()"
     >
-      🌐 {{ selectedLocale }}
+      🌐 {{ getLocaleName(selectedLocale) }}
     </button>
     <ul
       v-if="isOpen"
@@ -48,7 +48,8 @@ function getLocaleName(locale: string): string {
         @click="select(locale)"
         @keydown="handleOptionKeydown($event, locale, index)"
       >
-        {{ getLocaleName(locale) }}
+        <span class="lang-switcher__name">{{ getLocaleName(locale) }}</span>
+        <span class="lang-switcher__code">{{ locale }}</span>
       </li>
     </ul>
   </div>
@@ -94,6 +95,10 @@ function getLocaleName(locale: string): string {
 }
 
 .lang-switcher__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 6px 14px;
   font-size: 13px;
   cursor: pointer;
@@ -109,5 +114,11 @@ function getLocaleName(locale: string): string {
 .lang-switcher__option--active {
   color: var(--vp-c-brand-1);
   font-weight: 600;
+}
+
+.lang-switcher__code {
+  font-size: 11px;
+  opacity: 0.6;
+  font-family: var(--vp-font-family-mono);
 }
 </style>
