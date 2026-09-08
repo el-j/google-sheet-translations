@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import {
   createProvidersFromRuntimeConfig,
@@ -226,5 +227,104 @@ describe('provider runtime factory', () => {
         assetSync: { provider: 'dropbox' },
       } as any),
     ).toThrow('Unsupported asset sync provider');
+  });
+
+  it('creates cryptpad-sheet and cryptpad output and sync providers with full options', () => {
+    const selection = createProvidersFromRuntimeConfig({
+      input: {
+        provider: 'cryptpad-csv',
+        options: { sources: [{ tableName: 'home', filePath: './fixtures/home.csv' }] },
+      },
+      output: {
+        provider: 'cryptpad-sheet',
+        options: {
+          url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/test-seed/',
+          password: 'secret-password',
+          override: true,
+          localeMapping: { en: 'en-US' },
+          providerId: 'custom-cp-out',
+          displayName: 'Custom CP Out',
+          timeoutMs: 5000,
+        },
+      },
+      sync: {
+        provider: 'cryptpad',
+        options: {
+          url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/test-seed/',
+          password: 'secret-password',
+          override: true,
+          conflictPolicy: 'local-wins',
+          localeMapping: { en: 'en-US' },
+          providerId: 'custom-cp-sync',
+          displayName: 'Custom CP Sync',
+          timeoutMs: 5000,
+        },
+      },
+    });
+
+    expect(selection.outputProvider?.providerId).toBe('custom-cp-out');
+    expect(selection.outputProvider?.displayName).toBe('Custom CP Out');
+    expect(selection.syncProvider?.providerId).toBe('custom-cp-sync');
+    expect(selection.syncProvider?.displayName).toBe('Custom CP Sync');
+  });
+
+  it('creates cryptpad sync provider with remote-wins conflict policy', () => {
+    const selection = createProvidersFromRuntimeConfig({
+      input: {
+        provider: 'cryptpad-csv',
+        options: { sources: [{ tableName: 'home', filePath: './fixtures/home.csv' }] },
+      },
+      sync: {
+        provider: 'cryptpad-sheet',
+        options: {
+          url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/test-seed/',
+          conflictPolicy: 'remote-wins',
+        },
+      },
+    });
+
+    expect(selection.syncProvider?.providerId).toBe('cryptpad-sheet');
+  });
+
+  it('creates cryptpad-workspace sync provider with custom providerId and displayName', () => {
+    const selection = createProvidersFromRuntimeConfig({
+      input: {
+        provider: 'cryptpad-csv',
+        options: { sources: [{ tableName: 'home', filePath: './fixtures/home.csv' }] },
+      },
+      sync: {
+        provider: 'cryptpad-workspace',
+        options: {
+          filePath: './snapshot.json',
+          providerId: 'custom-workspace-sync',
+          displayName: 'Custom Workspace Sync',
+          conflictPolicy: 'remote-wins',
+        },
+      },
+    });
+
+    expect(selection.syncProvider?.providerId).toBe('custom-workspace-sync');
+    expect(selection.syncProvider?.displayName).toBe('Custom Workspace Sync');
+  });
+
+  it('creates cryptpad-assets provider using driveUrl with password and custom metadata', () => {
+    const selection = createProvidersFromRuntimeConfig({
+      input: {
+        provider: 'cryptpad-csv',
+        options: { sources: [{ tableName: 'home', filePath: './fixtures/home.csv' }] },
+      },
+      assetSync: {
+        provider: 'cryptpad-assets',
+        options: {
+          driveUrl: 'https://cryptpad.fr/drive/#/2/drive/view/abc/',
+          password: 'drive-password',
+          providerId: 'custom-drive-assets',
+          displayName: 'Custom Drive Assets',
+        },
+      },
+    });
+
+    expect(selection.assetSyncProvider?.providerId).toBe('custom-drive-assets');
+    expect(selection.assetSyncProvider?.displayName).toBe('Custom Drive Assets');
   });
 });

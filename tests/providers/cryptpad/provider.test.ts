@@ -95,4 +95,38 @@ describe('cryptpad csv input provider', () => {
       'Source "broken" must define either url or filePath.',
     );
   });
+
+  it('throws if sources array is empty or undefined', () => {
+    expect(() => createCryptPadCsvInputProvider({ sources: [] })).toThrow(
+      'CryptPad CSV provider requires at least one source.',
+    );
+  });
+
+  it('exercises default fetchCsv implementation including error handling', async () => {
+    const originalFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      } as any);
+
+      const provider = createCryptPadCsvInputProvider({
+        sources: [{ tableName: 'test', url: 'https://example.com/notfound.csv' }],
+      });
+
+      await expect(provider.readTables({})).rejects.toThrow(
+        'Failed to fetch CSV from "https://example.com/notfound.csv" (HTTP 404)',
+      );
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve('key,en\nhello,world'),
+      } as any);
+
+      const successResult = await provider.readTables({});
+      expect(successResult.tables[0].rows).toEqual([{ key: 'hello', en: 'world' }]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

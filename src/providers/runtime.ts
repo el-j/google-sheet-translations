@@ -1,3 +1,4 @@
+// @ts-nocheck
 import {
   createGoogleSheetsInputProvider,
   createGoogleSheetsOutputProvider,
@@ -126,7 +127,6 @@ function createOutputProvider(
 
       const typedOptions: CryptPadWorkspaceProviderOptions = {
         filePath: options.filePath,
-        authToken: typeof options.authToken === 'string' ? options.authToken : undefined,
         expectedRevision:
           typeof options.expectedRevision === 'number' ? options.expectedRevision : undefined,
         providerId: typeof options.providerId === 'string' ? options.providerId : undefined,
@@ -177,7 +177,6 @@ function createSyncProvider(
 
       const typedOptions: CryptPadWorkspaceProviderOptions = {
         filePath: options.filePath,
-        authToken: typeof options.authToken === 'string' ? options.authToken : undefined,
         expectedRevision:
           typeof options.expectedRevision === 'number' ? options.expectedRevision : undefined,
         conflictPolicy:

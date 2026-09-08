@@ -349,5 +349,47 @@ describe('createCryptPadAssetSyncProvider', () => {
       expect(result.manifestCount).toBe(0);
       expect(result.deleted).toEqual([]);
     });
+
+    it('discovers assets from driveUrl when manifestPath is not provided', async () => {
+      const { CryptPadDriveClient } = await import('../../../src/providers/cryptpad/driveClient');
+      const listSpy = vi.spyOn(CryptPadDriveClient.prototype, 'listDriveItems').mockResolvedValue([
+        {
+          id: 'item1',
+          title: 'img.png',
+          url: 'https://cryptpad.fr/file/#/2/file/view/xyz/',
+          type: 'file',
+          path: 'assets/img.png',
+        },
+        {
+          id: 'folder1',
+          title: 'Subfolder',
+          url: 'https://cryptpad.fr/drive/#/2/drive/view/sub/',
+          type: 'folder',
+        },
+        {
+          id: 'sheet1',
+          title: 'data.sheet',
+          url: 'https://cryptpad.fr/sheet/#/2/sheet/view/123/',
+          type: 'sheet',
+        },
+      ]);
+
+      const downloadAsset = vi.fn().mockResolvedValue(Buffer.from('asset-content'));
+      const provider = createCryptPadAssetSyncProvider(
+        { driveUrl: 'https://cryptpad.fr/drive/#/2/drive/view/root/' },
+        {
+          readAssetBuffer: downloadAsset,
+          fileExists: vi.fn().mockResolvedValue(false),
+          writeFile: vi.fn().mockResolvedValue(undefined),
+          listFiles: vi.fn().mockResolvedValue([]),
+        },
+      );
+
+      const result = await provider.syncAssets({ targetDirectory: '/out' });
+      expect(listSpy).toHaveBeenCalled();
+      expect(result.manifestCount).toBe(1);
+      expect(result.downloaded).toEqual(['assets/img.png']);
+      listSpy.mockRestore();
+    });
   });
 });

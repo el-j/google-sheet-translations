@@ -30,9 +30,11 @@ Thumbs.db
 # Log files
 *.log
 
-# Coverage
+# Coverage & Mutation Testing
 coverage/
 .nyc_output/
+.stryker-tmp/
+reports/
 
 # Package lock files (uncomment if you want to ignore them)
 # package-lock.json
