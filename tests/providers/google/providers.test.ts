@@ -182,4 +182,31 @@ describe('google provider adapters', () => {
     );
     expect(result.changedKeys).toBe(1);
   });
+
+  it('returns empty tables when tableNames request is empty', async () => {
+    const provider = createGoogleSheetsInputProvider({ spreadsheetId: 'test-id' });
+    const result = await provider.readTables({ tableNames: [] });
+    expect(result).toEqual({ tables: [] });
+  });
+
+  it('throws when spreadsheetId is missing from options and environment', async () => {
+    const saved = process.env.GOOGLE_SPREADSHEET_ID;
+    delete process.env.GOOGLE_SPREADSHEET_ID;
+    try {
+      const provider = createGoogleSheetsInputProvider({});
+      await expect(provider.readTables({ tableNames: ['home'] })).rejects.toThrow(
+        'No spreadsheet ID provided.',
+      );
+    } finally {
+      if (saved) process.env.GOOGLE_SPREADSHEET_ID = saved;
+    }
+  });
+
+  it('uses default createSpreadsheetClient dependency', async () => {
+    const { createDefaultDeps } = await import('../../../src/providers/google/providers');
+    const deps = createDefaultDeps();
+    const doc = deps.createSpreadsheetClient('test-id', {} as any);
+    expect(doc).toBeDefined();
+    expect(doc.spreadsheetId).toBe('test-id');
+  });
 });

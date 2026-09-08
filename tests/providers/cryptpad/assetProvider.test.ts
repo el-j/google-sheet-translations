@@ -391,5 +391,48 @@ describe('createCryptPadAssetSyncProvider', () => {
       expect(result.downloaded).toEqual(['assets/img.png']);
       listSpy.mockRestore();
     });
+
+    it('falls back to item.title when item.id and item.path are missing from drive items', async () => {
+      const { CryptPadDriveClient } = await import('../../../src/providers/cryptpad/driveClient');
+      const listSpy = vi.spyOn(CryptPadDriveClient.prototype, 'listDriveItems').mockResolvedValue([
+        {
+          id: '',
+          title: 'fallback-file.png',
+          url: 'https://cryptpad.fr/file/#/2/file/view/fallback/',
+          type: 'file',
+          path: '',
+        },
+      ]);
+
+      const downloadAsset = vi.fn().mockResolvedValue(Buffer.from('asset-content'));
+      const provider = createCryptPadAssetSyncProvider(
+        { driveUrl: 'https://cryptpad.fr/drive/#/2/drive/view/root/' },
+        {
+          readAssetBuffer: downloadAsset,
+          fileExists: vi.fn().mockResolvedValue(false),
+          writeFile: vi.fn().mockResolvedValue(undefined),
+          listFiles: vi.fn().mockResolvedValue([]),
+        },
+      );
+
+      const result = await provider.syncAssets({ targetDirectory: '/out' });
+      expect(result.downloaded).toEqual(['fallback-file.png']);
+      listSpy.mockRestore();
+    });
+
+    it('returns empty result when neither manifestPath nor driveUrl is provided', async () => {
+      const provider = createCryptPadAssetSyncProvider(
+        {},
+        {
+          fileExists: vi.fn().mockResolvedValue(false),
+          writeFile: vi.fn().mockResolvedValue(undefined),
+          listFiles: vi.fn().mockResolvedValue([]),
+        },
+      );
+
+      const result = await provider.syncAssets({ targetDirectory: '/out' });
+      expect(result.manifestCount).toBe(0);
+      expect(result.downloaded).toEqual([]);
+    });
   });
 });

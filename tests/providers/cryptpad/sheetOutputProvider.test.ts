@@ -102,4 +102,13 @@ describe('cryptpad sheet output provider', () => {
       if (saved) process.env.CRYPTPAD_URL = saved;
     }
   });
+
+  it('applies localeMapping reverse headers when converting translations', () => {
+    const translations = {
+      'en-US': { home: { welcome: 'Hello' } },
+    };
+    const localeMapping = { en: 'en-US' };
+    const result = convertTranslationsToSheetRows(translations, localeMapping);
+    expect(result.home).toEqual([{ var: 'welcome', en: 'Hello' }]);
+  });
 });

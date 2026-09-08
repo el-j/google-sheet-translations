@@ -53,4 +53,14 @@ describe('cryptpad sheet sync provider', () => {
     expect(result.changedKeys).toBeGreaterThanOrEqual(1);
     expect(result.metadata?.provider).toBe('cryptpad-sheet');
   });
+
+  it('throws if no url is provided', () => {
+    const saved = process.env.CRYPTPAD_URL;
+    delete process.env.CRYPTPAD_URL;
+    try {
+      expect(() => createCryptPadSheetSyncProvider({})).toThrow('requires a "url" option');
+    } finally {
+      if (saved) process.env.CRYPTPAD_URL = saved;
+    }
+  });
 });

@@ -687,4 +687,86 @@ describe('normalizeExtensions option', () => {
 
     expect(result.downloaded[0]).toMatch(/MyHero_Banner\.png$/);
   });
+
+  it('cleanSync preserves local files present in Drive and deletes missing ones', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(true);
+    vi.mocked(fs.readdirSync).mockReturnValue(['keep.png', 'remove.png'] as any);
+    vi.mocked(fs.statSync).mockReturnValue({ isDirectory: () => false } as any);
+
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([{ id: 'f1', name: 'keep.png', mimeType: 'image/png' }]),
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      cleanSync: true,
+      credentials,
+    });
+
+    expect(result.deleted).toEqual(['/output/remove.png']);
+    expect(fs.unlinkSync).toHaveBeenCalledWith('/output/remove.png');
+    expect(fs.unlinkSync).not.toHaveBeenCalledWith('/output/keep.png');
+  });
+
+  it('handles non-existent output directory during cleanSync gracefully', async () => {
+    vi.mocked(fs.existsSync).mockReturnValue(false);
+
+    mockFetch.mockResolvedValueOnce(makeListResponse([])).mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      cleanSync: true,
+      credentials,
+    });
+
+    expect(result.deleted).toEqual([]);
+  });
+
+  it('handles non-Error thrown during download in error logging', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([{ id: 'f1', name: 'error.png', mimeType: 'image/png' }]),
+      )
+      .mockRejectedValueOnce('string-thrown-network-error');
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      credentials,
+    });
+
+    expect(result.errors).toEqual(['/output/error.png']);
+  });
+
+  it('collectFiles recurses into sub-subfolders properly', async () => {
+    mockFetch
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'sub1', name: 'level1', mimeType: 'application/vnd.google-apps.folder' },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        makeListResponse([
+          { id: 'sub2', name: 'level2', mimeType: 'application/vnd.google-apps.folder' },
+        ]),
+      )
+      .mockResolvedValueOnce(
+        makeListResponse([{ id: 'img1', name: 'deep.png', mimeType: 'image/png' }]),
+      )
+      .mockResolvedValue(makeDownloadResponse());
+
+    const result = await syncDriveImages({
+      folderId: 'folder',
+      outputPath: '/output',
+      recursive: true,
+      credentials,
+    });
+
+    expect(result.downloaded).toHaveLength(1);
+    expect(result.downloaded[0]).toBe('/output/level1/level2/deep.png');
+  });
 });

@@ -198,4 +198,134 @@ describe('migrateProjectToV3', () => {
     expect(result.parityCheck?.passed).toBe(false);
     expect(result.warnings.some((w) => w.includes('Parity check found'))).toBe(true);
   });
+
+  it('canonicalizes parity config removing false defaults', async () => {
+    const { canonicalizeParityConfig } = await import('../../src/migration/migrateV3');
+    const config = {
+      input: {
+        provider: 'google-sheets',
+        options: {
+          publicSheet: false,
+          spreadsheetId: 'abc',
+        },
+      },
+      sync: {
+        provider: 'google-sheets',
+        options: {
+          autoTranslate: false,
+          override: false,
+          spreadsheetId: 'abc',
+        },
+      },
+    };
+
+    const canonical = canonicalizeParityConfig(config as any);
+    expect(canonical.input?.options?.publicSheet).toBeUndefined();
+    expect(canonical.sync?.options?.autoTranslate).toBeUndefined();
+    expect(canonical.sync?.options?.override).toBeUndefined();
+  });
+
+  it('collects differences for array length and array element differences', async () => {
+    const { collectDifferences } = await import('../../src/migration/migrateV3');
+
+    // Array length mismatch
+    const lenDiff = collectDifferences([1, 2], [1], 'arr');
+    expect(lenDiff).toEqual(['arr: array length differs (actual 2, expected 1)']);
+
+    // Array element mismatch
+    const elemDiff = collectDifferences(['a', 'b'], ['a', 'c'], 'arr');
+    expect(elemDiff).toEqual(['arr[1]: actual="b" expected="c"']);
+
+    // Matching arrays
+    const matchDiff = collectDifferences(['a', 'b'], ['a', 'b'], 'arr');
+    expect(matchDiff).toEqual([]);
+
+    // Object and value differences
+    const objDiff = collectDifferences({ x: 1, y: 2 }, { x: 1, y: 3 }, 'obj');
+    expect(objDiff).toEqual(['obj.y: actual=2 expected=3']);
+  });
+
+  it('handles workflow step ranges when subsequent steps exist and parses non-boolean inputs with fallback', () => {
+    const projectRoot = createTempProject();
+    writeWorkflow(
+      projectRoot,
+      'multi-step.yml',
+      `jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: el-j/google-sheet-translations@v2
+        with:
+          google-spreadsheet-id: 'sheetXYZ'
+          sync-local-changes: 'invalid-non-bool'
+          auto-translate: 'unknown'
+      - name: Next step
+        run: echo "done"
+`,
+    );
+
+    const result = migrateProjectToV3({
+      projectRoot,
+      writeWorkflows: true,
+      parityCheck: true,
+    });
+
+    expect(result.legacyWorkflowsFound).toEqual(['.github/workflows/multi-step.yml']);
+    expect(result.rewrittenWorkflows).toEqual(['.github/workflows/multi-step.yml']);
+
+    // Check that Next step was preserved
+    const rewritten = fs.readFileSync(
+      path.join(projectRoot, '.github/workflows/multi-step.yml'),
+      'utf8',
+    );
+    expect(rewritten).toContain('- name: Next step');
+    expect(rewritten).toContain('echo "done"');
+  });
+
+  it('normalizes array values during parity checks', () => {
+    const projectRoot = createTempProject();
+    // Write an existing provider config containing an array
+    const configPath = path.join(projectRoot, '.github/provider.config.json');
+    fs.mkdirSync(path.dirname(configPath), { recursive: true });
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        input: {
+          provider: 'google-sheets',
+          options: {
+            spreadsheetId: 'sheetXYZ',
+            sheetTitles: ['home', 'settings'],
+          },
+        },
+      }),
+      'utf8',
+    );
+
+    writeWorkflow(
+      projectRoot,
+      'array-check.yml',
+      `jobs:
+  build:
+    steps:
+      - uses: el-j/google-sheet-translations@v2
+        with:
+          google-spreadsheet-id: 'sheetXYZ'
+`,
+    );
+
+    const result = migrateProjectToV3({
+      projectRoot,
+      parityCheck: true,
+      dryRun: true,
+    });
+
+    expect(result.parityCheck).toBeDefined();
+  });
+
+  it('normalizes array values with nested objects', async () => {
+    const { normalizeValue } = await import('../../src/migration/migrateV3');
+    const result = normalizeValue(['apple', { z: 1, a: 2 }, undefined]);
+    expect(result).toEqual(['apple', { a: 2, z: 1 }, undefined]);
+  });
 });

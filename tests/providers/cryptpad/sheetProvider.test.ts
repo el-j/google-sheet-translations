@@ -319,4 +319,19 @@ describe('cryptpad sheet input provider', () => {
         }),
     ).toThrow('is password protected, but no password was provided');
   });
+
+  it('throws when source does not define a URL and no fallback URL exists', async () => {
+    const saved = process.env.CRYPTPAD_URL;
+    delete process.env.CRYPTPAD_URL;
+    try {
+      const provider = createCryptPadSheetInputProvider({
+        sources: [{ tableName: 'missing-url-sheet' }],
+      });
+      await expect(provider.readTables({})).rejects.toThrow(
+        'CryptPad sheet source "missing-url-sheet" does not define a URL.',
+      );
+    } finally {
+      if (saved) process.env.CRYPTPAD_URL = saved;
+    }
+  });
 });

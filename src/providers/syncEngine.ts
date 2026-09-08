@@ -172,7 +172,7 @@ function diffChanges(
   return changes.sort((a, b) => a.path.localeCompare(b.path));
 }
 
-function isConflict(
+export function isConflict(
   baseValue: string | undefined,
   localValue: string | undefined,
   remoteValue: string | undefined,

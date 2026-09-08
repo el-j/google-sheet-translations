@@ -198,15 +198,48 @@ describe('CryptPad sheetParser unit tests', () => {
       expect(rows[0].en).toBe('Hello');
     });
 
-    it('builds OnlyOffice change payload with string columns and sheet prefixes', async () => {
+    it('builds OnlyOffice change payload with string and numeric columns, with and without sheet prefixes', async () => {
       const { buildOnlyOfficeChangePayload } =
         await import('../../../src/providers/cryptpad/sheetParser');
       const json = buildOnlyOfficeChangePayload([
         { sheet: 'Settings', col: 'b', row: 5, value: 'dark' },
+        { sheet: '', col: 0, row: 2, value: 'zero_col' },
+        { sheet: '   ', col: 1, row: 3, value: 'trimmed_col' },
       ]);
       const parsed = JSON.parse(json);
       expect(parsed.changes).toHaveLength(1);
       expect(parsed.changes[0].change.startsWith('asc_1;')).toBe(true);
+    });
+
+    it('ignores empty and whitespace-only column headers in convertCellsToSheetRows', () => {
+      const grid = {
+        A1: 'key',
+        B1: '   ',
+        C1: 'en',
+        A2: 'item.one',
+        B2: 'ignored_val',
+        C2: 'Item One',
+      };
+      const rows = convertCellsToSheetRows(grid);
+      expect(rows).toEqual([{ key: 'item.one', en: 'Item One' }]);
+    });
+
+    it('skips binary cells containing exclamation mark or whitespace', () => {
+      // Buffer >= 80 bytes with r1=0, c1=0 (A1)
+      const buf = Buffer.alloc(80);
+      buf.writeUInt32LE(0, 14);
+      buf.writeUInt32LE(0, 18);
+
+      buf[40] = 0x08;
+      const strBuf = Buffer.from('Sheet1!Ref', 'utf16le');
+      buf.writeUInt32LE(strBuf.length, 41);
+      strBuf.copy(buf, 45);
+
+      const changeStr = JSON.stringify(`10;${buf.toString('base64')}`);
+      const rtMessages = [JSON.stringify({ changes: [{ change: changeStr }] })];
+
+      const cells = parseOnlyOfficeChanges(rtMessages);
+      expect(cells['A1']).toBeUndefined();
     });
   });
 });

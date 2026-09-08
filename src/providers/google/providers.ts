@@ -105,7 +105,7 @@ const SYNC_CAPABILITIES: ProviderCapabilitySet = createCapabilitySet({
   autoTranslateFormula: true,
 });
 
-function createDefaultDeps(): GoogleSheetsProviderDeps {
+export function createDefaultDeps(): GoogleSheetsProviderDeps {
   return {
     createAuthClient,
     createSpreadsheetClient: (spreadsheetId, authClient) =>
