@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import {
   CryptPadClient,
@@ -14,6 +15,21 @@ import {
 } from '../utils/fileWriter';
 import { readDataJson } from '../utils/readDataJson';
 import type { SyncConflictPolicy } from '../providers/syncEngine';
+
+function tryReadLocaleMapping(localesFilePath: string): Record<string, string> | undefined {
+  try {
+    if (fs.existsSync(localesFilePath)) {
+      const content = fs.readFileSync(localesFilePath, 'utf8');
+      const match = content.match(/export const localeHeaderMapping = (\{[\s\S]*?\});/);
+      if (match) {
+        return JSON.parse(match[1]);
+      }
+    }
+  } catch {
+    // Ignore parsing error
+  }
+  return undefined;
+}
 
 function parseArgs(argv: string[]): { command: string; options: Record<string, string> } {
   const args = argv.slice(2);
@@ -184,16 +200,19 @@ async function main(): Promise<void> {
         process.exit(1);
       }
 
+      const localeMapping = tryReadLocaleMapping(localesOutputPath);
       const outputProvider = createCryptPadSheetOutputProvider({
         url,
         password,
         override: options.override === 'true',
+        localeMapping,
       });
 
       const locales = Object.keys(localData);
       const res = await outputProvider.writeTranslations({
         translations: localData,
         locales,
+        localeMapping,
       });
 
       const updatedSheets = Array.isArray(res.metadata?.updatedSheets)
