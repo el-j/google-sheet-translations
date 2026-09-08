@@ -1,3 +1,9 @@
+## [3.0.0-beta.8](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2026-09-08)
+
+### 🚀 Features
+
+* **website:** implement in-place reactive translation via navbar language switcher ([#158](https://github.com/el-j/google-sheet-translations/issues/158)) ([2bc3179](https://github.com/el-j/google-sheet-translations/commit/2bc3179c69a5106bfacc822a7ca0443060cd3180))
+
 ## [3.0.0-beta.7](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2026-09-07)
 
 ### 🐛 Bug Fixes
