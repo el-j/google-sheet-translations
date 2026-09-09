@@ -1,5 +1,5 @@
-// @ts-nocheck
 import type { SheetRow } from '../../types';
+import { ChainPad } from './chainpad';
 
 export interface CryptPadSheetGrid {
   [cellRef: string]: string;
@@ -32,10 +32,11 @@ export function letterToColIndex(letter: string): number {
 }
 
 /**
- * Parses cell coordinates from a reference like "A1", "Sheet1!B2", or "$C$5".
+ * Parses a cell reference into components: 'A1' -> { col: 'A', row: 1 },
+ * 'Sheet1!B2' -> { sheet: 'Sheet1', col: 'B', row: 2 }.
  */
-export function parseCellRef(ref: string): { sheet?: string; col: string; row: number } | null {
-  const match = ref.match(/^(?:([^!]+)!)?\$?([A-Z]+)\$?(\d+)$/i);
+export function parseCellRef(cellRef: string): { sheet?: string; col: string; row: number } | null {
+  const match = cellRef.match(/^(?:([^!]+)!)?\$?([A-Za-z]+)\$?(\d+)$/);
   if (!match) return null;
   return {
     sheet: match[1],
@@ -44,30 +45,70 @@ export function parseCellRef(ref: string): { sheet?: string; col: string; row: n
   };
 }
 
-/**
- * Extracts the most recently registered OnlyOffice real-time collaboration channel ID
- * from decrypted pad metadata messages.
- *
- * CryptPad metadata channels are governed by ChainPad, an append-only log. The most
- * recent registration (last message in history) always wins — this is critical for
- * initializeRtChannel() to take effect after writing a new RT channel pointer.
- */
-export function extractOnlyOfficeChannelId(metadataMessages: string[]): string | null {
-  let lastFound: string | null = null;
+export interface OnlyOfficeMetadata {
+  channelId: string | null;
+  title: string | null;
+  defaultTitle: string | null;
+  userDoc?: Record<string, unknown>;
+}
 
-  for (const raw of metadataMessages) {
+/**
+ * Extracts the active OnlyOffice real-time collaboration channel ID and document
+ * metadata from decrypted pad metadata messages.
+ *
+ * CryptPad metadata channels are governed by ChainPad (SmartJSONTransformer DAG).
+ * Replaying the ChainPad log deterministically computes the true, latest document
+ * state (userDoc.content.channel).
+ */
+export function extractOnlyOfficeMetadata(metadataMessages: string[]): OnlyOfficeMetadata {
+  // Method 1: Reconstruct the true userDoc DAG using ChainPad SmartJSONTransformer
+  try {
+    const cp = ChainPad.create({
+      patchTransformer: ChainPad.SmartJSONTransformer,
+      logLevel: 0,
+    });
+    cp.start();
+    for (let i = 0; i < metadataMessages.length; i++) {
+      try {
+        cp.message(metadataMessages[i]);
+      } catch {
+        // Skip unparseable message
+      }
+    }
+    const userDocStr = cp.getUserDoc();
+    if (userDocStr) {
+      const userDoc = JSON.parse(userDocStr);
+      const channel = userDoc?.content?.channel;
+      if (channel && typeof channel === 'string') {
+        return {
+          channelId: channel,
+          title: userDoc?.metadata?.title || null,
+          defaultTitle: userDoc?.metadata?.defaultTitle || null,
+          userDoc,
+        };
+      }
+    }
+  } catch {
+    // Continue to fallback
+  }
+
+  // Method 2: Reverse chronological search through history messages
+  for (let i = metadataMessages.length - 1; i >= 0; i--) {
+    const raw = metadataMessages[i];
     try {
       const parsed = JSON.parse(raw);
 
-      // Format 1: direct object
+      // Direct object
       if (parsed?.content?.channel && typeof parsed.content.channel === 'string') {
-        lastFound = parsed.content.channel;
-        continue;
+        return {
+          channelId: parsed.content.channel,
+          title: parsed.metadata?.title || null,
+          defaultTitle: parsed.metadata?.defaultTitle || null,
+          userDoc: parsed,
+        };
       }
 
-      // Format 2: ChainPad message [type, patchContent, lastMsgHash]
-      // Where patchContent is either [operations, parentHash] (ChainPad PATCH/CHECKPOINT)
-      // or legacy/mock operations array [[offset, len, jsonStr]]
+      // ChainPad message: [type, patchContent, lastMsgHash]
       if (Array.isArray(parsed) && Array.isArray(parsed[1])) {
         const candidateContainers = [
           parsed[1],
@@ -82,64 +123,67 @@ export function extractOnlyOfficeChannelId(metadataMessages: string[]): string |
                   try {
                     const inner = JSON.parse(elem);
                     if (inner?.content?.channel && typeof inner.content.channel === 'string') {
-                      lastFound = inner.content.channel;
+                      return {
+                        channelId: inner.content.channel,
+                        title: inner.metadata?.title || null,
+                        defaultTitle: inner.metadata?.defaultTitle || null,
+                        userDoc: inner,
+                      };
                     }
-                  } catch {
-                    // Continue to regex
-                  }
+                  } catch {}
                 }
               }
             }
           }
         }
-      }
 
-      // Format 3: Regex match for 32-hex channel ID in payload (handles escaped or raw JSON)
-      if (typeof raw === 'string') {
-        const match = raw.match(/\\?"channel\\?"\s*:\s*\\?"([a-f0-9]{32})\\?"/i);
+        // Check stringified patch
+        const str = JSON.stringify(parsed[1]);
+        const match = str.match(/"channel"\s*:\s*"([a-f0-9]{32})"/i);
         if (match) {
-          lastFound = match[1];
+          return {
+            channelId: match[1],
+            title: null,
+            defaultTitle: null,
+          };
         }
       }
     } catch {
       if (typeof raw === 'string') {
         const match = raw.match(/\\?"channel\\?"\s*:\s*\\?"([a-f0-9]{32})\\?"/i);
         if (match) {
-          lastFound = match[1];
+          return {
+            channelId: match[1],
+            title: null,
+            defaultTitle: null,
+          };
         }
       }
     }
   }
 
-  return lastFound;
+  return { channelId: null, title: null, defaultTitle: null };
+}
+
+/**
+ * Extracts the most recently registered OnlyOffice real-time collaboration channel ID
+ * from decrypted pad metadata messages.
+ */
+export function extractOnlyOfficeChannelId(metadataMessages: string[]): string | null {
+  return extractOnlyOfficeMetadata(metadataMessages).channelId;
 }
 
 /**
  * Parses OnlyOffice incremental binary change records into cell coordinates and text values.
- *
- * ### OnlyOffice Document Server / CryptPad Binary Protocol Specification
- * OnlyOffice collaborative document changes are broadcast over Netflux real-time channels.
- * Each message contains a `changes` array of transaction objects.
- *
- * Inside each transaction, `change` is formatted with a command prefix followed by base64 binary:
- * `asc_<version>;<base64_binary_payload>` (e.g., `asc_1;<base64>`).
- *
- * The decoded binary stream represents OnlyOffice document AST changes:
- * - Text and identifiers are serialized as length-prefixed UTF-16LE strings.
- * - The marker byte `0x08` indicates the start of a UTF-16LE string entry, followed by a 4-byte
- *   little-endian unsigned integer (`UInt32LE`) specifying byte length, followed by the UTF-16LE payload.
- *
- * Two layout patterns are supported:
- * - **Case A (Explicit coordinate reference)**: A string matching coordinate syntax (e.g. `A1` or `sheet!B2`)
- *   followed closely (within 30 bytes) by another `0x08` marker holding the cell's UTF-16LE text value.
- * - **Case B (Binary header coordinates)**: Header packets store 0-based column index `c1` at byte 14
- *   and row index `r1` at byte 18 as `UInt32LE`, followed by string values starting at byte 40+.
+ * Supports dynamic sheet identifiers, tab additions, renames, and binary change frames.
  *
  * @param rtMessages - Decrypted raw change messages retrieved from the OnlyOffice RT Netflux channel.
  * @returns A mapping of cell coordinates (`A1` or `sheet!A1`) to cell text values.
  */
 export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid {
   const cells: CryptPadSheetGrid = {};
+  const sheetNames = new Map<string, string>(); // sheetId -> sheetName
+  let defaultSheetId = '6';
 
   for (const raw of rtMessages) {
     try {
@@ -162,9 +206,74 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
 
         const b64 = parts[1];
         const buf = Buffer.from(b64, 'base64');
-        if (buf.length === 0) continue;
+        if (buf.length < 20) continue;
 
-        // Search for UTF-16LE string markers (0x08 prefix with 4-byte LE length)
+        const magic = buf.readUInt32BE(4);
+
+        // Sheet rename: magic 0x012a1201 (AscCH.historyitem_Sheet_Rename)
+        if (magic === 0x012a1201) {
+          const strings: string[] = [];
+          for (let j = 0; j < buf.length - 4; j++) {
+            if (buf[j] === 0x08) {
+              const len = buf.readUInt32LE(j + 1);
+              if (len > 0 && j + 5 + len <= buf.length) {
+                strings.push(buf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+              }
+            }
+          }
+          if (strings.length >= 2) {
+            sheetNames.set(defaultSheetId, strings[1]);
+          }
+        }
+
+        // Add sheet: magic 0x012b0100 (AscCH.historyitem_Sheet_Add)
+        if (magic === 0x012b0100) {
+          const strings: string[] = [];
+          for (let j = 0; j < buf.length - 4; j++) {
+            if (buf[j] === 0x08) {
+              const len = buf.readUInt32LE(j + 1);
+              if (len > 0 && j + 5 + len <= buf.length) {
+                strings.push(buf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+              }
+            }
+          }
+          if (strings.length >= 2) {
+            const name = strings[0];
+            const id = strings[1];
+            sheetNames.set(id, name);
+          }
+        }
+
+        // Cell change: magic 0x01291001 (AscCH.historyitem_Cell_ChangeValue)
+        if (magic === 0x01291001) {
+          const sheetIdLen = buf.readUInt32LE(8);
+          if (sheetIdLen > 0 && sheetIdLen < 200 && 12 + sheetIdLen + 17 <= buf.length) {
+            const sheetIdStr = buf.subarray(12, 12 + sheetIdLen).toString('utf16le');
+            const offsetAfterSheet = 12 + sheetIdLen;
+            if (buf[offsetAfterSheet] === 0x01) {
+              const c1 = buf.readUInt32LE(offsetAfterSheet + 1);
+              const r1 = buf.readUInt32LE(offsetAfterSheet + 5);
+              for (let k = offsetAfterSheet + 17; k < buf.length - 5; k++) {
+                if (buf[k] === 0x08) {
+                  const strLen = buf.readUInt32LE(k + 1);
+                  if (strLen >= 0 && strLen < 100000 && k + 5 + strLen <= buf.length) {
+                    const val = buf.subarray(k + 5, k + 5 + strLen).toString('utf16le');
+                    const colLetter = colIndexToLetter(c1);
+                    const tabName =
+                      sheetNames.get(sheetIdStr) ||
+                      (sheetIdStr === '6' ? sheetNames.get('6') || '' : '');
+                    const sheetPrefix = tabName ? `${tabName}!` : '';
+                    const cellRef = `${sheetPrefix}${colLetter}${r1 + 1}`;
+                    cells[cellRef] = val;
+                  }
+                  break;
+                }
+              }
+            }
+          }
+        }
+
+        // Search for UTF-16LE string markers for legacy / Case A patterns
         for (let i = 0; i < buf.length - 5; i++) {
           if (buf[i] === 0x08) {
             const strLen = buf.readUInt32LE(i + 1);
@@ -177,7 +286,6 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
               if (cellMatch) {
                 const sheetPrefix = cellMatch[1] ? `${cellMatch[1]}!` : '';
                 const cellRef = `${sheetPrefix}${cellMatch[2]}${cellMatch[3]}`;
-                // Look forward within next 30 bytes for the text value
                 const searchStart = i + 5 + strLen;
                 for (let j = searchStart; j < Math.min(searchStart + 30, buf.length - 5); j++) {
                   if (buf[j] === 0x08) {
@@ -189,25 +297,8 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
                     break;
                   }
                 }
-              }
-
-              // Case B: binary range coordinates in change header (r1, c1, r2, c2)
-              // OnlyOffice stores r1, c1, r2, c2 at bytes 15..30 when magic header is 0x01291001 (AscCH.historyitem_Cell_ChangeValue)
-              if (buf.length >= 31 && buf.readUInt32BE(4) === 0x01291001 && buf[14] === 0x01) {
-                try {
-                  const c1 = buf.readUInt32LE(15);
-                  const r1 = buf.readUInt32LE(19);
-                  if (r1 < 100000 && c1 < 200) {
-                    const colLetter = colIndexToLetter(c1);
-                    const cellRef = `${colLetter}${r1 + 1}`;
-                    if (str.trim().length > 0 && !str.includes('!')) {
-                      cells[cellRef] = str;
-                    }
-                  }
-                } catch {
-                  // Ignore
-                }
               } else if (buf.length >= 30 && i >= 40 && buf.readUInt32BE(4) === 0) {
+                // Legacy Case B fallback for raw buffers where magic is 0
                 try {
                   const c1 = buf.readUInt32LE(14);
                   const r1 = buf.readUInt32LE(18);
@@ -232,6 +323,77 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
   }
 
   return cells;
+}
+
+/**
+ * Extracts sheet name <-> sheet ID bidirectional mappings from OnlyOffice change messages.
+ */
+export function extractOnlyOfficeSheetIdMap(rtMessages: string[]): {
+  nameToId: Record<string, string>;
+  idToName: Record<string, string>;
+} {
+  const nameToId: Record<string, string> = {};
+  const idToName: Record<string, string> = {};
+  const defaultSheetId = '6';
+  nameToId['Sheet1'] = defaultSheetId;
+  idToName[defaultSheetId] = 'Sheet1';
+
+  for (const raw of rtMessages) {
+    try {
+      const data = JSON.parse(raw);
+      if (!Array.isArray(data.changes)) continue;
+
+      for (const ch of data.changes) {
+        if (!ch?.change) continue;
+        let changeStr = ch.change;
+        if (typeof changeStr !== 'string') continue;
+        try {
+          changeStr = JSON.parse(changeStr);
+        } catch {}
+        const parts = changeStr.split(';');
+        if (parts.length < 2) continue;
+        const buf = Buffer.from(parts[1], 'base64');
+        if (buf.length < 20) continue;
+        const magic = buf.readUInt32BE(4);
+
+        if (magic === 0x012a1201) {
+          const strings: string[] = [];
+          for (let j = 0; j < buf.length - 4; j++) {
+            if (buf[j] === 0x08) {
+              const len = buf.readUInt32LE(j + 1);
+              if (len > 0 && j + 5 + len <= buf.length) {
+                strings.push(buf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+              }
+            }
+          }
+          if (strings.length >= 2) {
+            delete nameToId[idToName[defaultSheetId]];
+            idToName[defaultSheetId] = strings[1];
+            nameToId[strings[1]] = defaultSheetId;
+          }
+        }
+
+        if (magic === 0x012b0100) {
+          const strings: string[] = [];
+          for (let j = 0; j < buf.length - 4; j++) {
+            if (buf[j] === 0x08) {
+              const len = buf.readUInt32LE(j + 1);
+              if (len > 0 && j + 5 + len <= buf.length) {
+                strings.push(buf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+              }
+            }
+          }
+          if (strings.length >= 2) {
+            const name = strings[0];
+            const id = strings[1];
+            idToName[id] = name;
+            nameToId[name] = id;
+          }
+        }
+      }
+    } catch {}
+  }
+  return { nameToId, idToName };
 }
 
 /**
@@ -361,6 +523,7 @@ export function convertCellsToMultiSheetRows(
 
 export interface OnlyOfficeCellUpdate {
   sheet?: string;
+  sheetId?: string | number;
   col: string | number;
   row: number;
   value: string;
@@ -369,12 +532,17 @@ export interface OnlyOfficeCellUpdate {
 /**
  * Encodes a single cell update record into the native OnlyOffice binary format:
  * AscCH.historyitem_Cell_ChangeValue (magic 0x01291001) with 32-bit LE coordinates c1, r1.
+ * Supports dynamic sheet ID identifiers (string or number).
  *
  * The returned buffer is a standalone, self-contained record ready to be base64-encoded
  * and placed as a single `changes` entry in an OnlyOffice `saveChanges` message.
- * Format: 4-byte LE record length + body bytes (magic, coordinates, value).
+ * Format: 4-byte LE record length + body bytes (magic, sheetId, coordinates, value).
  */
-export function encodeOnlyOfficeCellRecord(cellRef: string, value: string, sheetId = 6): Buffer {
+export function encodeOnlyOfficeCellRecord(
+  cellRef: string,
+  value: string,
+  sheetId: string | number = 6,
+): Buffer {
   let c1 = 0;
   let r1 = 0;
   const parsed = parseCellRef(cellRef);
@@ -385,46 +553,48 @@ export function encodeOnlyOfficeCellRecord(cellRef: string, value: string, sheet
 
   const valBuf = Buffer.from(value, 'utf16le');
   const L = valBuf.length;
+  const sheetIdBuf = Buffer.from(String(sheetId), 'utf16le');
+  const S = sheetIdBuf.length;
 
   const tail = Buffer.from([0x01, 0x00, 0x02, 0x00, 0x03, 0x02, 0x01, 0x02, 0x00, 0x03, 0x01]);
 
-  const body = Buffer.alloc(60 + L + tail.length);
+  const body = Buffer.alloc(58 + S + L + tail.length);
   body.writeUInt32BE(0x01291001, 0); // 4..7 (historyitem_Cell_ChangeValue)
-  body.writeUInt32LE(0x02, 4); // 8..11
-  body[8] = 0x30 + (sheetId % 10); // 12 (ascii sheet ID digit)
-  body[9] = 0x00; // 13
-  body[10] = 0x01; // 14
-  body.writeUInt32LE(c1, 11); // 15..18 (c1)
-  body.writeUInt32LE(r1, 15); // 19..22 (r1)
-  body.writeUInt32LE(c1, 19); // 23..26 (c2)
-  body.writeUInt32LE(r1, 23); // 27..30 (r2)
-  body[27] = 0x00; // 31
-  body.writeUInt32LE(0x27 + L, 28); // 32..35
-  body[32] = 0x00; // 36
-  body[33] = 0x02; // 37
-  body[34] = r1 & 0xff; // 38
-  body[35] = 0x01; // 39
-  body[36] = 0x02; // 40
-  body[37] = c1 & 0xff; // 41
-  body[38] = 0x02; // 42
-  body[39] = 0x09; // 43
-  body[40] = 0x03; // 44
-  body.writeUInt32LE(0x1a + L, 41); // 45..48
-  body[45] = 0x00; // 49
-  body[46] = 0x00; // 50
-  body[47] = 0x01; // 51
-  body[48] = 0x09; // 52
-  body[49] = 0x01; // 53
-  body.writeUInt32LE(0x0d + L, 50); // 54..57
-  body[54] = 0x00; // 58
-  body[55] = 0x08; // 59 (UTF-16LE string tag)
-  body.writeUInt32LE(L, 56); // 60..63 (string byte length)
-  valBuf.copy(body, 60); // 64..64+L
-  tail.copy(body, 60 + L);
+  body.writeUInt32LE(S, 4); // 8..11 (sheetId string byte length)
+  sheetIdBuf.copy(body, 8); // 12 .. 12+S
+
+  const offset = 8 + S;
+  body[offset] = 0x01; // Flag
+  body.writeUInt32LE(c1, offset + 1); // c1
+  body.writeUInt32LE(r1, offset + 5); // r1
+  body.writeUInt32LE(c1, offset + 9); // c2
+  body.writeUInt32LE(r1, offset + 13); // r2
+  body[offset + 17] = 0x00;
+  body.writeUInt32LE(0x27 + L, offset + 18);
+  body[offset + 22] = 0x00;
+  body[offset + 23] = 0x02;
+  body[offset + 24] = r1 & 0xff;
+  body[offset + 25] = 0x01;
+  body[offset + 26] = 0x02;
+  body[offset + 27] = c1 & 0xff;
+  body[offset + 28] = 0x02;
+  body[offset + 29] = 0x09;
+  body[offset + 30] = 0x03;
+  body.writeUInt32LE(0x1a + L, offset + 31);
+  body[offset + 35] = 0x00;
+  body[offset + 36] = 0x00;
+  body[offset + 37] = 0x01;
+  body[offset + 38] = 0x09;
+  body[offset + 39] = 0x01;
+  body.writeUInt32LE(0x0d + L, offset + 40);
+  body[offset + 44] = 0x00;
+  body[offset + 45] = 0x08;
+  body.writeUInt32LE(L, offset + 46);
+  valBuf.copy(body, offset + 50);
+  tail.copy(body, offset + 50 + L);
 
   const header = Buffer.alloc(4);
   header.writeUInt32LE(body.length, 0);
-  // Return ONLY the pure native record buffer — no extra UTF-16LE tags appended.
   return Buffer.concat([header, body]);
 }
 
@@ -443,7 +613,10 @@ export function encodeOnlyOfficeCellRecord(cellRef: string, value: string, sheet
  * This matches the exact wire format used by real OnlyOffice collaborative sessions
  * and ensures CryptPad's OnlyOffice integration can parse each record independently.
  */
-export function buildOnlyOfficeChangePayload(updates: OnlyOfficeCellUpdate[]): string {
+export function buildOnlyOfficeChangePayload(
+  updates: OnlyOfficeCellUpdate[],
+  defaultSheetId?: string | number,
+): string {
   const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
   const now = Date.now();
 
@@ -460,7 +633,8 @@ export function buildOnlyOfficeChangePayload(updates: OnlyOfficeCellUpdate[]): s
     const colStr = typeof u.col === 'number' ? colIndexToLetter(u.col) : u.col.toUpperCase();
     const sheetPrefix = u.sheet && u.sheet.trim().length > 0 ? `${u.sheet.trim()}!` : '';
     const ref = `${sheetPrefix}${colStr}${u.row}`;
-    const rec = encodeOnlyOfficeCellRecord(ref, u.value);
+    const sid = u.sheetId ?? defaultSheetId ?? 6;
+    const rec = encodeOnlyOfficeCellRecord(ref, u.value, sid);
     changeItems.push({
       change: JSON.stringify(`${rec.length};${rec.toString('base64')}`),
       time: now,

@@ -12,7 +12,8 @@ import {
   broadcastChannelMessage,
 } from './netflux';
 import {
-  extractOnlyOfficeChannelId,
+  extractOnlyOfficeMetadata,
+  extractOnlyOfficeSheetIdMap,
   parseOnlyOfficeChanges,
   convertCellsToSheetRows,
   convertCellsToMultiSheetRows,
@@ -49,11 +50,13 @@ export interface CryptPadSheetResult {
     }
   >;
   sheetNames: string[];
+  sheetIds?: Record<string, string>;
   metadata: {
     app: string;
     mode: string;
     channelId: string;
     rtChannelId?: string;
+    title?: string;
   };
 }
 
@@ -192,8 +195,13 @@ export class CryptPadClient {
       signal,
     });
 
-    const rtChannel = extractOnlyOfficeChannelId(metaMessages);
+    const meta = extractOnlyOfficeMetadata(metaMessages);
+    const rtChannel = meta.channelId;
     let cells: CryptPadSheetGrid = {};
+    let sheetIdMap: { nameToId: Record<string, string>; idToName: Record<string, string> } = {
+      nameToId: {},
+      idToName: {},
+    };
 
     if (rtChannel) {
       // 2. Fetch OnlyOffice RT channel history
@@ -202,6 +210,7 @@ export class CryptPadClient {
         signal,
       });
       cells = parseOnlyOfficeChanges(rtMessages);
+      sheetIdMap = extractOnlyOfficeSheetIdMap(rtMessages);
     }
 
     const multiSheets = convertCellsToMultiSheetRows(cells);
@@ -227,11 +236,13 @@ export class CryptPadClient {
       rows: defaultRows,
       sheets: sheetsResult,
       sheetNames,
+      sheetIds: sheetIdMap.nameToId,
       metadata: {
         app: this.parsedUrl.app,
         mode: this.parsedUrl.mode,
         channelId: channelHex,
         rtChannelId: rtChannel ?? undefined,
+        title: meta.title ?? meta.defaultTitle ?? undefined,
       },
     };
   }
@@ -313,8 +324,17 @@ export class CryptPadClient {
     if (rows.length === 0) return 0;
 
     const data = await this.fetchSheetData(options.signal);
-    const targetSheet = data.sheets[sheetName];
+    // Find target sheet tab, or fallback to first sheet if only 1 tab exists
+    const targetSheet =
+      data.sheets[sheetName] ??
+      (data.sheetNames.length === 1 ? data.sheets[data.sheetNames[0]] : undefined);
     const existingRows = targetSheet?.rows ?? [];
+    const targetSheetId =
+      data.sheetIds?.[sheetName] ??
+      (data.sheetNames.length === 1 && data.sheetNames[0]
+        ? data.sheetIds?.[data.sheetNames[0]]
+        : undefined) ??
+      '6';
 
     // Determine primary key column header ('var' or 'key')
     let keyColName = 'var';
@@ -328,26 +348,36 @@ export class CryptPadClient {
       else if ('key' in firstIncoming) keyColName = 'key';
     }
 
-    // Collect all column names with key column first
-    const colNamesSet = new Set<string>([keyColName]);
+    // Collect all column names with key column first (case-insensitive deduplication)
+    const colNames: string[] = [keyColName];
+    const hasCol = (name: string) => colNames.some((c) => c.toLowerCase() === name.toLowerCase());
+
     for (const r of existingRows) {
       for (const k of Object.keys(r)) {
-        if (k !== 'key' && k !== 'var') colNamesSet.add(k);
+        if (k !== 'key' && k !== 'var' && !hasCol(k)) colNames.push(k);
       }
     }
     for (const r of rows) {
       for (const k of Object.keys(r)) {
-        if (k !== 'key' && k !== 'var') colNamesSet.add(k);
+        if (k !== 'key' && k !== 'var' && !hasCol(k)) colNames.push(k);
       }
     }
 
-    const colNames = Array.from(colNamesSet);
+    // Case-insensitive column resolver
+    const findColIdx = (name: string): number => {
+      const exact = colNames.indexOf(name);
+      if (exact >= 0) return exact;
+      const lower = name.toLowerCase();
+      return colNames.findIndex((c) => c.toLowerCase() === lower);
+    };
+
     const updates: OnlyOfficeCellUpdate[] = [];
 
     // Header row (row 1)
     colNames.forEach((name, idx) => {
       updates.push({
         sheet: sheetName,
+        sheetId: targetSheetId,
         col: colIndexToLetter(idx),
         row: 1,
         value: name,
@@ -371,12 +401,14 @@ export class CryptPadClient {
 
       for (const [colName, val] of Object.entries(row)) {
         const mappedColName = colName === 'key' || colName === 'var' ? keyColName : colName;
-        const colIdx = colNames.indexOf(mappedColName);
+        const colIdx = findColIdx(mappedColName);
         if (colIdx >= 0 && val !== undefined) {
-          const existingVal = existingRows[targetRow - 2]?.[mappedColName];
+          const matchedHeader = colNames[colIdx];
+          const existingVal = existingRows[targetRow - 2]?.[matchedHeader];
           if (options.override || !existingVal || existingVal.trim().length === 0) {
             updates.push({
               sheet: sheetName,
+              sheetId: targetSheetId,
               col: colIndexToLetter(colIdx),
               row: targetRow,
               value: String(val),

@@ -46,6 +46,8 @@ export {
 } from './netflux';
 export {
   extractOnlyOfficeChannelId,
+  extractOnlyOfficeMetadata,
+  extractOnlyOfficeSheetIdMap,
   parseOnlyOfficeChanges,
   convertCellsToSheetRows,
   convertCellsToMultiSheetRows,

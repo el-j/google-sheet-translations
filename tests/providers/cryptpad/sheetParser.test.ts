@@ -1,9 +1,10 @@
-// @ts-nocheck
 import { describe, expect, it } from 'vitest';
 import {
   colIndexToLetter,
   parseCellRef,
   extractOnlyOfficeChannelId,
+  extractOnlyOfficeMetadata,
+  extractOnlyOfficeSheetIdMap,
   parseOnlyOfficeChanges,
   convertCellsToSheetRows,
   buildCellRef,
@@ -286,6 +287,75 @@ describe('CryptPad sheetParser unit tests', () => {
 
       const cells = parseOnlyOfficeChanges(rtMessages);
       expect(cells['A1']).toBeUndefined();
+    });
+
+    it('extractOnlyOfficeSheetIdMap correctly resolves sheet renames and additions', () => {
+      // 1. Rename Sheet1 (id 6) -> translations (magic 0x012a1201)
+      const renameBuf = Buffer.alloc(80);
+      renameBuf.writeUInt32BE(0x012a1201, 4);
+      // Write old name: "Sheet1"
+      renameBuf[10] = 0x08;
+      const oldBuf = Buffer.from('Sheet1', 'utf16le');
+      renameBuf.writeUInt32LE(oldBuf.length, 11);
+      oldBuf.copy(renameBuf, 15);
+      // Write new name: "translations"
+      const offset2 = 15 + oldBuf.length;
+      renameBuf[offset2] = 0x08;
+      const newBuf = Buffer.from('translations', 'utf16le');
+      renameBuf.writeUInt32LE(newBuf.length, offset2 + 1);
+      newBuf.copy(renameBuf, offset2 + 5);
+
+      // 2. Add sheet "i18n" with id "8200316732097412_745" (magic 0x012b0100)
+      const addBuf = Buffer.alloc(100);
+      addBuf.writeUInt32BE(0x012b0100, 4);
+      addBuf[10] = 0x08;
+      const nameBuf = Buffer.from('i18n', 'utf16le');
+      addBuf.writeUInt32LE(nameBuf.length, 11);
+      nameBuf.copy(addBuf, 15);
+      const offsetId = 15 + nameBuf.length;
+      addBuf[offsetId] = 0x08;
+      const idBuf = Buffer.from('8200316732097412_745', 'utf16le');
+      addBuf.writeUInt32LE(idBuf.length, offsetId + 1);
+      idBuf.copy(addBuf, offsetId + 5);
+
+      const msg = JSON.stringify({
+        changes: [
+          { change: JSON.stringify(`10;${renameBuf.toString('base64')}`) },
+          { change: JSON.stringify(`10;${addBuf.toString('base64')}`) },
+        ],
+      });
+
+      const map = extractOnlyOfficeSheetIdMap([msg]);
+      expect(map.nameToId['translations']).toBe('6');
+      expect(map.nameToId['i18n']).toBe('8200316732097412_745');
+      expect(map.idToName['6']).toBe('translations');
+      expect(map.idToName['8200316732097412_745']).toBe('i18n');
+    });
+
+    it('encodeOnlyOfficeCellRecord encodes custom sheetId string', () => {
+      const rec = encodeOnlyOfficeCellRecord('A1', 'TestVal', '8200316732097412_745');
+      expect(rec.length).toBeGreaterThan(60);
+      // Magic at offset 8 (4 bytes length + 4 bytes)
+      expect(rec.readUInt32BE(4)).toBe(0x01291001);
+      // SheetId len at offset 8
+      const sheetIdLen = rec.readUInt32LE(8);
+      const sheetIdStr = rec.subarray(12, 12 + sheetIdLen).toString('utf16le');
+      expect(sheetIdStr).toBe('8200316732097412_745');
+    });
+
+    it('buildOnlyOfficeChangePayload respects custom sheetId', () => {
+      const payload = buildOnlyOfficeChangePayload(
+        [{ col: 'A', row: 1, value: 'Hello', sheetId: 'custom_sheet_id' }],
+        'fallback_id',
+      );
+      const parsed = JSON.parse(payload);
+      expect(parsed.changes.length).toBe(2); // txOpen + cell
+      const cellChange = JSON.parse(parsed.changes[1].change);
+      const b64 = cellChange.split(';')[1];
+      const buf = Buffer.from(b64, 'base64');
+      const sheetIdLen = buf.readUInt32LE(8);
+      const sheetIdStr = buf.subarray(12, 12 + sheetIdLen).toString('utf16le');
+      expect(sheetIdStr).toBe('custom_sheet_id');
     });
   });
 });
