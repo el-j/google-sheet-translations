@@ -1,3 +1,17 @@
+## [3.0.0-beta.11](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.10...v3.0.0-beta.11) (2026-09-09)
+
+### 🚀 Features
+
+* **cryptpad:** implement real Sheet_Add support, auto-create missing sheets ([2bb8907](https://github.com/el-j/google-sheet-translations/commit/2bb890775569fd69ef7553a34a2bc7eebc5693e4))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** close three provider-parity gaps with Google Sheets ([734163a](https://github.com/el-j/google-sheet-translations/commit/734163af141dc35ee160e06a559fd8c253bcc16f)), closes [#161](https://github.com/el-j/google-sheet-translations/issues/161) [#162](https://github.com/el-j/google-sheet-translations/issues/162) [#163](https://github.com/el-j/google-sheet-translations/issues/163) [#164](https://github.com/el-j/google-sheet-translations/issues/164) [#165](https://github.com/el-j/google-sheet-translations/issues/165)
+
+### 📝 Documentation
+
+* add Astro integration guide ([5423215](https://github.com/el-j/google-sheet-translations/commit/54232159bd4b0c5c9b96842abca29c6626debcca))
+
 ## [3.0.0-beta.10](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2026-09-09)
 
 ### 🐛 Bug Fixes
