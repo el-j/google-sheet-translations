@@ -28,7 +28,7 @@ if (isPreview) {
 
 export default defineConfig({
   title: '@el-j/google-sheet-translations',
-  description: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
+  description: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js/Astro integration.',
 
   // GitHub Pages base path
   base,
@@ -124,6 +124,7 @@ export default defineConfig({
             { text: 'Public Sheets (No Auth)', link: '/guide/public-sheets' },
             { text: 'Live Demo', link: '/guide/live-demo' },
             { text: 'Next.js Integration', link: '/guide/nextjs' },
+            { text: 'Astro Integration', link: '/guide/astro' },
             { text: 'Locale Filtering', link: '/guide/locale-filtering' },
           ],
         },

@@ -15,7 +15,7 @@ A Node.js package for managing translations stored in Google Sheets.
 - ✅ **Smart Locale Filtering**: Only locales with actual translations in content sheets are included in output files
 - ✅ **TypeScript Support**: Full TypeScript definitions included
 - ✅ **Modular Architecture**: Well-tested, maintainable codebase with clear separation of concerns
-- ✅ **Next.js Integration**: Built-in support for Next.js static export workflows
+- ✅ **Next.js & Astro Integration**: Built-in support for Next.js static export workflows and Astro build-time hooks
 - ✅ **Flexible Configuration**: Customizable paths, wait times, and processing options
 - ✅ **GitHub Action**: One-step CI integration via `el-j/google-sheet-translations@v2` — see [GitHub Action](#github-action)
 
@@ -291,6 +291,7 @@ For more detailed examples, check out the [examples directory](examples) where y
 - Bidirectional sync
 - Auto-translation
 - Next.js integration
+- Astro integration
 
 ## GitHub Action
 
