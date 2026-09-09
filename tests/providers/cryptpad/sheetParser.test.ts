@@ -12,6 +12,9 @@ import {
   convertCellsToMultiSheetRows,
   encodeOnlyOfficeCellRecord,
   buildOnlyOfficeChangePayload,
+  encodeOnlyOfficeSheetAddRecord,
+  generateOnlyOfficeSheetId,
+  buildOnlyOfficeSheetAddPayload,
 } from '../../../src/providers/cryptpad/sheetParser';
 
 describe('CryptPad sheetParser unit tests', () => {
@@ -150,7 +153,7 @@ describe('CryptPad sheetParser unit tests', () => {
       expect(convertCellsToSheetRows({ invalid: 'val' })).toEqual([]);
     });
 
-    it('converts grid to rows and auto-aliases var to key', () => {
+    it('converts grid to rows, preserving the real header name (no synthetic key alias)', () => {
       const grid = {
         A1: 'var',
         B1: 'en',
@@ -162,12 +165,36 @@ describe('CryptPad sheetParser unit tests', () => {
 
       const rows = convertCellsToSheetRows(grid);
       expect(rows).toHaveLength(1);
+      // Matches google-spreadsheet's row.toObject() shape: only the sheet's
+      // real header names appear, no synthetic 'key' alias for 'var'.
       expect(rows[0]).toEqual({
         var: 'btn.save',
-        key: 'btn.save',
         en: 'Save',
         de: 'Speichern',
       });
+    });
+
+    it('orders header columns by real spreadsheet position, not by edit-history insertion order', () => {
+      // Simulates a header row whose cells were first written to CryptPad's
+      // history out of left-to-right order (e.g. a locale column added in a
+      // later push) — object key insertion order below is deliberately B, C,
+      // then A, to verify the fix does not depend on Object.entries() order.
+      const grid = {
+        B1: 'en',
+        C1: 'de',
+        A1: 'var',
+        A2: 'btn.save',
+        B2: 'Save',
+        C2: 'Speichern',
+      };
+
+      const rows = convertCellsToSheetRows(grid);
+      expect(rows).toHaveLength(1);
+      // Object.keys() must come back in real column order (var, en, de) so that
+      // transformRowsToSheetData's `Object.keys(rows[0])[0]` picks the true key
+      // column, matching how google-spreadsheet's row.toObject() always reflects
+      // the sheet's real column order.
+      expect(Object.keys(rows[0])).toEqual(['var', 'en', 'de']);
     });
 
     it('groups cells by sheet and converts to multi-sheet rows', () => {
@@ -256,6 +283,67 @@ describe('CryptPad sheetParser unit tests', () => {
       );
       const result = encodeOnlyOfficeCellRecord('A1', 'Key');
       expect(result.equals(ref)).toBe(true);
+    });
+  });
+
+  describe('encodeOnlyOfficeSheetAddRecord / buildOnlyOfficeSheetAddPayload (issue #161)', () => {
+    // Both reference binaries below were captured live from a real OnlyOffice
+    // browser session adding a sheet tab on a CryptPad pad (see issue #161),
+    // not guessed. Byte-for-byte match against two independent captures
+    // (different name/sheetId/insertBefore values) is the strongest evidence
+    // the field layout is correct, the same standard already applied to
+    // encodeOnlyOfficeCellRecord above.
+    it('matches a live-captured "add sheet" reference binary (insertBefore=1)', () => {
+      const ref = Buffer.from(
+        '51000000012b010000194700000000080c000000530068006500650074003200010002082400000037003200300034003200370038003900350036003500390034003700320039005f003300030104020105010601',
+        'hex',
+      );
+      const result = encodeOnlyOfficeSheetAddRecord('Sheet2', '7204278956594729_3', 1);
+      expect(result.equals(ref)).toBe(true);
+    });
+
+    it('matches a second live-captured "add sheet" reference binary (insertBefore=2, longer sheetId)', () => {
+      const ref = Buffer.from(
+        '53000000012b010000194900000000080c000000530068006500650074003200010002082600000037003200300034003200370038003900350036003500390034003700320039005f0031003200030104020205010601',
+        'hex',
+      );
+      const result = encodeOnlyOfficeSheetAddRecord('Sheet2', '7204278956594729_12', 2);
+      expect(result.equals(ref)).toBe(true);
+    });
+
+    it('rejects an out-of-range insertBeforeIndex instead of silently truncating it', () => {
+      expect(() => encodeOnlyOfficeSheetAddRecord('Sheet2', 'id', -1)).toThrow(/insertBeforeIndex/);
+      expect(() => encodeOnlyOfficeSheetAddRecord('Sheet2', 'id', 256)).toThrow(
+        /insertBeforeIndex/,
+      );
+      expect(() => encodeOnlyOfficeSheetAddRecord('Sheet2', 'id', 1.5)).toThrow(
+        /insertBeforeIndex/,
+      );
+    });
+
+    it('generateOnlyOfficeSheetId produces unique, freeform id-shaped strings', () => {
+      const a = generateOnlyOfficeSheetId();
+      const b = generateOnlyOfficeSheetId();
+      expect(a).toMatch(/^\d+_1$/);
+      expect(b).toMatch(/^\d+_1$/);
+      expect(a).not.toBe(b);
+    });
+
+    it('buildOnlyOfficeSheetAddPayload wraps the record in a saveChanges envelope with a txOpen marker first', () => {
+      const payload = JSON.parse(buildOnlyOfficeSheetAddPayload('common', 'sheet-id-1', 0));
+      expect(payload.type).toBe('saveChanges');
+      expect(payload.startSaveChanges).toBe(true);
+      expect(payload.endSaveChanges).toBe(true);
+      expect(payload.isExcel).toBe(true);
+      expect(payload.changes).toHaveLength(2);
+
+      const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
+      const firstChange = JSON.parse(payload.changes[0].change) as string;
+      expect(firstChange).toBe(`${txOpen.length};${txOpen.toString('base64')}`);
+
+      const rec = encodeOnlyOfficeSheetAddRecord('common', 'sheet-id-1', 0);
+      const secondChange = JSON.parse(payload.changes[1].change) as string;
+      expect(secondChange).toBe(`${rec.length};${rec.toString('base64')}`);
     });
 
     it('ignores empty and whitespace-only column headers in convertCellsToSheetRows', () => {
