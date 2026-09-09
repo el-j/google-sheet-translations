@@ -659,3 +659,116 @@ export function buildOnlyOfficeChangePayload(
     isExcel: true,
   });
 }
+
+/**
+ * Encodes a single "add worksheet tab" record into the native OnlyOffice binary format:
+ * AscCH.historyitem_Workbook_SheetAdd (real op code 1, from ONLYOFFICE/sdkjs
+ * `cell/model/History.js` — not a guessed name), UndoRedoDataTypes.SheetAdd (25, from
+ * `cell/model/UndoRedo.js`), with a generic property list matching
+ * `UndoRedoData_SheetAdd.prototype.Properties` (`name`=0, `sheetidfrom`=1, `sheetid`=2,
+ * `tableNames`=3, `insertBefore`=4, `opt_sheet`=5, `opt_sheetidToAdd`=6).
+ *
+ * Field layout was derived and verified against two independent real "add sheet"
+ * records captured from a live OnlyOffice browser session on a CryptPad pad (see
+ * issue #161): the body length implied by summing the fixed structural bytes plus the
+ * two variable-length UTF-16LE strings matched the actual captured body length exactly
+ * in both captures, and the `insertBefore` value matched the sheet's real insert
+ * position in both.
+ *
+ * Each optional/unused property (`sheetidfrom`, `tableNames`, `opt_sheet`,
+ * `opt_sheetidToAdd`) is written as its observed constant "null" marker byte — real
+ * OnlyOffice clients only populate them for operations this encoder doesn't need to
+ * perform (e.g. duplicating an existing sheet).
+ *
+ * @param name - Display name for the new sheet tab.
+ * @param sheetId - Freeform internal sheet identifier (see {@link generateOnlyOfficeSheetId}).
+ * @param insertBeforeIndex - 0-based tab position to insert at (0-255; real captures never
+ *   exceeded a handful of tabs, and the wire format observed here only ever used one byte).
+ */
+export function encodeOnlyOfficeSheetAddRecord(
+  name: string,
+  sheetId: string,
+  insertBeforeIndex: number,
+): Buffer {
+  if (!Number.isInteger(insertBeforeIndex) || insertBeforeIndex < 0 || insertBeforeIndex > 255) {
+    throw new Error(
+      `encodeOnlyOfficeSheetAddRecord: insertBeforeIndex must be an integer 0-255 (got ${insertBeforeIndex}).`,
+    );
+  }
+
+  const nameBuf = Buffer.from(name, 'utf16le');
+  const nameLen = Buffer.alloc(4);
+  nameLen.writeUInt32LE(nameBuf.length, 0);
+
+  const sheetIdBuf = Buffer.from(sheetId, 'utf16le');
+  const sheetIdLen = Buffer.alloc(4);
+  sheetIdLen.writeUInt32LE(sheetIdBuf.length, 0);
+
+  const propertyBlock = Buffer.concat([
+    Buffer.from([0x00, 0x08]), // property 0 "name": type tag 0x08 = string
+    nameLen,
+    nameBuf,
+    Buffer.from([0x01, 0x00]), // property 1 "sheetidfrom": unset (null marker)
+    Buffer.from([0x02, 0x08]), // property 2 "sheetid": type tag 0x08 = string
+    sheetIdLen,
+    sheetIdBuf,
+    Buffer.from([0x03, 0x01]), // property 3 "tableNames": unset (null marker)
+    Buffer.from([0x04, 0x02, insertBeforeIndex]), // property 4 "insertBefore": type tag 0x02 = number
+    Buffer.from([0x05, 0x01]), // property 5 "opt_sheet": unset (null marker)
+    Buffer.from([0x06, 0x01]), // property 6 "opt_sheetidToAdd": unset (null marker)
+  ]);
+
+  const remainingLen = Buffer.alloc(4);
+  remainingLen.writeUInt32LE(propertyBlock.length, 0);
+
+  const magic = Buffer.alloc(4);
+  magic.writeUInt32BE(0x012b0100, 0); // historyitem_Workbook_SheetAdd
+
+  const body = Buffer.concat([
+    magic,
+    Buffer.from([0x00, 0x19]), // flag, UndoRedoDataTypes.SheetAdd (25)
+    remainingLen,
+    propertyBlock,
+  ]);
+
+  const header = Buffer.alloc(4);
+  header.writeUInt32LE(body.length, 0);
+  return Buffer.concat([header, body]);
+}
+
+/**
+ * Generates a freeform internal sheetId string in the same shape real OnlyOffice
+ * clients use (`<numeric prefix>_<counter>`, e.g. `"7204278956594729_12"`, per live
+ * capture in #161). The exact value doesn't need to match any specific algorithm —
+ * the field is a free-form string elsewhere in the protocol — only a value that's
+ * unique within the pad.
+ */
+export function generateOnlyOfficeSheetId(): string {
+  return `${Date.now()}${Math.floor(Math.random() * 9000 + 1000)}_1`;
+}
+
+/**
+ * Formats a single "add worksheet tab" operation into an OnlyOffice `saveChanges`
+ * message, structured the same way as {@link buildOnlyOfficeChangePayload}
+ * (txOpen marker followed by one record).
+ */
+export function buildOnlyOfficeSheetAddPayload(
+  name: string,
+  sheetId: string,
+  insertBeforeIndex: number,
+): string {
+  const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
+  const now = Date.now();
+  const rec = encodeOnlyOfficeSheetAddRecord(name, sheetId, insertBeforeIndex);
+
+  return JSON.stringify({
+    type: 'saveChanges',
+    changes: [
+      { change: JSON.stringify(`${txOpen.length};${txOpen.toString('base64')}`), time: now },
+      { change: JSON.stringify(`${rec.length};${rec.toString('base64')}`), time: now },
+    ],
+    startSaveChanges: true,
+    endSaveChanges: true,
+    isExcel: true,
+  });
+}

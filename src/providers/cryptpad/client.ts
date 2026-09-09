@@ -19,6 +19,8 @@ import {
   convertCellsToMultiSheetRows,
   groupCellsBySheet,
   buildOnlyOfficeChangePayload,
+  buildOnlyOfficeSheetAddPayload,
+  generateOnlyOfficeSheetId,
   colIndexToLetter,
   type CryptPadSheetGrid,
   type OnlyOfficeCellUpdate,
@@ -179,6 +181,56 @@ export class CryptPadClient {
   }
 
   /**
+   * Creates a new sheet tab on this pad by broadcasting a real OnlyOffice
+   * `Workbook_SheetAdd` history record to the RT channel — the same operation a
+   * real OnlyOffice browser client sends when a user clicks "Add sheet". The
+   * binary layout was derived and byte-verified against two independent live
+   * captures from an actual browser session (see issue #161); it is not a guess.
+   *
+   * If the pad has never been opened by a real OnlyOffice client (no RT channel
+   * yet), the RT channel is initialized headlessly first, matching {@link sendCellUpdates}.
+   *
+   * @param name - Display name for the new sheet tab.
+   * @param insertBeforeIndex - 0-based tab position to insert at. Defaults to appending
+   *   after all currently known tabs.
+   * @param signal - Optional AbortSignal.
+   * @returns The newly generated internal sheetId — use this for subsequent cell writes
+   *   into the new sheet.
+   */
+  async createSheet(
+    name: string,
+    insertBeforeIndex?: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const data = await this.fetchSheetData(signal);
+
+    let rtChannel = data.metadata.rtChannelId;
+    if (!rtChannel) {
+      this.onProgress?.(
+        'No OnlyOffice RT channel found. Initializing headlessly (no browser required)...',
+      );
+      rtChannel = await this.initializeRtChannel(signal);
+      this.onProgress?.(`RT channel initialized: ${rtChannel}`);
+      await new Promise((r) => setTimeout(r, 800));
+    }
+
+    const sheetId = generateOnlyOfficeSheetId();
+    const insertAt = insertBeforeIndex ?? data.sheetNames.length;
+
+    const wsUrl = await this.getWebsocketUrl(signal);
+    const { cryptKey, signKey } = this.getKeys();
+    const payload = buildOnlyOfficeSheetAddPayload(name, sheetId, insertAt);
+
+    await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
+      timeoutMs: this.timeoutMs,
+      signal,
+      signKey,
+    });
+
+    return sheetId;
+  }
+
+  /**
    * Fetches the complete sheet data, including raw cell coordinate mappings,
    * multi-sheet tabs, and structured rows formatted for translation ingestion.
    *
@@ -324,33 +376,19 @@ export class CryptPadClient {
     if (rows.length === 0) return 0;
 
     const data = await this.fetchSheetData(options.signal);
-    // Find target sheet tab, or fallback to first sheet if only 1 tab exists
-    const targetSheet =
-      data.sheets[sheetName] ??
-      (data.sheetNames.length === 1 ? data.sheets[data.sheetNames[0]] : undefined);
-    const existingRows = targetSheet?.rows ?? [];
 
+    let existingRows = data.sheets[sheetName]?.rows ?? [];
     let targetSheetId = data.sheetIds?.[sheetName];
-    if (!targetSheetId && data.sheetNames.length === 1 && data.sheetNames[0]) {
-      targetSheetId = data.sheetIds?.[data.sheetNames[0]];
-    }
+
     if (!targetSheetId) {
-      if (data.sheetNames.length > 1) {
-        // The pad already has multiple real tabs and none match `sheetName`.
-        // gst-cryptpad cannot create a new sheet tab yet (no encoder for
-        // OnlyOffice's Sheet_Add op — see providers/cryptpad/sheetParser.ts),
-        // so guessing a sheetId here would silently write changes the real
-        // OnlyOffice editor discards as referencing a nonexistent sheet.
-        throw new Error(
-          `CryptPad sheet "${sheetName}" was not found among this pad's existing tabs ` +
-            `(${data.sheetNames.join(', ')}). gst-cryptpad cannot create new sheet tabs yet: ` +
-            `open the pad in a browser, add a "${sheetName}" tab, then re-run push.`,
-        );
-      }
-      // Brand-new / never-opened pad (zero existing tabs): '6' is the
-      // empirically observed default first-sheet ID for a fresh OnlyOffice
-      // CryptPad document (see the reference binary in sheetParser.test.ts).
-      targetSheetId = '6';
+      // No tab named `sheetName` exists yet — create one, mirroring Google Sheets'
+      // addSheet-on-missing-sheet behavior (src/utils/spreadsheetUpdater.ts). This
+      // deliberately does NOT fall back to reusing some other existing tab just
+      // because it happens to be the only one: an exact name match or a fresh
+      // tab, same as Google, keeps push behavior identical across providers.
+      this.onProgress?.(`Sheet "${sheetName}" not found — creating it.`);
+      targetSheetId = await this.createSheet(sheetName, data.sheetNames.length, options.signal);
+      existingRows = [];
     }
 
     // Determine primary key column header ('var' or 'key')
