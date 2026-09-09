@@ -1,3 +1,15 @@
+## [3.0.0-beta.10](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2026-09-09)
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** auto-detect localeHeaderMapping from locales.ts on push ([8d07883](https://github.com/el-j/google-sheet-translations/commit/8d078833452f698494fc1cf0ff52904217f318d5))
+* **cryptpad:** correct OnlyOffice binary payload format and RT channel registration ([834b201](https://github.com/el-j/google-sheet-translations/commit/834b201db22c0ed35c6536e19643d7f73c943596))
+* **cryptpad:** ensure ChainPad aborts to prevent hanging and improve error handling in metadata extraction ([a72e5af](https://github.com/el-j/google-sheet-translations/commit/a72e5af3fe68fa47430528a6419da8a264e4fe43))
+
+### ♻️ Refactoring
+
+* **cryptpad:** isolate ChainPad vendor dependency and provide typed module wrapper ([a13cfcd](https://github.com/el-j/google-sheet-translations/commit/a13cfcd0e170b53bf4d6b34a2aa47a9b17587dfe))
+
 ## [3.0.0-beta.9](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.8...v3.0.0-beta.9) (2026-09-08)
 
 ### 🚀 Features
