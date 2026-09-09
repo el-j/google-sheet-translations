@@ -176,10 +176,11 @@ describe('cryptpad sheet coordinate and cell parser', () => {
     };
 
     const rows = convertCellsToSheetRows(cells);
+    // Matches google-spreadsheet's row.toObject() shape: only the sheet's
+    // real header names appear, no synthetic 'key' alias for 'var'.
     expect(rows).toEqual([
       {
         var: 'saeulen.title',
-        key: 'saeulen.title',
         de: 'Die Säulen der Demokratie',
         en: 'The Pillars of Democracy',
       },

@@ -150,7 +150,7 @@ describe('CryptPad sheetParser unit tests', () => {
       expect(convertCellsToSheetRows({ invalid: 'val' })).toEqual([]);
     });
 
-    it('converts grid to rows and auto-aliases var to key', () => {
+    it('converts grid to rows, preserving the real header name (no synthetic key alias)', () => {
       const grid = {
         A1: 'var',
         B1: 'en',
@@ -162,12 +162,36 @@ describe('CryptPad sheetParser unit tests', () => {
 
       const rows = convertCellsToSheetRows(grid);
       expect(rows).toHaveLength(1);
+      // Matches google-spreadsheet's row.toObject() shape: only the sheet's
+      // real header names appear, no synthetic 'key' alias for 'var'.
       expect(rows[0]).toEqual({
         var: 'btn.save',
-        key: 'btn.save',
         en: 'Save',
         de: 'Speichern',
       });
+    });
+
+    it('orders header columns by real spreadsheet position, not by edit-history insertion order', () => {
+      // Simulates a header row whose cells were first written to CryptPad's
+      // history out of left-to-right order (e.g. a locale column added in a
+      // later push) — object key insertion order below is deliberately B, C,
+      // then A, to verify the fix does not depend on Object.entries() order.
+      const grid = {
+        B1: 'en',
+        C1: 'de',
+        A1: 'var',
+        A2: 'btn.save',
+        B2: 'Save',
+        C2: 'Speichern',
+      };
+
+      const rows = convertCellsToSheetRows(grid);
+      expect(rows).toHaveLength(1);
+      // Object.keys() must come back in real column order (var, en, de) so that
+      // transformRowsToSheetData's `Object.keys(rows[0])[0]` picks the true key
+      // column, matching how google-spreadsheet's row.toObject() always reflects
+      // the sheet's real column order.
+      expect(Object.keys(rows[0])).toEqual(['var', 'en', 'de']);
     });
 
     it('groups cells by sheet and converts to multi-sheet rows', () => {

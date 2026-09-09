@@ -37,6 +37,23 @@ describe('cryptpad sheet output provider', () => {
     expect(authRows).toEqual([{ var: 'login.title', en: 'Welcome', de: 'Willkommen' }]);
   });
 
+  it('never converts rows for the reserved i18n metadata sheet (matches Google Sheets output/sync)', () => {
+    const translations = {
+      en: {
+        i18n: { en: 'English', de: 'German' },
+        common: { 'btn.save': 'Save' },
+      },
+      de: {
+        i18n: { en: 'Englisch', de: 'Deutsch' },
+        common: { 'btn.save': 'Speichern' },
+      },
+    };
+
+    const sheetRows = convertTranslationsToSheetRows(translations);
+    expect(Object.keys(sheetRows)).toEqual(['common']);
+    expect(sheetRows.i18n).toBeUndefined();
+  });
+
   it('defaults to the Google Sheets "var" convention for the key column', () => {
     const translations = {
       en: {

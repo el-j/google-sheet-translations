@@ -282,6 +282,33 @@ describe('CryptPadClient direct methods', () => {
     expect(updates.some((u) => u.value === 'Nuevo')).toBe(true);
   });
 
+  it('writeSheetRows throws instead of guessing a sheetId when the target sheet has no matching tab and the pad has multiple tabs', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {
+        common: { cells: {}, rows: [] },
+        auth: { cells: {}, rows: [] },
+      },
+      sheetNames: ['common', 'auth'],
+      sheetIds: { common: '8200316732097412_745', auth: '8200316732097412_746' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await expect(
+      client.writeSheetRows('checkout', [{ var: 'new.key', en: 'New' }]),
+    ).rejects.toThrow(/checkout.*not found among this pad's existing tabs.*common, auth/s);
+
+    expect(sendSpy).not.toHaveBeenCalled();
+  });
+
   it('fetchSheetData handles sheets that have no cells in groupedCells', async () => {
     const client = new CryptPadClient({
       url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',

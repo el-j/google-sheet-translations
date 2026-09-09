@@ -329,12 +329,29 @@ export class CryptPadClient {
       data.sheets[sheetName] ??
       (data.sheetNames.length === 1 ? data.sheets[data.sheetNames[0]] : undefined);
     const existingRows = targetSheet?.rows ?? [];
-    const targetSheetId =
-      data.sheetIds?.[sheetName] ??
-      (data.sheetNames.length === 1 && data.sheetNames[0]
-        ? data.sheetIds?.[data.sheetNames[0]]
-        : undefined) ??
-      '6';
+
+    let targetSheetId = data.sheetIds?.[sheetName];
+    if (!targetSheetId && data.sheetNames.length === 1 && data.sheetNames[0]) {
+      targetSheetId = data.sheetIds?.[data.sheetNames[0]];
+    }
+    if (!targetSheetId) {
+      if (data.sheetNames.length > 1) {
+        // The pad already has multiple real tabs and none match `sheetName`.
+        // gst-cryptpad cannot create a new sheet tab yet (no encoder for
+        // OnlyOffice's Sheet_Add op — see providers/cryptpad/sheetParser.ts),
+        // so guessing a sheetId here would silently write changes the real
+        // OnlyOffice editor discards as referencing a nonexistent sheet.
+        throw new Error(
+          `CryptPad sheet "${sheetName}" was not found among this pad's existing tabs ` +
+            `(${data.sheetNames.join(', ')}). gst-cryptpad cannot create new sheet tabs yet: ` +
+            `open the pad in a browser, add a "${sheetName}" tab, then re-run push.`,
+        );
+      }
+      // Brand-new / never-opened pad (zero existing tabs): '6' is the
+      // empirically observed default first-sheet ID for a fresh OnlyOffice
+      // CryptPad document (see the reference binary in sheetParser.test.ts).
+      targetSheetId = '6';
+    }
 
     // Determine primary key column header ('var' or 'key')
     let keyColName = 'var';

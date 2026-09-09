@@ -6,6 +6,7 @@ import type {
 import { createCapabilitySet, type ProviderCapabilitySet } from '../capabilities';
 import { CryptPadClient } from './client';
 import type { SheetRow, TranslationData } from '../../types';
+import { I18N_SHEET_NAME } from '../../constants';
 
 export interface CryptPadSheetOutputProviderOptions {
   /** Full CryptPad URL (e.g. https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/). */
@@ -51,6 +52,11 @@ export function convertTranslationsToSheetRows(
     const colHeader = reverseMapping[locale] ?? locale;
 
     for (const [sheetName, keys] of Object.entries(sheets)) {
+      // The i18n sheet is a reserved metadata sheet (locale display names).
+      // Translation key pushes must never touch it, matching the Google Sheets
+      // output/sync path (see src/utils/spreadsheetUpdater.ts).
+      if (sheetName === I18N_SHEET_NAME) continue;
+
       if (!sheetRowsMap[sheetName]) {
         sheetRowsMap[sheetName] = new Map();
       }

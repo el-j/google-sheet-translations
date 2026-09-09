@@ -429,9 +429,17 @@ export function convertCellsToSheetRows(cells: CryptPadSheetGrid): SheetRow[] {
   const headerRowIdx = sortedRowIndices[0];
   const headerCols = rowMap.get(headerRowIdx)!;
 
-  // Header mappings: colLetter -> headerName
+  // Header mappings: colLetter -> headerName, ordered by real spreadsheet column
+  // position (A, B, C, ...) rather than by the order header cells happened to
+  // appear while replaying the pad's edit history — the two can differ (e.g. a
+  // locale column added in a later push), and `transformRowsToSheetData`
+  // (src/core/rowTransformer.ts) picks the key column via `Object.keys(rows[0])[0]`,
+  // so getting this order wrong silently picks the wrong key column.
+  const orderedCols = Array.from(headerCols.entries()).sort(
+    ([colA], [colB]) => letterToColIndex(colA) - letterToColIndex(colB),
+  );
   const colToHeaderName = new Map<string, string>();
-  for (const [col, colName] of headerCols.entries()) {
+  for (const [col, colName] of orderedCols) {
     const trimmed = colName.trim();
     if (trimmed.length > 0) {
       colToHeaderName.set(col, trimmed);
@@ -448,11 +456,6 @@ export function convertCellsToSheetRows(cells: CryptPadSheetGrid): SheetRow[] {
 
     for (const [col, headerName] of colToHeaderName.entries()) {
       sheetRow[headerName] = rowCells.get(col) ?? '';
-    }
-
-    // Support 'var' as key column header for consumers expecting .key
-    if (sheetRow.var !== undefined && sheetRow.key === undefined) {
-      sheetRow.key = sheetRow.var;
     }
 
     // Only include rows that have at least one non-empty value
