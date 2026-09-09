@@ -3,6 +3,7 @@ import rawChainPad from '../../../vendor/chainpad.cjs';
 
 export interface ChainPadInstance {
   start(): void;
+  abort(): void;
   message(msg: string): void;
   getUserDoc(): string;
 }

@@ -16,6 +16,21 @@ import {
 import { readDataJson } from '../utils/readDataJson';
 import type { SyncConflictPolicy } from '../providers/syncEngine';
 
+/**
+ * Loads a .env file into process.env, mirroring `node --env-file`, so the CLI
+ * works as a plain shebang command (`gst-cryptpad push`) without requiring
+ * callers to wrap it in `node --env-file=.env <path-to-bin>`.
+ */
+function loadEnvFile(envPath: string): void {
+  const loadEnvFileFn = (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile;
+  if (typeof loadEnvFileFn !== 'function') return;
+  try {
+    loadEnvFileFn(envPath);
+  } catch {
+    // No .env file at this path (or unreadable) - ignore, same as `node --env-file` optionality.
+  }
+}
+
 function tryReadLocaleMapping(localesFilePath: string): Record<string, string> | undefined {
   try {
     if (fs.existsSync(localesFilePath)) {
@@ -83,6 +98,7 @@ function printHelp(): void {
    --data-json-path=PATH         Path to languageData.json (default: src/lib/languageData.json)
    --policy=POLICY               Conflict policy for sync: "manual", "local-wins", "remote-wins" (default: manual)
    --override                    When pushing, overwrite existing non-empty cells (default: false)
+   --env-file=PATH                Load environment variables from a .env-style file (default: .env in cwd)
    --help                        Show this help message
 
  EXAMPLES
@@ -102,6 +118,8 @@ async function main(): Promise<void> {
   }
 
   const cwd = process.cwd();
+  loadEnvFile(path.resolve(cwd, options['env-file'] ?? '.env'));
+
   const url =
     options.url ??
     (command === 'drive-scan' ? process.env.CRYPTPAD_DRIVE_URL : process.env.CRYPTPAD_URL);
@@ -268,8 +286,15 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err: unknown) => {
-  const message = err instanceof Error ? err.message : String(err);
-  console.error(message);
-  process.exit(1);
-});
+main()
+  .then(() => {
+    // Force-exit: CryptPad's underlying realtime sync libraries can leave
+    // stray timers/sockets open even after a successful command, which would
+    // otherwise keep this CLI process alive indefinitely.
+    process.exit(0);
+  })
+  .catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(message);
+    process.exit(1);
+  });

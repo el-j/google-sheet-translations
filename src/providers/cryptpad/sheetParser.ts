@@ -67,26 +67,33 @@ export function extractOnlyOfficeMetadata(metadataMessages: string[]): OnlyOffic
       patchTransformer: ChainPad.SmartJSONTransformer,
       logLevel: 0,
     });
-    cp.start();
-    for (let i = 0; i < metadataMessages.length; i++) {
-      try {
-        cp.message(metadataMessages[i]);
-      } catch {
-        // Skip unparseable message
+    try {
+      cp.start();
+      for (let i = 0; i < metadataMessages.length; i++) {
+        try {
+          cp.message(metadataMessages[i]);
+        } catch {
+          // Skip unparseable message
+        }
       }
-    }
-    const userDocStr = cp.getUserDoc();
-    if (userDocStr) {
-      const userDoc = JSON.parse(userDocStr);
-      const channel = userDoc?.content?.channel;
-      if (channel && typeof channel === 'string') {
-        return {
-          channelId: channel,
-          title: userDoc?.metadata?.title || null,
-          defaultTitle: userDoc?.metadata?.defaultTitle || null,
-          userDoc,
-        };
+      const userDocStr = cp.getUserDoc();
+      if (userDocStr) {
+        const userDoc = JSON.parse(userDocStr);
+        const channel = userDoc?.content?.channel;
+        if (channel && typeof channel === 'string') {
+          return {
+            channelId: channel,
+            title: userDoc?.metadata?.title || null,
+            defaultTitle: userDoc?.metadata?.defaultTitle || null,
+            userDoc,
+          };
+        }
       }
+    } finally {
+      // ChainPad.start() schedules a recurring setTimeout sync loop that never
+      // clears itself; without aborting it here the Node process (e.g. the
+      // gst-cryptpad CLI) hangs indefinitely after the operation completes.
+      cp.abort();
     }
   } catch {
     // Continue to fallback
