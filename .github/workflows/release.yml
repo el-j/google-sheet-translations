@@ -86,6 +86,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && github.ref_name == 'develop' && inputs.force_beta_prerelease
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           CURRENT_VERSION=$(node -p "require('./package.json').version")
@@ -99,13 +100,18 @@ jobs:
           echo "Forced beta version: $NEXT_VERSION"
 
           npm version "$NEXT_VERSION" --no-git-tag-version
+          npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          npm publish --access public --tag beta --dry-run
+          npm publish --access public --tag beta
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
           git add package.json package-lock.json
-          git commit -m "chore(beta): force npm beta publish [skip ci]" || true
-          git push origin HEAD:"${{ github.event.workflow_run.head_branch || github.ref_name }}" || true
+          git commit -m "chore(beta): publish v${NEXT_VERSION} to npm [skip ci]" || true
+          git tag -a "v${NEXT_VERSION}" -m "v${NEXT_VERSION}" || true
+          git push origin HEAD:"${{ github.event.workflow_run.head_branch || github.ref_name }}" --follow-tags || true
+          exit 0
 
       - name: Release
         id: release
