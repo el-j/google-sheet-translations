@@ -33,12 +33,12 @@ describe('CryptPad multi-sheet and RT channel workflow integration', () => {
     expect(sheetRowsMap.settings).toHaveLength(1);
 
     expect(sheetRowsMap.common).toContainEqual({
-      var: 'btn.save',
+      key: 'btn.save',
       en: 'Save',
       de: 'Speichern',
     });
     expect(sheetRowsMap.auth).toContainEqual({
-      var: 'login.title',
+      key: 'login.title',
       en: 'Welcome Back',
       de: 'Willkommen zurück',
     });

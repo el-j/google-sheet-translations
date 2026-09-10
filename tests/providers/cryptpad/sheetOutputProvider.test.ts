@@ -29,12 +29,12 @@ describe('cryptpad sheet output provider', () => {
 
     const commonRows = sheetRows.common;
     expect(commonRows).toHaveLength(2);
-    expect(commonRows).toContainEqual({ var: 'btn.save', en: 'Save', de: 'Speichern' });
-    expect(commonRows).toContainEqual({ var: 'btn.cancel', en: 'Cancel', de: 'Abbrechen' });
+    expect(commonRows).toContainEqual({ key: 'btn.save', en: 'Save', de: 'Speichern' });
+    expect(commonRows).toContainEqual({ key: 'btn.cancel', en: 'Cancel', de: 'Abbrechen' });
 
     const authRows = sheetRows.auth;
     expect(authRows).toHaveLength(1);
-    expect(authRows).toEqual([{ var: 'login.title', en: 'Welcome', de: 'Willkommen' }]);
+    expect(authRows).toEqual([{ key: 'login.title', en: 'Welcome', de: 'Willkommen' }]);
   });
 
   it('never converts rows for the reserved i18n metadata sheet (matches Google Sheets output/sync)', () => {
@@ -54,7 +54,7 @@ describe('cryptpad sheet output provider', () => {
     expect(sheetRows.i18n).toBeUndefined();
   });
 
-  it('defaults to the Google Sheets "var" convention for the key column', () => {
+  it('defaults to the "key" column header, matching a brand-new Google Sheets sheet', () => {
     const translations = {
       en: {
         common: { 'btn.save': 'Save' },
@@ -65,7 +65,26 @@ describe('cryptpad sheet output provider', () => {
     };
 
     const sheetRows = convertTranslationsToSheetRows(translations);
-    expect(sheetRows.common).toEqual([{ var: 'btn.save', en: 'Save', de: 'Speichern' }]);
+    expect(sheetRows.common).toEqual([{ key: 'btn.save', en: 'Save', de: 'Speichern' }]);
+  });
+
+  it('header row content matches Google Sheets exactly for a brand-new sheet (#165)', () => {
+    // Google auto-creates a missing sheet with `headerValues: ['key', ...localeHeaders]`
+    // (src/utils/spreadsheetUpdater.ts) — column A literally 'key', then each locale's
+    // *original* header text from localeMapping, in insertion order. Assert CryptPad's
+    // row-conversion produces the identical header set (as object keys, since rows are
+    // built as {key, ...headers} objects rather than an explicit header array) for the
+    // same localeMapping, so the two providers' new-sheet header rows read identically.
+    const localeMapping = { en: 'English', de: 'Deutsch' };
+    const translations = {
+      en: { common: { 'btn.save': 'Save' } },
+      de: { common: { 'btn.save': 'Speichern' } },
+    };
+
+    const sheetRows = convertTranslationsToSheetRows(translations, localeMapping);
+    const googleHeaderRow = ['key', ...Object.values(localeMapping)];
+    expect(Object.keys(sheetRows.common[0]).sort()).toEqual([...googleHeaderRow].sort());
+    expect(sheetRows.common[0]).toEqual({ key: 'btn.save', English: 'Save', Deutsch: 'Speichern' });
   });
 
   it('supports custom keyColumnName = "var" matching Google Sheets header convention', () => {
@@ -101,7 +120,7 @@ describe('cryptpad sheet output provider', () => {
       locales: ['en'],
     });
 
-    expect(mockWriteSheetRows).toHaveBeenCalledWith('common', [{ var: 'save', en: 'Save' }], {
+    expect(mockWriteSheetRows).toHaveBeenCalledWith('common', [{ key: 'save', en: 'Save' }], {
       override: true,
     });
     expect(result.wroteFiles).toEqual([
@@ -120,12 +139,17 @@ describe('cryptpad sheet output provider', () => {
     }
   });
 
-  it('applies localeMapping reverse headers when converting translations', () => {
+  it('uses the original header text for a locale, not the normalized code (#165)', () => {
+    // localeMapping is normalizedLocale -> originalHeader (createLocaleMapping's shape,
+    // e.g. a spreadsheet with a two-letter "en" header normalizes to "en-GB" per
+    // website/guide/spreadsheet-setup.md) — the pushed sheet must show the original "en"
+    // header back, not the normalized "en-GB", matching what Google Sheets writes via
+    // getOriginalHeaderForLocale.
     const translations = {
-      'en-US': { home: { welcome: 'Hello' } },
+      'en-GB': { home: { welcome: 'Hello' } },
     };
-    const localeMapping = { en: 'en-US' };
+    const localeMapping = { 'en-GB': 'en' };
     const result = convertTranslationsToSheetRows(translations, localeMapping);
-    expect(result.home).toEqual([{ var: 'welcome', en: 'Hello' }]);
+    expect(result.home).toEqual([{ key: 'welcome', en: 'Hello' }]);
   });
 });

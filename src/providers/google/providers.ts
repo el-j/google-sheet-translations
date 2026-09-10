@@ -17,8 +17,12 @@ import { readPublicSheet } from '../../utils/publicSheetReader';
 import { withRetry } from '../../utils/rateLimiter';
 import { updateSpreadsheetWithLocalChanges } from '../../utils/spreadsheetUpdater';
 import { findLocalChanges } from '../../utils/dataConverter/findLocalChanges';
-import type { SheetRow, TranslationData } from '../../types';
+import type { SheetRow } from '../../types';
 import { DEFAULT_WAIT_SECONDS } from '../../constants';
+import {
+  countTranslationLeafKeys,
+  hasAnyTranslationChanges,
+} from '../../utils/translationDataStats';
 
 /**
  * Options for creating a Google Sheets input provider.
@@ -130,16 +134,6 @@ function resolveSpreadsheetId(spreadsheetId?: string): string {
 
 function getWaitSeconds(waitSeconds?: number): number {
   return waitSeconds ?? DEFAULT_WAIT_SECONDS;
-}
-
-function countTranslationLeafKeys(data: TranslationData): number {
-  return Object.values(data)
-    .flatMap((localeData) => Object.values(localeData))
-    .reduce((total, sheetData) => total + Object.keys(sheetData).length, 0);
-}
-
-function hasAnyChanges(data: TranslationData): boolean {
-  return Object.keys(data).length > 0 && Object.values(data).some((l) => Object.keys(l).length > 0);
 }
 
 /**
@@ -303,7 +297,7 @@ export function createGoogleSheetsSyncProvider(
     async syncTranslations(payload: TranslationSyncPayload): Promise<TranslationSyncResult> {
       const changes = deps.findLocalChanges(payload.localTranslations, payload.remoteTranslations);
 
-      if (!hasAnyChanges(changes)) {
+      if (!hasAnyTranslationChanges(changes)) {
         return {
           changedKeys: 0,
           skippedKeys: 0,

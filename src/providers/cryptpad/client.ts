@@ -391,16 +391,18 @@ export class CryptPadClient {
       existingRows = [];
     }
 
-    // Determine primary key column header ('var' or 'key')
-    let keyColName = 'var';
+    // Determine primary key column header ('key' or 'var'). Defaults to 'key' — the same
+    // header a brand-new Google Sheets sheet gets (see spreadsheetUpdater.ts) — but an
+    // existing sheet's own header always wins, so sheets already using 'var' keep doing so.
+    let keyColName = 'key';
     const firstExisting = existingRows[0];
     const firstIncoming = rows[0];
     if (firstExisting) {
-      if ('var' in firstExisting) keyColName = 'var';
-      else if ('key' in firstExisting) keyColName = 'key';
+      if ('key' in firstExisting) keyColName = 'key';
+      else if ('var' in firstExisting) keyColName = 'var';
     } else if (firstIncoming) {
-      if ('var' in firstIncoming) keyColName = 'var';
-      else if ('key' in firstIncoming) keyColName = 'key';
+      if ('key' in firstIncoming) keyColName = 'key';
+      else if ('var' in firstIncoming) keyColName = 'var';
     }
 
     // Collect all column names with key column first (case-insensitive deduplication)

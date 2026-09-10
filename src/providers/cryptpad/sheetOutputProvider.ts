@@ -21,7 +21,11 @@ export interface CryptPadSheetOutputProviderOptions {
   providerId?: string;
   /** Optional custom provider display name. */
   displayName?: string;
-  /** Optional key column name in row 1 (e.g. 'var' or 'key'). Defaults to 'var'. */
+  /** Optional key column name in row 1 (e.g. 'var' or 'key'). Defaults to 'key', matching
+   *  the header a brand-new Google Sheets sheet is created with (see spreadsheetUpdater.ts)
+   *  and the documented spreadsheet convention (website/guide/spreadsheet-setup.md). Only
+   *  used when creating a sheet from scratch — writes to an existing sheet always respect
+   *  whichever of 'var'/'key' that sheet's own header already uses. */
   keyColumnName?: 'var' | 'key' | string;
   /** Optional timeout in milliseconds for WebSocket operations. */
   timeoutMs?: number;
@@ -38,18 +42,19 @@ export const CRYPTPAD_SHEET_OUTPUT_CAPABILITIES: ProviderCapabilitySet = createC
 export function convertTranslationsToSheetRows(
   translations: TranslationData,
   localeMapping: Record<string, string> = {},
-  keyColumnName: string = 'var',
+  keyColumnName: string = 'key',
 ): Record<string, SheetRow[]> {
-  // Map reverse: normalizedLocale -> originalHeader
-  const reverseMapping: Record<string, string> = {};
-  for (const [header, norm] of Object.entries(localeMapping)) {
-    reverseMapping[norm] = header;
-  }
-
   const sheetRowsMap: Record<string, Map<string, SheetRow>> = {};
 
   for (const [locale, sheets] of Object.entries(translations)) {
-    const colHeader = reverseMapping[locale] ?? locale;
+    // `localeMapping` is already normalizedLocale -> originalHeader (see
+    // src/utils/localeNormalizer.ts's createLocaleMapping: `localeMapping[normalized] = header`,
+    // the same shape rowTransformer.ts's SheetProcessingResult.localeMapping documents and
+    // Google's getOriginalHeaderForLocale expects). No reversal needed — a previous version
+    // of this function incorrectly reversed it, which silently wrote the normalized locale
+    // code (e.g. "en-GB") as the header instead of the real original header (e.g. "en")
+    // whenever they differed (issue #165).
+    const colHeader = localeMapping[locale] ?? locale;
 
     for (const [sheetName, keys] of Object.entries(sheets)) {
       // The i18n sheet is a reserved metadata sheet (locale display names).
@@ -112,7 +117,7 @@ export function createCryptPadSheetOutputProvider(
       const sheetRowsMap = convertTranslationsToSheetRows(
         payload.translations,
         effectiveMapping,
-        options.keyColumnName ?? 'var',
+        options.keyColumnName ?? 'key',
       );
       const updatedSheets: string[] = [];
       let totalUpdatedCells = 0;
