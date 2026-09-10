@@ -27,6 +27,14 @@ export interface CryptPadSheetOutputProviderOptions {
    *  used when creating a sheet from scratch — writes to an existing sheet always respect
    *  whichever of 'var'/'key' that sheet's own header already uses. */
   keyColumnName?: 'var' | 'key' | string;
+  /** When true (default false — opt-in, not yet live-verified against a real OnlyOffice
+   *  session, see `encodeOnlyOfficeFormulaCellRecord`), a brand-new sheet's header row is
+   *  written as formula cells linking to the reserved `i18n` sheet's header row
+   *  (`=i18n!A1`, ...) instead of duplicated literal text, so header text stays visually
+   *  in sync across sheets — see issue #165. Auto-creates the `i18n` sheet's own header
+   *  row if it doesn't exist yet. Never rewrites an existing sheet's header on a later
+   *  push. */
+  linkHeadersToI18nSheet?: boolean;
   /** Optional timeout in milliseconds for WebSocket operations. */
   timeoutMs?: number;
 }
@@ -125,6 +133,7 @@ export function createCryptPadSheetOutputProvider(
       for (const [sheetName, rows] of Object.entries(sheetRowsMap)) {
         const count = await client.writeSheetRows(sheetName, rows, {
           override: options.override ?? false,
+          linkHeadersToI18nSheet: options.linkHeadersToI18nSheet ?? false,
         });
         updatedSheets.push(sheetName);
         totalUpdatedCells += count;

@@ -122,6 +122,7 @@ describe('cryptpad sheet output provider', () => {
 
     expect(mockWriteSheetRows).toHaveBeenCalledWith('common', [{ key: 'save', en: 'Save' }], {
       override: true,
+      linkHeadersToI18nSheet: false,
     });
     expect(result.wroteFiles).toEqual([
       'https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/',

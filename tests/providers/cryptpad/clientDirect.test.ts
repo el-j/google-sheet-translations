@@ -379,6 +379,148 @@ describe('CryptPadClient direct methods', () => {
     expect(updates.every((u) => u.sheetId === '8200316732097412_999')).toBe(true);
   });
 
+  it('linkHeadersToI18nSheet defaults to false — new sheets get literal headers unless opted in (issue #165)', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      sheetIds: {},
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    vi.spyOn(client, 'createSheet').mockResolvedValue('new-sheet-id');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [{ key: 'btn.save', en: 'Save' }]);
+
+    // No opt-in -> exactly one broadcast (data + literal header), no i18n sheet touched.
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const updates = sendSpy.mock.calls[0][0];
+    expect(updates.filter((u) => u.row === 1).every((u) => u.value !== undefined)).toBe(true);
+    expect(updates.some((u) => u.sheet === 'i18n')).toBe(false);
+  });
+
+  it("linkHeadersToI18nSheet=true creates the i18n sheet and links a brand-new sheet's header to it (issue #165)", async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      sheetIds: {},
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    // Only the target sheet ("common") goes through the public createSheet — the i18n
+    // sheet is created via the internal broadcastSheetAdd (netflux directly) to avoid an
+    // extra fetchSheetData round-trip per push (see broadcastSheetAdd's doc comment).
+    const createSheetSpy = vi.spyOn(client, 'createSheet').mockResolvedValueOnce('common-sheet-id');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [{ key: 'btn.save', en: 'Save' }], {
+      linkHeadersToI18nSheet: true,
+    });
+
+    expect(createSheetSpy).toHaveBeenCalledTimes(1);
+    expect(createSheetSpy).toHaveBeenCalledWith('common', 0, undefined);
+
+    // The i18n Sheet_Add went out directly over netflux (rtChannel 'rt1', already known —
+    // no extra fetchSheetData), not via the public createSheet.
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    const [, rtChannelArg, , i18nPayload] = broadcastSpy.mock.calls[0];
+    expect(rtChannelArg).toBe('rt1');
+    const parsedPayload = JSON.parse(i18nPayload as string);
+    const addRecordChange = JSON.parse(parsedPayload.changes[1].change);
+    const addBuf = Buffer.from(addRecordChange.split(';')[1], 'base64');
+    expect(addBuf.readUInt32BE(4)).toBe(0x012b0100); // historyitem_Workbook_SheetAdd
+    // Extract the generated i18n sheetId the same way parseOnlyOfficeChanges would.
+    const strings: string[] = [];
+    for (let j = 0; j < addBuf.length - 4; j++) {
+      if (addBuf[j] === 0x08) {
+        const len = addBuf.readUInt32LE(j + 1);
+        if (len > 0 && j + 5 + len <= addBuf.length) {
+          strings.push(addBuf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+        }
+      }
+    }
+    expect(strings[0]).toBe('i18n');
+    const i18nSheetId = strings[1];
+
+    // 1) literal header written to the newly-created i18n sheet
+    // 2) linked (formula) header written to the newly-created "common" sheet
+    // 3) data row written to "common"
+    expect(sendSpy).toHaveBeenCalledTimes(3);
+    // Every sub-step reuses the already-known rtChannel — no redundant re-fetch.
+    expect(sendSpy.mock.calls.every((c) => c[2] === 'rt1')).toBe(true);
+
+    const i18nHeaderCall = sendSpy.mock.calls.find((c) =>
+      c[0].some((u) => u.sheetId === i18nSheetId),
+    );
+    expect(i18nHeaderCall![0]).toEqual([
+      { sheet: 'i18n', sheetId: i18nSheetId, col: 'A', row: 1, value: 'key' },
+      { sheet: 'i18n', sheetId: i18nSheetId, col: 'B', row: 1, value: 'en' },
+    ]);
+
+    const linkedHeaderCall = sendSpy.mock.calls.find((c) =>
+      c[0].some((u) => u.sheetId === 'common-sheet-id' && u.row === 1),
+    );
+    expect(linkedHeaderCall![0]).toEqual([
+      { sheet: 'common', sheetId: 'common-sheet-id', col: 'A', row: 1, formula: 'i18n!A1' },
+      { sheet: 'common', sheetId: 'common-sheet-id', col: 'B', row: 1, formula: 'i18n!B1' },
+    ]);
+  });
+
+  it("linkHeadersToI18nSheet=true never rewrites an existing sheet's header on a later push (issue #165)", async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {
+        common: {
+          cells: { A1: 'key', B1: 'en', A2: 'btn.save', B2: 'Save' },
+          rows: [{ key: 'btn.save', en: 'Save' }],
+        },
+      },
+      sheetNames: ['common'],
+      sheetIds: { common: 'common-sheet-id' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    const createSheetSpy = vi.spyOn(client, 'createSheet');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [{ key: 'btn.cancel', en: 'Cancel' }], {
+      linkHeadersToI18nSheet: true,
+    });
+
+    // Existing sheet -> no sheet creation, no i18n sheet touched. The header row is still
+    // rewritten literally (same pre-existing idempotent behavior), never as a formula.
+    expect(createSheetSpy).not.toHaveBeenCalled();
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const updates = sendSpy.mock.calls[0][0];
+    const headerUpdates = updates.filter((u) => u.row === 1);
+    expect(headerUpdates.length).toBeGreaterThan(0);
+    expect(headerUpdates.every((u) => u.formula === undefined)).toBe(true);
+  });
+
   it('fetchSheetData handles sheets that have no cells in groupedCells', async () => {
     const client = new CryptPadClient({
       url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
