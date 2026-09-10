@@ -90,6 +90,11 @@ jobs:
           set -euo pipefail
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           NEXT_VERSION=$(npx semver "$CURRENT_VERSION" -i prerelease --preid beta)
+
+          while git ls-remote --tags origin "refs/tags/v${NEXT_VERSION}" | grep -q .; do
+            NEXT_VERSION=$(npx semver "$NEXT_VERSION" -i prerelease --preid beta)
+          done
+
           echo "Current version: $CURRENT_VERSION"
           echo "Forced beta version: $NEXT_VERSION"
 
@@ -97,8 +102,10 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
           git add package.json package-lock.json
           git commit -m "chore(beta): force npm beta publish [skip ci]" || true
+          git push origin HEAD:"${{ github.event.workflow_run.head_branch || github.ref_name }}" || true
 
       - name: Release
         id: release
