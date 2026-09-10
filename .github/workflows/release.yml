@@ -7,6 +7,12 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      force_beta_prerelease:
+        description: 'Force a new beta prerelease on develop even when no code commits were added.'
+        required: false
+        default: false
+        type: boolean
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -75,6 +81,24 @@ jobs:
 
       - name: Build action bundle
         run: npm run build:action
+
+      - name: Force beta prerelease when requested
+        if: github.event_name == 'workflow_dispatch' && github.ref_name == 'develop' && inputs.force_beta_prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          NEXT_VERSION=$(npx semver "$CURRENT_VERSION" -i prerelease --preid beta)
+          echo "Current version: $CURRENT_VERSION"
+          echo "Forced beta version: $NEXT_VERSION"
+
+          npm version "$NEXT_VERSION" --no-git-tag-version
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git commit -m "chore(beta): force npm beta publish [skip ci]" || true
 
       - name: Release
         id: release
