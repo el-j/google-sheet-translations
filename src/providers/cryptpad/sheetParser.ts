@@ -536,7 +536,12 @@ export interface OnlyOfficeCellUpdate {
   sheetId?: string | number;
   col: string | number;
   row: number;
-  value: string;
+  /** Literal cell text. Mutually exclusive with `formula` — exactly one must be set. */
+  value?: string;
+  /** Formula text (with or without a leading "="), e.g. "i18n!B1" or "=i18n!B1".
+   *  Mutually exclusive with `value` — exactly one must be set. See
+   *  {@link encodeOnlyOfficeFormulaCellRecord}. */
+  formula?: string;
 }
 
 /**
@@ -609,6 +614,155 @@ export function encodeOnlyOfficeCellRecord(
 }
 
 /**
+ * Encodes a single FORMULA cell update record into the native OnlyOffice binary format:
+ * the same `AscCH.historyitem_Cell_ChangeValue` (magic 0x01291001) history item used for
+ * plain-text cells — confirmed from ONLYOFFICE/sdkjs source (`cell/model/Workbook.js`
+ * `setValue`/`setFormulaTemplate`, `cell/model/UndoRedo.js` `UndoRedoData_CellValueData`)
+ * that OnlyOffice does NOT use a separate history item for formulas; only the `NewVal`
+ * object's `formula` property differs (a UTF-16LE string instead of the Null marker).
+ *
+ * Layout derived by decoding this module's own byte-verified plain-text encoder
+ * ({@link encodeOnlyOfficeCellRecord}) against the sdkjs-confirmed property-ID scheme —
+ * every offset below was cross-checked against real, already-tested reference bytes:
+ *
+ * ```
+ * UndoRedoData_CellSimpleData (Row=0, Col=1, NewVal=2)
+ *   Row: SByte(r1&0xff)
+ *   Col: SByte(c1&0xff)
+ *   NewVal -> UndoRedoData_CellValueData (class byte 3) (formula=0, value=1, formulaRef=2, ca=3)
+ *     formula: String(f)        <- the formula text, WITHOUT a leading "="
+ *     value -> CCellValue (class byte 1) (text=0, multiText=1, number=2, type=3)
+ *       text: Null, multiText: Null, number: Null, type: SByte(0) [CellValueType.Number]
+ *       (a freshly-authored formula has no cached result yet — OnlyOffice's own recalc
+ *       engine computes and syncs the cached value once the client evaluates the formula;
+ *       this matches `Cell.prototype.cleanText()`, called synchronously before the record
+ *       is built in `setFormulaTemplate`)
+ *     formulaRef: Null
+ *     ca: Undefined (matches the literal-cell reference bytes, which use Undefined here
+ *       too rather than a Boolean default)
+ * ```
+ *
+ * NOT yet independently verified against a real captured formula-cell record from a live
+ * OnlyOffice session (unlike {@link encodeOnlyOfficeCellRecord} and
+ * {@link encodeOnlyOfficeSheetAddRecord}, which both have byte-exact reference captures)
+ * — see issue #165's own risk note about attempting formula encoding without a real
+ * reference binary. Treat with appropriate caution until cross-checked against a live
+ * capture.
+ *
+ * @param cellRef - Target cell, e.g. "A1" or "Sheet1!B2".
+ * @param formula - Formula text, with or without a leading "=" (stripped either way,
+ *   matching sdkjs's own `val[0] == "="` handling in `Workbook.js`).
+ * @param sheetId - Target sheet's internal OnlyOffice sheet ID.
+ */
+export function encodeOnlyOfficeFormulaCellRecord(
+  cellRef: string,
+  formula: string,
+  sheetId: string | number = 6,
+): Buffer {
+  let c1 = 0;
+  let r1 = 0;
+  const parsed = parseCellRef(cellRef);
+  if (parsed) {
+    c1 = letterToColIndex(parsed.col);
+    r1 = Math.max(0, parsed.row - 1);
+  }
+
+  const formulaText = formula.startsWith('=') ? formula.slice(1) : formula;
+  const formulaBuf = Buffer.from(formulaText, 'utf16le');
+  const F = formulaBuf.length;
+
+  const sheetIdBuf = Buffer.from(String(sheetId), 'utf16le');
+  const S = sheetIdBuf.length;
+
+  // CCellValue body: text(Null,2) + multiText(Null,2) + number(Null,2) + type(SByte,3) = 9 bytes
+  const ccellValueLen = 9;
+  // CellValueData body: formula(2+4+F) + value-header(2+1+4)+ccellValueLen + formulaRef(2) + ca(2)
+  const cellValueDataLen = 6 + F + 7 + ccellValueLen + 2 + 2; // = 0x1a + F
+  // CellSimpleData body: Row(3) + Col(3) + NewVal-header(2+1+4) + cellValueDataLen
+  const cellSimpleDataLen = 3 + 3 + 7 + cellValueDataLen; // = 0x27 + F
+
+  const body = Buffer.alloc(8 + S + 1 + 16 + 1 + 4 + cellSimpleDataLen);
+  body.writeUInt32BE(0x01291001, 0); // historyitem_Cell_ChangeValue
+  body.writeUInt32LE(S, 4);
+  sheetIdBuf.copy(body, 8);
+
+  let offset = 8 + S;
+  body[offset] = 0x01; // range flag
+  body.writeUInt32LE(c1, offset + 1);
+  body.writeUInt32LE(r1, offset + 5);
+  body.writeUInt32LE(c1, offset + 9);
+  body.writeUInt32LE(r1, offset + 13);
+  offset += 17;
+  body[offset] = 0x00;
+  body.writeUInt32LE(cellSimpleDataLen, offset + 1);
+  offset += 5;
+
+  // Row (id 0, SByte)
+  body[offset] = 0x00;
+  body[offset + 1] = 0x02;
+  body[offset + 2] = r1 & 0xff;
+  offset += 3;
+
+  // Col (id 1, SByte)
+  body[offset] = 0x01;
+  body[offset + 1] = 0x02;
+  body[offset + 2] = c1 & 0xff;
+  offset += 3;
+
+  // NewVal (id 2, Object, class byte 3 = UndoRedoData_CellValueData)
+  body[offset] = 0x02;
+  body[offset + 1] = 0x09;
+  body[offset + 2] = 0x03;
+  body.writeUInt32LE(cellValueDataLen, offset + 3);
+  offset += 7;
+
+  // formula (id 0, String)
+  body[offset] = 0x00;
+  body[offset + 1] = 0x08;
+  body.writeUInt32LE(F, offset + 2);
+  formulaBuf.copy(body, offset + 6);
+  offset += 6 + F;
+
+  // value (id 1, Object, class byte 1 = CCellValue)
+  body[offset] = 0x01;
+  body[offset + 1] = 0x09;
+  body[offset + 2] = 0x01;
+  body.writeUInt32LE(ccellValueLen, offset + 3);
+  offset += 7;
+
+  // text (id 0, Null)
+  body[offset] = 0x00;
+  body[offset + 1] = 0x00;
+  offset += 2;
+  // multiText (id 1, Null)
+  body[offset] = 0x01;
+  body[offset + 1] = 0x00;
+  offset += 2;
+  // number (id 2, Null)
+  body[offset] = 0x02;
+  body[offset + 1] = 0x00;
+  offset += 2;
+  // type (id 3, SByte, CellValueType.Number = 0)
+  body[offset] = 0x03;
+  body[offset + 1] = 0x02;
+  body[offset + 2] = 0x00;
+  offset += 3;
+
+  // formulaRef (id 2, Null)
+  body[offset] = 0x02;
+  body[offset + 1] = 0x00;
+  offset += 2;
+  // ca (id 3, Undefined)
+  body[offset] = 0x03;
+  body[offset + 1] = 0x01;
+  offset += 2;
+
+  const header = Buffer.alloc(4);
+  header.writeUInt32LE(body.length, 0);
+  return Buffer.concat([header, body]);
+}
+
+/**
  * Formats a list of cell updates into an OnlyOffice `saveChanges` message.
  *
  * ### OnlyOffice Real-Time Change Protocol
@@ -644,7 +798,10 @@ export function buildOnlyOfficeChangePayload(
     const sheetPrefix = u.sheet && u.sheet.trim().length > 0 ? `${u.sheet.trim()}!` : '';
     const ref = `${sheetPrefix}${colStr}${u.row}`;
     const sid = u.sheetId ?? defaultSheetId ?? 6;
-    const rec = encodeOnlyOfficeCellRecord(ref, u.value, sid);
+    const rec =
+      u.formula !== undefined
+        ? encodeOnlyOfficeFormulaCellRecord(ref, u.formula, sid)
+        : encodeOnlyOfficeCellRecord(ref, u.value ?? '', sid);
     changeItems.push({
       change: JSON.stringify(`${rec.length};${rec.toString('base64')}`),
       time: now,

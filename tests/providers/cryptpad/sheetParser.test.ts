@@ -11,6 +11,7 @@ import {
   groupCellsBySheet,
   convertCellsToMultiSheetRows,
   encodeOnlyOfficeCellRecord,
+  encodeOnlyOfficeFormulaCellRecord,
   buildOnlyOfficeChangePayload,
   encodeOnlyOfficeSheetAddRecord,
   generateOnlyOfficeSheetId,
@@ -429,6 +430,86 @@ describe('CryptPad sheetParser unit tests', () => {
       const sheetIdLen = rec.readUInt32LE(8);
       const sheetIdStr = rec.subarray(12, 12 + sheetIdLen).toString('utf16le');
       expect(sheetIdStr).toBe('8200316732097412_745');
+    });
+
+    it('encodeOnlyOfficeFormulaCellRecord (issue #165) encodes the expected property layout', () => {
+      // No live-captured reference binary exists yet for formula cells (see the encoder's
+      // own doc comment) — this test structurally decodes the record against the property
+      // scheme confirmed from ONLYOFFICE/sdkjs source, cross-checked against this module's
+      // own byte-verified plain-text encoder (encodeOnlyOfficeCellRecord).
+      const rec = encodeOnlyOfficeFormulaCellRecord('B1', '=i18n!B1', '6');
+
+      // header (4-byte LE length) + magic
+      expect(rec.readUInt32LE(0)).toBe(rec.length - 4);
+      expect(rec.readUInt32BE(4)).toBe(0x01291001);
+
+      const sheetIdLen = rec.readUInt32LE(8);
+      expect(rec.subarray(12, 12 + sheetIdLen).toString('utf16le')).toBe('6');
+
+      let offset = 12 + sheetIdLen;
+      expect(rec[offset]).toBe(0x01); // range flag
+      expect(rec.readUInt32LE(offset + 1)).toBe(1); // c1 = B
+      expect(rec.readUInt32LE(offset + 5)).toBe(0); // r1 = row 1
+      offset += 17;
+      expect(rec[offset]).toBe(0x00);
+      offset += 5; // skip cellSimpleDataLen
+
+      // Row (id 0, SByte)
+      expect(rec[offset]).toBe(0x00);
+      expect(rec[offset + 1]).toBe(0x02);
+      offset += 3;
+      // Col (id 1, SByte)
+      expect(rec[offset]).toBe(0x01);
+      expect(rec[offset + 1]).toBe(0x02);
+      offset += 3;
+      // NewVal (id 2, Object, class byte 3 = UndoRedoData_CellValueData)
+      expect(rec[offset]).toBe(0x02);
+      expect(rec[offset + 1]).toBe(0x09);
+      expect(rec[offset + 2]).toBe(0x03);
+      offset += 7;
+
+      // formula (id 0, String) — leading "=" stripped
+      expect(rec[offset]).toBe(0x00);
+      expect(rec[offset + 1]).toBe(0x08);
+      const fLen = rec.readUInt32LE(offset + 2);
+      const formulaStr = rec.subarray(offset + 6, offset + 6 + fLen).toString('utf16le');
+      expect(formulaStr).toBe('i18n!B1');
+      offset += 6 + fLen;
+
+      // value (id 1, Object, class byte 1 = CCellValue)
+      expect(rec[offset]).toBe(0x01);
+      expect(rec[offset + 1]).toBe(0x09);
+      expect(rec[offset + 2]).toBe(0x01);
+      offset += 7;
+
+      // text: Null, multiText: Null, number: Null, type: SByte(0)
+      expect(rec.subarray(offset, offset + 9)).toEqual(
+        Buffer.from([0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x03, 0x02, 0x00]),
+      );
+      offset += 9;
+
+      // formulaRef: Null, ca: Undefined
+      expect(rec.subarray(offset, offset + 4)).toEqual(Buffer.from([0x02, 0x00, 0x03, 0x01]));
+      offset += 4;
+
+      expect(offset).toBe(rec.length);
+    });
+
+    it('encodeOnlyOfficeFormulaCellRecord strips a leading "=" the same way with or without it', () => {
+      const withEquals = encodeOnlyOfficeFormulaCellRecord('A1', '=i18n!A1', '6');
+      const withoutEquals = encodeOnlyOfficeFormulaCellRecord('A1', 'i18n!A1', '6');
+      expect(withEquals).toEqual(withoutEquals);
+    });
+
+    it('buildOnlyOfficeChangePayload dispatches to the formula encoder when `formula` is set (issue #165)', () => {
+      const payload = buildOnlyOfficeChangePayload([
+        { sheet: 'common', sheetId: '6', col: 'B', row: 1, formula: 'i18n!B1' },
+      ]);
+      const parsed = JSON.parse(payload);
+      const cellChange = JSON.parse(parsed.changes[1].change);
+      const buf = Buffer.from(cellChange.split(';')[1], 'base64');
+      expect(buf.readUInt32BE(4)).toBe(0x01291001);
+      expect(buf).toEqual(encodeOnlyOfficeFormulaCellRecord('B1', 'i18n!B1', '6'));
     });
 
     it('buildOnlyOfficeChangePayload respects custom sheetId', () => {

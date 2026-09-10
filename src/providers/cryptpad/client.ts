@@ -22,10 +22,13 @@ import {
   buildOnlyOfficeSheetAddPayload,
   generateOnlyOfficeSheetId,
   colIndexToLetter,
+  letterToColIndex,
+  parseCellRef,
   type CryptPadSheetGrid,
   type OnlyOfficeCellUpdate,
 } from './sheetParser';
 import type { SheetRow } from '../../types';
+import { I18N_SHEET_NAME } from '../../constants';
 
 export interface CryptPadClientOptions {
   /** Full CryptPad URL (e.g. https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/). */
@@ -69,7 +72,7 @@ export interface CryptPadSheetResult {
 export class CryptPadClient {
   readonly parsedUrl: ParsedCryptPadUrl;
   readonly password?: string;
-  readonly websocketUrl?: string;
+  websocketUrl?: string;
   readonly timeoutMs: number;
   readonly onProgress?: (message: string) => void;
   private derivedKeys?: DerivedCryptPadKeys;
@@ -105,7 +108,11 @@ export class CryptPadClient {
   }
 
   /**
-   * Resolves the Netflux WebSocket endpoint to connect to.
+   * Resolves the Netflux WebSocket endpoint to connect to. Cached on this instance after
+   * the first successful resolution — every multi-step operation (`writeSheetRows` in
+   * particular) calls this once per sub-step, and re-resolving the same endpoint via a
+   * fresh HTTP request each time needlessly multiplies outbound connections for no benefit
+   * (the endpoint doesn't change within a single client's lifetime).
    *
    * @param signal - Optional AbortSignal to cancel connection discovery.
    * @returns The WebSocket endpoint URL (wss:// or ws://).
@@ -114,7 +121,9 @@ export class CryptPadClient {
     if (this.websocketUrl) {
       return this.websocketUrl;
     }
-    return resolveCryptPadWebsocketUrl(this.parsedUrl.origin, signal);
+    const resolved = await resolveCryptPadWebsocketUrl(this.parsedUrl.origin, signal);
+    this.websocketUrl = resolved;
+    return resolved;
   }
 
   /**
@@ -216,18 +225,161 @@ export class CryptPadClient {
 
     const sheetId = generateOnlyOfficeSheetId();
     const insertAt = insertBeforeIndex ?? data.sheetNames.length;
+    await this.broadcastSheetAdd(name, sheetId, insertAt, rtChannel, signal);
+    return sheetId;
+  }
 
+  /**
+   * Broadcasts a `Workbook_SheetAdd` record to an already-known RT channel, without
+   * re-fetching sheet data first. Used internally by {@link createSheet} (after it has
+   * resolved the channel) and by the `i18n`-header-linking path in {@link writeSheetRows}
+   * to avoid opening a fresh WebSocket connection for every step of a single push — CryptPad
+   * (and this environment's outbound networking) can drop a connection attempt when several
+   * are opened back-to-back in quick succession.
+   */
+  private async broadcastSheetAdd(
+    name: string,
+    sheetId: string,
+    insertBeforeIndex: number,
+    rtChannel: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
     const wsUrl = await this.getWebsocketUrl(signal);
     const { cryptKey, signKey } = this.getKeys();
-    const payload = buildOnlyOfficeSheetAddPayload(name, sheetId, insertAt);
-
+    const payload = buildOnlyOfficeSheetAddPayload(name, sheetId, insertBeforeIndex);
     await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
       timeoutMs: this.timeoutMs,
       signal,
       signKey,
     });
+  }
 
-    return sheetId;
+  /**
+   * Writes a literal-text header row (row 1) into a sheet — the canonical, non-linked
+   * form used for the `i18n` sheet itself (there is nothing to link an `i18n` header to)
+   * and as the safe fallback whenever a new sheet's columns can't be aligned 1:1 with an
+   * already-existing `i18n` sheet's header. Takes an already-known `rtChannel` to avoid an
+   * extra connection round-trip (see {@link broadcastSheetAdd}).
+   */
+  private async writeLiteralHeaderRow(
+    sheetName: string,
+    sheetId: string,
+    headers: string[],
+    rtChannel: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const updates: OnlyOfficeCellUpdate[] = headers.map((name, idx) => ({
+      sheet: sheetName,
+      sheetId,
+      col: colIndexToLetter(idx),
+      row: 1,
+      value: name,
+    }));
+    await this.sendCellUpdates(updates, signal, rtChannel);
+  }
+
+  /**
+   * Writes a header row (row 1) whose cells are formulas referencing the corresponding
+   * column of the reserved `i18n` sheet's own header row (`=i18n!A1`, `=i18n!B1`, ...),
+   * so a sheet's header visually mirrors `i18n` instead of duplicating literal text — see
+   * issue #165. Column `idx` here must already be verified to align with the `i18n`
+   * sheet's real column `idx` by the caller ({@link ensureI18nSheetHeader}). Takes an
+   * already-known `rtChannel` to avoid an extra connection round-trip.
+   */
+  private async writeLinkedHeaderRow(
+    sheetName: string,
+    sheetId: string,
+    columnCount: number,
+    rtChannel: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const updates: OnlyOfficeCellUpdate[] = [];
+    for (let idx = 0; idx < columnCount; idx++) {
+      const col = colIndexToLetter(idx);
+      updates.push({
+        sheet: sheetName,
+        sheetId,
+        col,
+        row: 1,
+        formula: `${I18N_SHEET_NAME}!${col}1`,
+      });
+    }
+    await this.sendCellUpdates(updates, signal, rtChannel);
+  }
+
+  /**
+   * Ensures the reserved `i18n` sheet exists and has a header row, so other sheets can
+   * link their own header cells to it (see issue #165). Never overwrites an `i18n` header
+   * that already has content — it is the canonical source, so once populated it's treated
+   * as authoritative and only ever appended-to-by-creation, never silently rewritten.
+   *
+   * Takes the caller's already-fetched `data` snapshot and `rtChannel` instead of
+   * re-fetching — `data` was captured before this call's own sheet creation, but `i18n`'s
+   * own state is unaffected by creating a *different* sheet, so it stays accurate. This
+   * keeps a single `writeSheetRows` call from opening a new connection per sub-step.
+   *
+   * @param desiredHeaders - Header row to write if `i18n` doesn't exist yet (or exists but
+   *   has no header row). Ignored if `i18n` already has a populated header row.
+   * @returns The `i18n` sheet's ID and its actual current header row (which may differ
+   *   from `desiredHeaders` if the sheet already existed with different columns) — callers
+   *   must compare before linking, since a mismatched column order would silently point a
+   *   new sheet's header cells at the wrong `i18n` columns.
+   */
+  private async ensureI18nSheetHeader(
+    data: CryptPadSheetResult,
+    rtChannel: string,
+    desiredHeaders: string[],
+    signal?: AbortSignal,
+  ): Promise<{ sheetId: string; headers: string[] }> {
+    const existingSheetId = data.sheetIds?.[I18N_SHEET_NAME];
+
+    if (existingSheetId) {
+      // Read the real header row (row 1) directly from raw cells — convertCellsToSheetRows
+      // strips row 1 out as the column-key source, so `.rows` never contains it.
+      const i18nCells = data.sheets[I18N_SHEET_NAME]?.cells ?? {};
+      const headerCols = new Map<number, string>();
+      for (const [ref, val] of Object.entries(i18nCells)) {
+        const parsed = parseCellRef(ref);
+        if (parsed && parsed.row === 1) {
+          headerCols.set(letterToColIndex(parsed.col), val);
+        }
+      }
+      if (headerCols.size > 0) {
+        const maxIdx = Math.max(...headerCols.keys());
+        const headers: string[] = [];
+        for (let i = 0; i <= maxIdx; i++) headers.push(headerCols.get(i) ?? '');
+        return { sheetId: existingSheetId, headers };
+      }
+      // Sheet exists but has no header row yet.
+      await this.writeLiteralHeaderRow(
+        I18N_SHEET_NAME,
+        existingSheetId,
+        desiredHeaders,
+        rtChannel,
+        signal,
+      );
+      return { sheetId: existingSheetId, headers: desiredHeaders };
+    }
+
+    this.onProgress?.(
+      `Reserved "${I18N_SHEET_NAME}" sheet not found — creating it as the canonical header source.`,
+    );
+    const newSheetId = generateOnlyOfficeSheetId();
+    await this.broadcastSheetAdd(
+      I18N_SHEET_NAME,
+      newSheetId,
+      data.sheetNames.length,
+      rtChannel,
+      signal,
+    );
+    await this.writeLiteralHeaderRow(
+      I18N_SHEET_NAME,
+      newSheetId,
+      desiredHeaders,
+      rtChannel,
+      signal,
+    );
+    return { sheetId: newSheetId, headers: desiredHeaders };
   }
 
   /**
@@ -371,7 +523,17 @@ export class CryptPadClient {
   async writeSheetRows(
     sheetName: string,
     rows: SheetRow[],
-    options: { override?: boolean; signal?: AbortSignal } = {},
+    options: {
+      override?: boolean;
+      signal?: AbortSignal;
+      /** When true (default false — opt-in, not yet live-verified against a real
+       *  OnlyOffice session, see {@link encodeOnlyOfficeFormulaCellRecord}) and this call
+       *  creates a brand-new, non-`i18n` sheet, that sheet's header row is written as
+       *  formula cells linking to the `i18n` sheet's header row (`=i18n!A1`, ...) instead
+       *  of duplicated literal text — see issue #165. Never touches a sheet's header on
+       *  any push after its creation. */
+      linkHeadersToI18nSheet?: boolean;
+    } = {},
   ): Promise<number> {
     if (rows.length === 0) return 0;
 
@@ -379,6 +541,7 @@ export class CryptPadClient {
 
     let existingRows = data.sheets[sheetName]?.rows ?? [];
     let targetSheetId = data.sheetIds?.[sheetName];
+    let justCreated = false;
 
     if (!targetSheetId) {
       // No tab named `sheetName` exists yet — create one, mirroring Google Sheets'
@@ -389,18 +552,25 @@ export class CryptPadClient {
       this.onProgress?.(`Sheet "${sheetName}" not found — creating it.`);
       targetSheetId = await this.createSheet(sheetName, data.sheetNames.length, options.signal);
       existingRows = [];
+      justCreated = true;
     }
 
-    // Determine primary key column header ('var' or 'key')
-    let keyColName = 'var';
+    // Resolved lazily below if still missing and actually needed — avoids an extra fetch
+    // for the common case where the pad already has a channel (the vast majority of pushes).
+    let rtChannel = data.metadata.rtChannelId;
+
+    // Determine primary key column header ('key' or 'var'). Defaults to 'key' — the same
+    // header a brand-new Google Sheets sheet gets (see spreadsheetUpdater.ts) — but an
+    // existing sheet's own header always wins, so sheets already using 'var' keep doing so.
+    let keyColName = 'key';
     const firstExisting = existingRows[0];
     const firstIncoming = rows[0];
     if (firstExisting) {
-      if ('var' in firstExisting) keyColName = 'var';
-      else if ('key' in firstExisting) keyColName = 'key';
+      if ('key' in firstExisting) keyColName = 'key';
+      else if ('var' in firstExisting) keyColName = 'var';
     } else if (firstIncoming) {
-      if ('var' in firstIncoming) keyColName = 'var';
-      else if ('key' in firstIncoming) keyColName = 'key';
+      if ('key' in firstIncoming) keyColName = 'key';
+      else if ('var' in firstIncoming) keyColName = 'var';
     }
 
     // Collect all column names with key column first (case-insensitive deduplication)
@@ -428,16 +598,61 @@ export class CryptPadClient {
 
     const updates: OnlyOfficeCellUpdate[] = [];
 
-    // Header row (row 1)
-    colNames.forEach((name, idx) => {
-      updates.push({
-        sheet: sheetName,
-        sheetId: targetSheetId,
-        col: colIndexToLetter(idx),
-        row: 1,
-        value: name,
+    // Header row (row 1). Only a brand-new, non-`i18n` sheet is eligible for linked
+    // (formula) headers — an existing sheet's header is never rewritten as a formula on
+    // a later push, bounding this feature's risk to sheet creation only (see #165).
+    const linkHeaders = options.linkHeadersToI18nSheet ?? false;
+    let wroteLinkedHeader = false;
+
+    if (justCreated && linkHeaders && sheetName !== I18N_SHEET_NAME) {
+      if (!rtChannel) {
+        // Rare: this pad had never been opened before this call, so the `createSheet` call
+        // above had to initialize a new RT channel itself (and doesn't return it) — refetch
+        // once to learn it, reused for every remaining step of this push.
+        rtChannel = (await this.fetchSheetData(options.signal)).metadata.rtChannelId;
+      }
+
+      if (rtChannel) {
+        const { headers: i18nHeaders } = await this.ensureI18nSheetHeader(
+          data,
+          rtChannel,
+          colNames,
+          options.signal,
+        );
+        const columnsAlign =
+          i18nHeaders.length === colNames.length && i18nHeaders.every((h, i) => h === colNames[i]);
+
+        if (columnsAlign) {
+          await this.writeLinkedHeaderRow(
+            sheetName,
+            targetSheetId,
+            colNames.length,
+            rtChannel,
+            options.signal,
+          );
+          wroteLinkedHeader = true;
+        } else {
+          // The existing `i18n` sheet's columns don't line up 1:1 with this push's columns
+          // (different locale set/order) — linking would silently point header cells at the
+          // wrong `i18n` columns, so fall back to literal text instead.
+          this.onProgress?.(
+            `"${I18N_SHEET_NAME}" sheet's header doesn't match this push's columns — writing literal header text for "${sheetName}" instead of linking.`,
+          );
+        }
+      }
+    }
+
+    if (!wroteLinkedHeader) {
+      colNames.forEach((name, idx) => {
+        updates.push({
+          sheet: sheetName,
+          sheetId: targetSheetId,
+          col: colIndexToLetter(idx),
+          row: 1,
+          value: name,
+        });
       });
-    });
+    }
 
     // Map existing keys to row index (1-based, header is 1, rows start at 2)
     const keyToRowIdx = new Map<string, number>();
@@ -473,7 +688,7 @@ export class CryptPadClient {
       }
     }
 
-    await this.sendCellUpdates(updates, options.signal, data.metadata.rtChannelId);
+    await this.sendCellUpdates(updates, options.signal, rtChannel);
     return updates.length;
   }
 }
