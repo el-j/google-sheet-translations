@@ -114,6 +114,7 @@ jobs:
           exit 0
 
       - name: Release
+        if: github.event_name != 'workflow_dispatch' || !inputs.force_beta_prerelease
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
