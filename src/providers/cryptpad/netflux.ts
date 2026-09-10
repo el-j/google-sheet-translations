@@ -27,7 +27,29 @@ export async function resolveCryptPadWebsocketUrl(
       const text = await res.text();
       const match = text.match(/"websocketPath":\s*"([^"]+)"/);
       if (match && match[1]) {
-        return match[1];
+        const candidate = match[1].trim();
+        if (!candidate) {
+          throw new Error('Empty websocketPath');
+        }
+
+        if (/^ws(s)?:\/\//i.test(candidate)) {
+          return candidate;
+        }
+
+        if (candidate.startsWith('/') || !/^[a-z]+:\/\//i.test(candidate)) {
+          try {
+            const urlObj = new URL(origin);
+            const baseWsScheme = urlObj.protocol === 'https:' ? 'wss:' : 'ws:';
+            const normalized = candidate.startsWith('/')
+              ? `${baseWsScheme}//${urlObj.host}${candidate}`
+              : `${baseWsScheme}//${urlObj.host}/${candidate.replace(/^\//, '')}`;
+            return normalized;
+          } catch {
+            // Fall through to default guess below
+          }
+        }
+
+        return candidate;
       }
     }
   } catch {

@@ -461,6 +461,23 @@ describe('resolveCryptPadWebsocketUrl', () => {
     globalThis.fetch = originalFetch;
   });
 
+  it('normalizes relative websocketPath values from /api/config', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('{"websocketPath": "/cryptpad_websocket"}'),
+    } as any);
+
+    const { resolveCryptPadWebsocketUrl } = await import('../../../src/providers/cryptpad/netflux');
+    const wsUrl = await resolveCryptPadWebsocketUrl('https://cryptpad.fr');
+    expect(wsUrl).toBe('wss://cryptpad.fr/cryptpad_websocket');
+
+    const wsUrlHttp = await resolveCryptPadWebsocketUrl('http://localhost:3000');
+    expect(wsUrlHttp).toBe('ws://localhost:3000/cryptpad_websocket');
+
+    globalThis.fetch = originalFetch;
+  });
+
   it('falls back to default guess on fetch failure or missing path', async () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
