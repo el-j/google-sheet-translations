@@ -190,6 +190,13 @@ export function extractOnlyOfficeChannelId(metadataMessages: string[]): string |
 export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid {
   const cells: CryptPadSheetGrid = {};
   const sheetNames = new Map<string, string>(); // sheetId -> sheetName
+
+  // Pre-seed with full mapping discovered across the complete history so cell-change
+  // records can be attributed correctly even if they appear before add/rename frames.
+  const preMapped = extractOnlyOfficeSheetIdMap(rtMessages);
+  for (const [id, name] of Object.entries(preMapped.idToName)) {
+    sheetNames.set(id, name);
+  }
   let defaultSheetId = '6';
 
   for (const raw of rtMessages) {
@@ -795,8 +802,10 @@ export function buildOnlyOfficeChangePayload(
   // One changes entry per cell record
   for (const u of updates) {
     const colStr = typeof u.col === 'number' ? colIndexToLetter(u.col) : u.col.toUpperCase();
-    const sheetPrefix = u.sheet && u.sheet.trim().length > 0 ? `${u.sheet.trim()}!` : '';
-    const ref = `${sheetPrefix}${colStr}${u.row}`;
+    // Address cells by row/column only and rely on sheetId for routing.
+    // This avoids silent drops when a freshly added tab name is not fully materialized
+    // client-side yet, while the sheetId is already authoritative.
+    const ref = `${colStr}${u.row}`;
     const sid = u.sheetId ?? defaultSheetId ?? 6;
     const rec =
       u.formula !== undefined

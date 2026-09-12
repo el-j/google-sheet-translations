@@ -185,15 +185,39 @@ async function main(): Promise<void> {
 
     case 'pull': {
       console.log(`Pulling translations from CryptPad: ${url}...`);
+      const localData = readDataJson(dataJsonPath);
+      const inferredLocalSheetTitles =
+        !sheetTitles && localData
+          ? Array.from(
+              new Set(
+                Object.values(localData)
+                  .flatMap((localeSheets) => Object.keys(localeSheets ?? {}))
+                  .filter((name) => name && name.trim().length > 0),
+              ),
+            )
+          : undefined;
+      const effectiveSheetTitles =
+        sheetTitles && sheetTitles.length > 0
+          ? sheetTitles
+          : inferredLocalSheetTitles && inferredLocalSheetTitles.length > 0
+            ? inferredLocalSheetTitles
+            : undefined;
+
+      if (!sheetTitles && effectiveSheetTitles) {
+        console.log(
+          `No --sheet-titles provided, using local languageData.json sheet structure: ${effectiveSheetTitles.join(', ')}`,
+        );
+      }
+
       const inputProvider = createCryptPadSheetInputProvider({
         url,
         password,
-        tableName: sheetTitles?.[0] ?? 'translations',
+        tableName: effectiveSheetTitles?.[0] ?? 'translations',
       });
 
       const result = await runProviderPipeline({
         inputProvider,
-        tableNames: sheetTitles,
+        tableNames: effectiveSheetTitles,
       });
 
       writeTranslationFiles(result.translations, result.locales, translationsOutputDir);

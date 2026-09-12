@@ -20,6 +20,7 @@ import {
   groupCellsBySheet,
   buildOnlyOfficeChangePayload,
   buildOnlyOfficeSheetAddPayload,
+  encodeOnlyOfficeSheetAddRecord,
   generateOnlyOfficeSheetId,
   colIndexToLetter,
   letterToColIndex,
@@ -254,6 +255,217 @@ export class CryptPadClient {
     });
   }
 
+  private async buildLockAwareSheetAddPayload(
+    rtChannel: string,
+    name: string,
+    sheetId: string,
+    insertBeforeIndex: number,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const wsUrl = await this.getWebsocketUrl(signal);
+    const { cryptKey } = this.getKeys();
+    const history = await fetchChannelHistory(wsUrl, rtChannel, cryptKey, {
+      timeoutMs: this.timeoutMs,
+      signal,
+    });
+
+    let latestUser: string | undefined;
+    let latestUserOriginal: string | undefined;
+    let latestDocId = 'fresh';
+    let latestChangesIndex = 0;
+
+    for (let i = history.length - 1; i >= 0; i--) {
+      try {
+        const parsed = JSON.parse(history[i]);
+        if (!parsed || typeof parsed !== 'object') continue;
+        const msg = parsed as {
+          changesIndex?: number;
+          changes?: Array<{ user?: string; useridoriginal?: string; docid?: string }>;
+        };
+        if (typeof msg.changesIndex === 'number') {
+          latestChangesIndex = Math.max(latestChangesIndex, msg.changesIndex);
+        }
+        if (Array.isArray(msg.changes)) {
+          for (const ch of msg.changes) {
+            if (!latestUser && typeof ch?.user === 'string' && ch.user.length > 0) {
+              latestUser = ch.user;
+            }
+            if (
+              !latestUserOriginal &&
+              typeof ch?.useridoriginal === 'string' &&
+              ch.useridoriginal.length > 0
+            ) {
+              latestUserOriginal = ch.useridoriginal;
+            }
+            if (typeof ch?.docid === 'string' && ch.docid.length > 0) {
+              latestDocId = ch.docid;
+            }
+            if (latestUser && latestUserOriginal) break;
+          }
+        }
+        if (latestUser && latestUserOriginal) break;
+      } catch {
+        // ignore
+      }
+    }
+
+    const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
+    const rec = encodeOnlyOfficeSheetAddRecord(name, sheetId, insertBeforeIndex);
+    const now = Date.now();
+
+    const mkChange = (buf: Buffer) => {
+      const item: Record<string, unknown> = {
+        docid: latestDocId,
+        change: JSON.stringify(`${buf.length};${buf.toString('base64')}`),
+        time: now,
+      };
+      if (latestUser) item.user = latestUser;
+      if (latestUserOriginal) item.useridoriginal = latestUserOriginal;
+      return item;
+    };
+
+    return JSON.stringify({
+      type: 'saveChanges',
+      changes: [mkChange(txOpen), mkChange(rec)],
+      changesIndex: latestChangesIndex + 1,
+      locks: [
+        {
+          time: now - 100,
+          user: latestUser ?? latestUserOriginal ?? 'anonymous',
+          block: {
+            sheetId: 'addSheet',
+            type: 3,
+            subType: null,
+            guid: crypto.randomUUID(),
+            rangeOrObjectId: 'addSheet',
+          },
+        },
+      ],
+      excelAdditionalInfo: null,
+      startSaveChanges: true,
+      endSaveChanges: true,
+    });
+  }
+
+  private async broadcastSheetAddWithLockFallback(
+    name: string,
+    sheetId: string,
+    insertBeforeIndex: number,
+    rtChannel: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const wsUrl = await this.getWebsocketUrl(signal);
+    const { cryptKey, signKey } = this.getKeys();
+    const payload = await this.buildLockAwareSheetAddPayload(
+      rtChannel,
+      name,
+      sheetId,
+      insertBeforeIndex,
+      signal,
+    );
+    await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
+      timeoutMs: this.timeoutMs,
+      signal,
+      signKey,
+    });
+  }
+
+  private async buildLockAwareCellUpdatePayload(
+    rtChannel: string,
+    updates: OnlyOfficeCellUpdate[],
+    signal?: AbortSignal,
+  ): Promise<string> {
+    const wsUrl = await this.getWebsocketUrl(signal);
+    const { cryptKey } = this.getKeys();
+    const history = await fetchChannelHistory(wsUrl, rtChannel, cryptKey, {
+      timeoutMs: this.timeoutMs,
+      signal,
+    });
+
+    let latestUser: string | undefined;
+    let latestUserOriginal: string | undefined;
+    let latestDocId = 'fresh';
+    let latestChangesIndex = 0;
+
+    for (let i = history.length - 1; i >= 0; i--) {
+      try {
+        const parsed = JSON.parse(history[i]);
+        if (!parsed || typeof parsed !== 'object') continue;
+        const msg = parsed as {
+          changesIndex?: number;
+          changes?: Array<{ user?: string; useridoriginal?: string; docid?: string }>;
+        };
+        if (typeof msg.changesIndex === 'number') {
+          latestChangesIndex = Math.max(latestChangesIndex, msg.changesIndex);
+        }
+        if (Array.isArray(msg.changes)) {
+          for (const ch of msg.changes) {
+            if (!latestUser && typeof ch?.user === 'string' && ch.user.length > 0) {
+              latestUser = ch.user;
+            }
+            if (
+              !latestUserOriginal &&
+              typeof ch?.useridoriginal === 'string' &&
+              ch.useridoriginal.length > 0
+            ) {
+              latestUserOriginal = ch.useridoriginal;
+            }
+            if (typeof ch?.docid === 'string' && ch.docid.length > 0) {
+              latestDocId = ch.docid;
+            }
+            if (latestUser && latestUserOriginal) break;
+          }
+        }
+        if (latestUser && latestUserOriginal) break;
+      } catch {
+        // ignore malformed frames
+      }
+    }
+
+    const basePayload = JSON.parse(buildOnlyOfficeChangePayload(updates)) as {
+      type: string;
+      changes: Array<{ change: string; time: number }>;
+      startSaveChanges: boolean;
+      endSaveChanges: boolean;
+      isExcel?: boolean;
+    };
+
+    const changes = basePayload.changes.map((ch) => {
+      const item: Record<string, unknown> = {
+        docid: latestDocId,
+        change: ch.change,
+        time: ch.time,
+      };
+      if (latestUser) item.user = latestUser;
+      if (latestUserOriginal) item.useridoriginal = latestUserOriginal;
+      return item;
+    });
+
+    const primarySheetId = String(updates[0]?.sheetId ?? '6');
+
+    return JSON.stringify({
+      type: basePayload.type,
+      changes,
+      changesIndex: latestChangesIndex + 1,
+      locks: [
+        {
+          time: Date.now() - 20,
+          user: latestUser ?? latestUserOriginal ?? 'anonymous',
+          block: {
+            sheetId: primarySheetId,
+            type: 3,
+            subType: null,
+            guid: crypto.randomUUID(),
+            rangeOrObjectId: primarySheetId,
+          },
+        },
+      ],
+      excelAdditionalInfo: null,
+      startSaveChanges: basePayload.startSaveChanges,
+      endSaveChanges: basePayload.endSaveChanges,
+    });
+  }
+
   /**
    * Writes a literal-text header row (row 1) into a sheet — the canonical, non-linked
    * form used for the `i18n` sheet itself (there is nothing to link an `i18n` header to)
@@ -418,7 +630,11 @@ export class CryptPadClient {
     }
 
     const multiSheets = convertCellsToMultiSheetRows(cells);
-    const sheetNames = Object.keys(multiSheets);
+    const discoveredSheetNames = new Set(Object.keys(multiSheets));
+    for (const name of Object.keys(sheetIdMap.nameToId)) {
+      if (name && name.trim().length > 0) discoveredSheetNames.add(name);
+    }
+    const sheetNames = Array.from(discoveredSheetNames);
     const defaultSheet = multiSheets['Sheet1'] ? 'Sheet1' : sheetNames[0];
     const defaultRows =
       defaultSheet && multiSheets[defaultSheet]
@@ -503,7 +719,7 @@ export class CryptPadClient {
 
     const wsUrl = await this.getWebsocketUrl(signal);
     const { cryptKey, signKey } = this.getKeys();
-    const payload = buildOnlyOfficeChangePayload(updates);
+    const payload = await this.buildLockAwareCellUpdatePayload(rtChannel, updates, signal);
 
     await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
       timeoutMs: this.timeoutMs,
@@ -553,6 +769,35 @@ export class CryptPadClient {
       targetSheetId = await this.createSheet(sheetName, data.sheetNames.length, options.signal);
       existingRows = [];
       justCreated = true;
+
+      // CryptPad may accept the RT message but still not persist the tab on some instances.
+      // Re-read metadata and fail loudly instead of silently claiming a successful push.
+      await new Promise((r) => setTimeout(r, 350));
+      const verifyData = await this.fetchSheetData(options.signal);
+      const persistedSheetId = verifyData.sheetIds?.[sheetName];
+      if (!persistedSheetId) {
+        this.onProgress?.(
+          `Sheet "${sheetName}" did not persist after initial create attempt. Retrying with lock-aware payload...`,
+        );
+        await this.broadcastSheetAddWithLockFallback(
+          sheetName,
+          targetSheetId,
+          data.sheetNames.length,
+          data.metadata.rtChannelId ?? '',
+          options.signal,
+        );
+        await new Promise((r) => setTimeout(r, 450));
+        const verifyAfterFallback = await this.fetchSheetData(options.signal);
+        const persistedAfterFallback = verifyAfterFallback.sheetIds?.[sheetName];
+        if (!persistedAfterFallback) {
+          throw new Error(
+            `Sheet "${sheetName}" could not be created remotely. Please create the tab manually in CryptPad (with header: key, de-de, en-gb), then run push again.`,
+          );
+        }
+        targetSheetId = persistedAfterFallback;
+      } else {
+        targetSheetId = persistedSheetId;
+      }
     }
 
     // Resolved lazily below if still missing and actually needed — avoids an extra fetch

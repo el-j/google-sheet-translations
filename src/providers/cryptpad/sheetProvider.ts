@@ -104,11 +104,7 @@ export function createCryptPadSheetInputProvider(
           // If the document has multiple named tabs
           if (Array.isArray(sheetData.sheetNames) && sheetData.sheetNames.length > 1) {
             for (const tabName of sheetData.sheetNames) {
-              if (
-                requested.size === 0 ||
-                requested.has(tabName) ||
-                requested.has(source.tableName)
-              ) {
+              if (requested.size === 0 || requested.has(tabName)) {
                 sourceTables.push({
                   tableId: `${source.tableId ?? url}#${tabName}`,
                   tableName: tabName,
@@ -125,8 +121,12 @@ export function createCryptPadSheetInputProvider(
             }
           }
 
-          // Fallback if single tab or no specific sub-tabs matched
-          if (sourceTables.length === 0) {
+          // Fallback only for genuine single-tab docs; in multi-tab docs, an
+          // empty `sourceTables` with requested filters means "no match".
+          if (
+            sourceTables.length === 0 &&
+            (!Array.isArray(sheetData.sheetNames) || sheetData.sheetNames.length <= 1)
+          ) {
             sourceTables.push({
               tableId: source.tableId ?? url,
               tableName: source.tableName,
