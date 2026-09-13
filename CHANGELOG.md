@@ -1,3 +1,9 @@
+## [3.0.0-beta.14](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.13...v3.0.0-beta.14) (2026-09-13)
+
+### 🚀 Features
+
+* eliminate translation data loss on CryptPad pull/push/sync and fix release workflow git notes ([d46cf54](https://github.com/el-j/google-sheet-translations/commit/d46cf542559bbb0b969949f05fb5cbd8beb86b0c))
+
 ## [3.0.0-beta.13](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.12...v3.0.0-beta.13) (2026-09-13)
 
 ### 🚀 Features
