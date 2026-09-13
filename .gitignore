@@ -8,6 +8,7 @@ yarn-error.log*
 dist/
 dist-cli/
 dist-action/
+!dist-action/index.mjs
 lib/
 build/
 

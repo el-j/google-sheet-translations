@@ -35,6 +35,9 @@ export interface CryptPadSheetOutputProviderOptions {
    *  row if it doesn't exist yet. Never rewrites an existing sheet's header on a later
    *  push. */
   linkHeadersToI18nSheet?: boolean;
+  /** When true, converts and pushes the reserved `i18n` sheet if present in translations.
+   *  Defaults to false for backward compatibility with Google Sheets sync. */
+  includeI18nSheet?: boolean;
   /** Optional timeout in milliseconds for WebSocket operations. */
   timeoutMs?: number;
 }
@@ -51,6 +54,7 @@ export function convertTranslationsToSheetRows(
   translations: TranslationData,
   localeMapping: Record<string, string> = {},
   keyColumnName: string = 'key',
+  includeI18nSheet: boolean = false,
 ): Record<string, SheetRow[]> {
   const sheetRowsMap: Record<string, Map<string, SheetRow>> = {};
 
@@ -66,9 +70,8 @@ export function convertTranslationsToSheetRows(
 
     for (const [sheetName, keys] of Object.entries(sheets)) {
       // The i18n sheet is a reserved metadata sheet (locale display names).
-      // Translation key pushes must never touch it, matching the Google Sheets
-      // output/sync path (see src/utils/spreadsheetUpdater.ts).
-      if (sheetName === I18N_SHEET_NAME) continue;
+      // Unless explicitly requested, translation key pushes omit it to match Google Sheets.
+      if (!includeI18nSheet && sheetName === I18N_SHEET_NAME) continue;
 
       if (!sheetRowsMap[sheetName]) {
         sheetRowsMap[sheetName] = new Map();
@@ -126,11 +129,19 @@ export function createCryptPadSheetOutputProvider(
         payload.translations,
         effectiveMapping,
         options.keyColumnName ?? 'key',
+        options.includeI18nSheet ?? false,
       );
       const updatedSheets: string[] = [];
       let totalUpdatedCells = 0;
 
-      for (const [sheetName, rows] of Object.entries(sheetRowsMap)) {
+      // Process i18n sheet first if present so other sheets can link headers or establish base tab
+      const sheetEntries = Object.entries(sheetRowsMap).sort(([a], [b]) => {
+        if (a === I18N_SHEET_NAME) return -1;
+        if (b === I18N_SHEET_NAME) return 1;
+        return 0;
+      });
+
+      for (const [sheetName, rows] of sheetEntries) {
         const count = await client.writeSheetRows(sheetName, rows, {
           override: options.override ?? false,
           linkHeadersToI18nSheet: options.linkHeadersToI18nSheet ?? false,
@@ -138,7 +149,7 @@ export function createCryptPadSheetOutputProvider(
         updatedSheets.push(sheetName);
         totalUpdatedCells += count;
         // Brief quiet period to avoid rate-limiting on multi-sheet operations
-        await new Promise((r) => setTimeout(r, 400));
+        await new Promise((r) => setTimeout(r, 1200));
       }
 
       return {

@@ -56,7 +56,7 @@
       "labels": ["released"]
     }],
     ["@semantic-release/git", {
-      "assets": ["CHANGELOG.md", "package.json", "package-lock.json"],
+      "assets": ["CHANGELOG.md", "package.json", "package-lock.json", "dist-action/index.mjs"],
       "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
     }]
   ]

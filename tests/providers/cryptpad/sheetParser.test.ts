@@ -16,6 +16,10 @@ import {
   encodeOnlyOfficeSheetAddRecord,
   generateOnlyOfficeSheetId,
   buildOnlyOfficeSheetAddPayload,
+  encodeOnlyOfficeSheetRenameRecord,
+  buildOnlyOfficeSheetRenamePayload,
+  encodeOnlyOfficeSheetDeleteRecord,
+  buildOnlyOfficeSheetDeletePayload,
 } from '../../../src/providers/cryptpad/sheetParser';
 
 describe('CryptPad sheetParser unit tests', () => {
@@ -421,6 +425,57 @@ describe('CryptPad sheetParser unit tests', () => {
       expect(map.idToName['8200316732097412_745']).toBe('i18n');
     });
 
+    it('extractOnlyOfficeSheetIdMap and parseOnlyOfficeChanges handle SheetDelete (0x012b0200)', () => {
+      // 1. Sheet add for 'tempSheet' with id 'temp_id_123'
+      const addBuf = Buffer.alloc(100);
+      addBuf.writeUInt32LE(addBuf.length - 4, 0);
+      addBuf.writeUInt32BE(0x012b0100, 4);
+      addBuf[10] = 0x08;
+      const nameBuf = Buffer.from('tempSheet', 'utf16le');
+      addBuf.writeUInt32LE(nameBuf.length, 11);
+      nameBuf.copy(addBuf, 15);
+      const offsetId = 15 + nameBuf.length;
+      addBuf[offsetId] = 0x08;
+      const idBuf = Buffer.from('temp_id_123', 'utf16le');
+      addBuf.writeUInt32LE(idBuf.length, offsetId + 1);
+      idBuf.copy(addBuf, offsetId + 5);
+
+      // Cell in tempSheet
+      const cellRec = encodeOnlyOfficeCellRecord('A1', 'valInTemp', 'temp_id_123');
+
+      // 2. Sheet delete for 'temp_id_123'
+      const delBuf = Buffer.alloc(60);
+      delBuf.writeUInt32LE(delBuf.length - 4, 0);
+      delBuf.writeUInt32BE(0x012b0200, 4);
+      delBuf[10] = 0x08;
+      delBuf.writeUInt32LE(idBuf.length, 11);
+      idBuf.copy(delBuf, 15);
+
+      const msgAdd = JSON.stringify({
+        changes: [
+          { change: JSON.stringify(`10;${addBuf.toString('base64')}`) },
+          { change: JSON.stringify(`10;${cellRec.toString('base64')}`) },
+        ],
+      });
+      const msgDel = JSON.stringify({
+        changes: [{ change: JSON.stringify(`10;${delBuf.toString('base64')}`) }],
+      });
+
+      // Before deletion
+      const mapBefore = extractOnlyOfficeSheetIdMap([msgAdd]);
+      expect(mapBefore.nameToId['tempSheet']).toBe('temp_id_123');
+      const cellsBefore = parseOnlyOfficeChanges([msgAdd]);
+      expect(cellsBefore['tempSheet!A1']).toBe('valInTemp');
+
+      // After deletion
+      const mapAfter = extractOnlyOfficeSheetIdMap([msgAdd, msgDel]);
+      expect(mapAfter.nameToId['tempSheet']).toBeUndefined();
+      expect(mapAfter.idToName['temp_id_123']).toBeUndefined();
+
+      const cellsAfter = parseOnlyOfficeChanges([msgAdd, msgDel]);
+      expect(cellsAfter['tempSheet!A1']).toBeUndefined();
+    });
+
     it('encodeOnlyOfficeCellRecord encodes custom sheetId string', () => {
       const rec = encodeOnlyOfficeCellRecord('A1', 'TestVal', '8200316732097412_745');
       expect(rec.length).toBeGreaterThan(60);
@@ -525,6 +580,23 @@ describe('CryptPad sheetParser unit tests', () => {
       const sheetIdLen = buf.readUInt32LE(8);
       const sheetIdStr = buf.subarray(12, 12 + sheetIdLen).toString('utf16le');
       expect(sheetIdStr).toBe('custom_sheet_id');
+    });
+
+    it('encodeOnlyOfficeSheetRenameRecord and buildOnlyOfficeSheetRenamePayload encode valid rename frames', () => {
+      const rec = encodeOnlyOfficeSheetRenameRecord('6', 'Sheet1', 'i18n');
+      expect(rec.readUInt32BE(4)).toBe(0x012a1201);
+      expect(rec.length).toBeGreaterThan(40);
+
+      const payload = buildOnlyOfficeSheetRenamePayload('6', 'Sheet1', 'i18n');
+      const parsed = JSON.parse(payload);
+      expect(parsed.type).toBe('saveChanges');
+      expect(parsed.changes).toHaveLength(2);
+
+      // Verify that extractOnlyOfficeSheetIdMap updates the mapping when given this rename frame
+      const map = extractOnlyOfficeSheetIdMap([payload]);
+      expect(map.nameToId['i18n']).toBe('6');
+      expect(map.idToName['6']).toBe('i18n');
+      expect(map.nameToId['Sheet1']).toBeUndefined();
     });
   });
 });

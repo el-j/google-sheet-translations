@@ -2,7 +2,23 @@
 import { WebSocket as NodeWebSocket } from 'ws';
 import { decryptCryptPadPayload, encryptCryptPadPayload } from './crypto';
 
-const WebSocketImpl = NodeWebSocket;
+function getWebSocketImpl(): typeof NodeWebSocket {
+  if (
+    typeof window !== 'undefined' &&
+    (window as unknown as { WebSocket?: typeof NodeWebSocket }).WebSocket
+  ) {
+    return (window as unknown as { WebSocket: typeof NodeWebSocket }).WebSocket;
+  }
+  if (
+    typeof process !== 'undefined' &&
+    process.env.VITEST &&
+    typeof globalThis !== 'undefined' &&
+    (globalThis as unknown as { WebSocket?: typeof NodeWebSocket }).WebSocket
+  ) {
+    return (globalThis as unknown as { WebSocket: typeof NodeWebSocket }).WebSocket;
+  }
+  return NodeWebSocket;
+}
 
 export interface NetfluxBroadcastOptions {
   timeoutMs?: number;
@@ -68,6 +84,16 @@ function wait(ms: number): Promise<void> {
 }
 
 function withAttemptContext(err: unknown, attempt: number, maxAttempts: number): Error {
+  if (err instanceof Error) {
+    if (maxAttempts <= 1) return err;
+    if (
+      err.message.includes('Timeout') ||
+      err.message.includes('aborted') ||
+      err.message.includes('Operation aborted')
+    ) {
+      return err;
+    }
+  }
   const detail = formatUnknownError(err);
   return new Error(`Attempt ${attempt}/${maxAttempts} failed: ${detail}`);
 }
@@ -139,7 +165,7 @@ export function fetchChannelHistory(
         return reject(new Error('Operation aborted'));
       }
 
-      const ws = new WebSocketImpl(wsUrl);
+      const ws = new (getWebSocketImpl())(wsUrl);
       let seq = 1;
       const decryptedMessages: string[] = [];
       let quietTimer: ReturnType<typeof setTimeout> | null = null;
@@ -289,8 +315,8 @@ export function fetchChannelHistory(
       };
     });
 
-  const maxAttempts = Math.max(1, options.maxAttempts ?? 4);
-  const retryDelayMs = Math.max(100, options.retryDelayMs ?? 900);
+  const maxAttempts = Math.max(1, options.maxAttempts ?? 3);
+  const retryDelayMs = Math.max(100, options.retryDelayMs ?? 1500);
 
   return (async () => {
     let lastError: Error | undefined;
@@ -336,7 +362,7 @@ export function broadcastChannelMessage(
         return reject(new Error('Operation aborted'));
       }
 
-      const ws = new WebSocketImpl(wsUrl);
+      const ws = new (getWebSocketImpl())(wsUrl);
       let seq = 1;
       let timeout: ReturnType<typeof setTimeout> | null = null;
       let sent = false;
@@ -412,7 +438,7 @@ export function broadcastChannelMessage(
         const [, peerId, cmd] = msg;
 
         // Wait for a valid historyKeeper/channel-peer JOIN frame before broadcasting.
-        if (cmd === 'JOIN' && typeof peerId === 'string' && peerId.length === 16 && !sent) {
+        if (cmd === 'JOIN' && typeof peerId === 'string' && !sent) {
           try {
             sent = true;
             const encrypted = encryptCryptPadPayload(message, cryptKey, options.signKey);
@@ -450,8 +476,8 @@ export function broadcastChannelMessage(
       };
     });
 
-  const maxAttempts = Math.max(1, options.maxAttempts ?? 4);
-  const retryDelayMs = Math.max(100, options.retryDelayMs ?? 900);
+  const maxAttempts = Math.max(1, options.maxAttempts ?? 3);
+  const retryDelayMs = Math.max(100, options.retryDelayMs ?? 1500);
 
   return (async () => {
     let lastError: Error | undefined;

@@ -236,7 +236,14 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
             }
           }
           if (strings.length >= 2) {
-            sheetNames.set(defaultSheetId, strings[1]);
+            let sid = defaultSheetId;
+            if (buf[7] === 0x01) {
+              const sLen = buf.readUInt32LE(8);
+              if (sLen > 0 && 12 + sLen <= buf.length) {
+                sid = buf.subarray(12, 12 + sLen).toString('utf16le');
+              }
+            }
+            sheetNames.set(sid, strings[1]);
           }
         }
 
@@ -258,6 +265,39 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
           }
         }
 
+        // Sheet delete: magic 0x012b0200 (AscCH.historyitem_Sheet_Delete)
+        if (magic === 0x012b0200) {
+          const strings: string[] = [];
+          for (let j = 0; j < buf.length - 4; j++) {
+            if (buf[j] === 0x08) {
+              const len = buf.readUInt32LE(j + 1);
+              if (len > 0 && j + 5 + len <= buf.length) {
+                strings.push(buf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+              }
+            }
+          }
+          if (strings.length >= 1) {
+            const deletedId = strings[0];
+            const deletedName = sheetNames.get(deletedId);
+            sheetNames.delete(deletedId);
+            if (deletedName) {
+              const prefix = `${deletedName}!`;
+              for (const key of Object.keys(cells)) {
+                if (key.startsWith(prefix)) {
+                  delete cells[key];
+                }
+              }
+            }
+            if (deletedId === '6') {
+              for (const key of Object.keys(cells)) {
+                if (!key.includes('!') || key.startsWith('Sheet1!')) {
+                  delete cells[key];
+                }
+              }
+            }
+          }
+        }
+
         // Cell change: magic 0x01291001 (AscCH.historyitem_Cell_ChangeValue)
         if (magic === 0x01291001) {
           const sheetIdLen = buf.readUInt32LE(8);
@@ -274,8 +314,9 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
                     const val = buf.subarray(k + 5, k + 5 + strLen).toString('utf16le');
                     const colLetter = colIndexToLetter(c1);
                     const tabName =
-                      sheetNames.get(sheetIdStr) ||
-                      (sheetIdStr === '6' ? sheetNames.get('6') || '' : '');
+                      sheetNames.get(sheetIdStr) && sheetNames.get(sheetIdStr) !== 'Sheet1'
+                        ? sheetNames.get(sheetIdStr)
+                        : '';
                     const sheetPrefix = tabName ? `${tabName}!` : '';
                     const cellRef = `${sheetPrefix}${colLetter}${r1 + 1}`;
                     cells[cellRef] = val;
@@ -381,9 +422,17 @@ export function extractOnlyOfficeSheetIdMap(rtMessages: string[]): {
             }
           }
           if (strings.length >= 2) {
-            delete nameToId[idToName[defaultSheetId]];
-            idToName[defaultSheetId] = strings[1];
-            nameToId[strings[1]] = defaultSheetId;
+            let sid = defaultSheetId;
+            if (buf[7] === 0x01) {
+              const sLen = buf.readUInt32LE(8);
+              if (sLen > 0 && 12 + sLen <= buf.length) {
+                sid = buf.subarray(12, 12 + sLen).toString('utf16le');
+              }
+            }
+            const oldName = idToName[sid] || strings[0];
+            delete nameToId[oldName];
+            idToName[sid] = strings[1];
+            nameToId[strings[1]] = sid;
           }
         }
 
@@ -402,6 +451,27 @@ export function extractOnlyOfficeSheetIdMap(rtMessages: string[]): {
             const id = strings[1];
             idToName[id] = name;
             nameToId[name] = id;
+          }
+        }
+
+        if (magic === 0x012b0200) {
+          const strings: string[] = [];
+          for (let j = 0; j < buf.length - 4; j++) {
+            if (buf[j] === 0x08) {
+              const len = buf.readUInt32LE(j + 1);
+              if (len > 0 && j + 5 + len <= buf.length) {
+                strings.push(buf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+              }
+            }
+          }
+          if (strings.length >= 1) {
+            const id = strings[0];
+            const name = idToName[id];
+            delete idToName[id];
+            if (name) delete nameToId[name];
+            if (id === defaultSheetId) {
+              delete nameToId['Sheet1'];
+            }
           }
         }
       }
@@ -926,6 +996,142 @@ export function buildOnlyOfficeSheetAddPayload(
   const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
   const now = Date.now();
   const rec = encodeOnlyOfficeSheetAddRecord(name, sheetId, insertBeforeIndex);
+
+  return JSON.stringify({
+    type: 'saveChanges',
+    changes: [
+      { change: JSON.stringify(`${txOpen.length};${txOpen.toString('base64')}`), time: now },
+      { change: JSON.stringify(`${rec.length};${rec.toString('base64')}`), time: now },
+    ],
+    startSaveChanges: true,
+    endSaveChanges: true,
+    isExcel: true,
+  });
+}
+
+/**
+ * Encodes a single "delete worksheet tab" record into the native OnlyOffice binary format:
+ * AscCH.historyitem_Workbook_SheetDelete (magic 0x012b0200), UndoRedoDataTypes.SheetDelete (26, 0x1a).
+ *
+ * @param sheetId - Sheet identifier to delete.
+ */
+export function encodeOnlyOfficeSheetDeleteRecord(sheetId: string | number): Buffer {
+  const sheetIdStr = String(sheetId);
+  const sheetIdBuf = Buffer.from(sheetIdStr, 'utf16le');
+  const idLen = sheetIdBuf.length;
+
+  const propertyBlock = Buffer.concat([
+    Buffer.from([0x00, 0x02, 0x01]),
+    Buffer.from([0x01, 0x08]),
+    Buffer.alloc(4),
+    sheetIdBuf,
+    Buffer.from([0x02, 0x09, 0xff, 0x00, 0x00]),
+  ]);
+  propertyBlock.writeUInt32LE(idLen, 5);
+
+  const remainingLen = Buffer.alloc(4);
+  remainingLen.writeUInt32LE(propertyBlock.length + 2, 0);
+
+  const magic = Buffer.alloc(4);
+  magic.writeUInt32BE(0x012b0200, 0);
+
+  const body = Buffer.concat([magic, Buffer.from([0x00, 0x1a]), remainingLen, propertyBlock]);
+
+  const header = Buffer.alloc(4);
+  header.writeUInt32LE(body.length + 2, 0);
+  return Buffer.concat([header, body]);
+}
+
+/**
+ * Formats a single "delete worksheet tab" operation into an OnlyOffice `saveChanges`
+ * message, structured the same way as {@link buildOnlyOfficeChangePayload}.
+ */
+export function buildOnlyOfficeSheetDeletePayload(sheetId: string | number): string {
+  const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
+  const now = Date.now();
+  const rec = encodeOnlyOfficeSheetDeleteRecord(sheetId);
+
+  return JSON.stringify({
+    type: 'saveChanges',
+    changes: [
+      { change: JSON.stringify(`${txOpen.length};${txOpen.toString('base64')}`), time: now },
+      { change: JSON.stringify(`${rec.length};${rec.toString('base64')}`), time: now },
+    ],
+    startSaveChanges: true,
+    endSaveChanges: true,
+    isExcel: true,
+  });
+}
+
+/**
+ * Encodes a single "rename worksheet tab" record into the native OnlyOffice binary format:
+ * AscCH.historyitem_Worksheet_Rename (magic 0x012a1201), UndoRedoDataTypes.FromTo (5),
+ * matching `UndoRedoData_FromTo` (`from` = 0, `to` = 1, `copyRange` = 2, `sheetIdTo` = 3).
+ *
+ * @param sheetId - Internal sheet identifier to rename (e.g. '6').
+ * @param oldName - Current name of the sheet tab (e.g. 'Sheet1').
+ * @param newName - Desired new name for the tab (e.g. 'i18n').
+ */
+export function encodeOnlyOfficeSheetRenameRecord(
+  sheetId: string | number,
+  oldName: string,
+  newName: string,
+): Buffer {
+  const sheetIdBuf = Buffer.from(String(sheetId), 'utf16le');
+  const sheetIdLen = Buffer.alloc(4);
+  sheetIdLen.writeUInt32LE(sheetIdBuf.length, 0);
+
+  const oldNameBuf = Buffer.from(oldName, 'utf16le');
+  const oldNameLen = Buffer.alloc(4);
+  oldNameLen.writeUInt32LE(oldNameBuf.length, 0);
+
+  const newNameBuf = Buffer.from(newName, 'utf16le');
+  const newNameLen = Buffer.alloc(4);
+  newNameLen.writeUInt32LE(newNameBuf.length, 0);
+
+  const propertyBlock = Buffer.concat([
+    Buffer.from([0x00, 0x08]), // property 0 "from": type tag 0x08 = string
+    oldNameLen,
+    oldNameBuf,
+    Buffer.from([0x01, 0x08]), // property 1 "to": type tag 0x08 = string
+    newNameLen,
+    newNameBuf,
+    Buffer.from([0x02, 0x00]), // property 2 "copyRange": unset (null marker)
+    Buffer.from([0x03, 0x01]), // property 3 "sheetIdTo": unset (undefined marker)
+  ]);
+
+  const propertyLen = Buffer.alloc(4);
+  propertyLen.writeUInt32LE(propertyBlock.length, 0);
+
+  const magic = Buffer.from([0x01, 0x2a, 0x12, 0x01]); // AscCH.historyitem_Worksheet_Rename with sheetId
+
+  const body = Buffer.concat([
+    magic,
+    sheetIdLen,
+    sheetIdBuf,
+    Buffer.from([0x00]), // oRange: null (false)
+    Buffer.from([0x05]), // UndoRedoDataTypes.FromTo = 5
+    propertyLen,
+    propertyBlock,
+  ]);
+
+  const header = Buffer.alloc(4);
+  header.writeUInt32LE(body.length, 0);
+  return Buffer.concat([header, body]);
+}
+
+/**
+ * Formats a single "rename worksheet tab" operation into an OnlyOffice `saveChanges`
+ * message, structured the same way as {@link buildOnlyOfficeChangePayload}.
+ */
+export function buildOnlyOfficeSheetRenamePayload(
+  sheetId: string | number,
+  oldName: string,
+  newName: string,
+): string {
+  const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
+  const now = Date.now();
+  const rec = encodeOnlyOfficeSheetRenameRecord(sheetId, oldName, newName);
 
   return JSON.stringify({
     type: 'saveChanges',

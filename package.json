@@ -30,7 +30,7 @@
   ],
   "scripts": {
     "build:action": "rimraf dist-action && rolldown -c --environment BUILD_TARGET:action && node scripts/patch-action-bundle.mjs",
-    "build:cli": "rimraf dist-cli && rolldown -c --environment BUILD_TARGET:cli",
+    "build:cli": "rimraf dist-cli && rolldown -c --environment BUILD_TARGET:cli && chmod +x dist-cli/*.mjs",
     "build:types": "tsc --emitDeclarationOnly",
     "build:cjs": "rolldown -c --environment BUILD_TARGET:cjs",
     "build:esm": "rolldown -c --environment BUILD_TARGET:esm && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",

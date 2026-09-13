@@ -58,6 +58,10 @@ export {
   colIndexToLetter,
   letterToColIndex,
   parseCellRef,
+  encodeOnlyOfficeSheetDeleteRecord,
+  buildOnlyOfficeSheetDeletePayload,
+  encodeOnlyOfficeSheetRenameRecord,
+  buildOnlyOfficeSheetRenamePayload,
 } from './sheetParser';
 
 export type { CryptPadCsvSource, CryptPadCsvInputProviderOptions } from './provider';

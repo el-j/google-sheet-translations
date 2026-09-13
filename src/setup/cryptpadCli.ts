@@ -14,6 +14,7 @@ import {
   writeTranslationFiles,
 } from '../utils/fileWriter';
 import { readDataJson } from '../utils/readDataJson';
+import { I18N_SHEET_NAME } from '../constants';
 import type { SyncConflictPolicy } from '../providers/syncEngine';
 
 /**
@@ -243,11 +244,17 @@ async function main(): Promise<void> {
       }
 
       const localeMapping = tryReadLocaleMapping(localesOutputPath);
+      const includeI18nSheet = Boolean(
+        options['include-i18n'] === 'true' ||
+        sheetTitles?.includes(I18N_SHEET_NAME) ||
+        (localData && Object.values(localData).some((loc) => loc && loc[I18N_SHEET_NAME])),
+      );
       const outputProvider = createCryptPadSheetOutputProvider({
         url,
         password,
         override: options.override === 'true',
         localeMapping,
+        includeI18nSheet,
       });
 
       const locales = Object.keys(localData);

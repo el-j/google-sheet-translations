@@ -543,6 +543,74 @@ describe('CryptPadClient direct methods', () => {
     const result = await client.fetchSheetData();
     expect(result.sheets).toBeDefined();
   });
+
+  it('renameSheet broadcasts SheetRename record to RT channel', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: { Sheet1: { cells: {}, rows: [] } },
+      sheetNames: ['Sheet1'],
+      sheetIds: { Sheet1: '6' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+
+    await client.renameSheet('Sheet1', 'i18n');
+
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    expect(broadcastSpy).toHaveBeenCalledWith(
+      'wss://cryptpad.fr/cryptpad_websocket',
+      'rt1',
+      expect.any(Uint8Array),
+      expect.stringContaining('"saveChanges"'),
+      expect.objectContaining({ signKey: expect.any(Uint8Array) }),
+    );
+  });
+
+  it('writeSheetRows automatically renames fresh empty Sheet1 tab to target sheetName', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: { Sheet1: { cells: {}, rows: [] } },
+      sheetNames: ['Sheet1'],
+      sheetIds: { Sheet1: '6' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    const renameSpy = vi.spyOn(client, 'broadcastSheetRename').mockResolvedValue(undefined);
+    const createSheetSpy = vi.spyOn(client, 'createSheet');
+    const sendUpdatesSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    const count = await client.writeSheetRows('i18n', [
+      { key: 'de', en: 'German' },
+      { key: 'en', en: 'English' },
+    ]);
+
+    expect(count).toBeGreaterThan(0);
+    // Sheet1 should be renamed to i18n
+    expect(renameSpy).toHaveBeenCalledWith('6', 'Sheet1', 'i18n', 'rt1', undefined);
+    // No new sheet should have been created with createSheet
+    expect(createSheetSpy).not.toHaveBeenCalled();
+    // Cells should be written directly to the renamed sheetId '6'
+    expect(sendUpdatesSpy).toHaveBeenCalledTimes(1);
+    const updates = sendUpdatesSpy.mock.calls[0][0];
+    expect(updates.every((u) => u.sheetId === '6')).toBe(true);
+  });
 });
 
 describe('CryptPadDriveClient direct methods', () => {

@@ -20,7 +20,8 @@ import {
   groupCellsBySheet,
   buildOnlyOfficeChangePayload,
   buildOnlyOfficeSheetAddPayload,
-  encodeOnlyOfficeSheetAddRecord,
+  buildOnlyOfficeSheetDeletePayload,
+  buildOnlyOfficeSheetRenamePayload,
   generateOnlyOfficeSheetId,
   colIndexToLetter,
   letterToColIndex,
@@ -225,7 +226,7 @@ export class CryptPadClient {
     }
 
     const sheetId = generateOnlyOfficeSheetId();
-    const insertAt = insertBeforeIndex ?? data.sheetNames.length;
+    const insertAt = Math.min(insertBeforeIndex ?? data.sheetNames.length, data.sheetNames.length);
     await this.broadcastSheetAdd(name, sheetId, insertAt, rtChannel, signal);
     return sheetId;
   }
@@ -255,114 +256,44 @@ export class CryptPadClient {
     });
   }
 
-  private async buildLockAwareSheetAddPayload(
-    rtChannel: string,
-    name: string,
-    sheetId: string,
-    insertBeforeIndex: number,
-    signal?: AbortSignal,
-  ): Promise<string> {
-    const wsUrl = await this.getWebsocketUrl(signal);
-    const { cryptKey } = this.getKeys();
-    const history = await fetchChannelHistory(wsUrl, rtChannel, cryptKey, {
-      timeoutMs: this.timeoutMs,
-      signal,
-    });
-
-    let latestUser: string | undefined;
-    let latestUserOriginal: string | undefined;
-    let latestDocId = 'fresh';
-    let latestChangesIndex = 0;
-
-    for (let i = history.length - 1; i >= 0; i--) {
-      try {
-        const parsed = JSON.parse(history[i]);
-        if (!parsed || typeof parsed !== 'object') continue;
-        const msg = parsed as {
-          changesIndex?: number;
-          changes?: Array<{ user?: string; useridoriginal?: string; docid?: string }>;
-        };
-        if (typeof msg.changesIndex === 'number') {
-          latestChangesIndex = Math.max(latestChangesIndex, msg.changesIndex);
-        }
-        if (Array.isArray(msg.changes)) {
-          for (const ch of msg.changes) {
-            if (!latestUser && typeof ch?.user === 'string' && ch.user.length > 0) {
-              latestUser = ch.user;
-            }
-            if (
-              !latestUserOriginal &&
-              typeof ch?.useridoriginal === 'string' &&
-              ch.useridoriginal.length > 0
-            ) {
-              latestUserOriginal = ch.useridoriginal;
-            }
-            if (typeof ch?.docid === 'string' && ch.docid.length > 0) {
-              latestDocId = ch.docid;
-            }
-            if (latestUser && latestUserOriginal) break;
-          }
-        }
-        if (latestUser && latestUserOriginal) break;
-      } catch {
-        // ignore
-      }
+  /**
+   * Deletes a worksheet tab by name from the CryptPad workbook.
+   *
+   * @param sheetName - Name of the sheet tab to delete (e.g. 'Sheet1').
+   * @param signal - Optional AbortSignal.
+   */
+  async deleteSheet(sheetName: string, signal?: AbortSignal): Promise<void> {
+    const data = await this.fetchSheetData(signal);
+    const targetSheetId = data.sheetIds?.[sheetName];
+    if (!targetSheetId) {
+      return;
     }
 
-    const txOpen = Buffer.from('0a0000000129000000ff00000000', 'hex');
-    const rec = encodeOnlyOfficeSheetAddRecord(name, sheetId, insertBeforeIndex);
-    const now = Date.now();
+    if (data.sheetNames.length <= 1) {
+      throw new Error(
+        `Cannot delete sheet "${sheetName}": workbook must contain at least one worksheet.`,
+      );
+    }
 
-    const mkChange = (buf: Buffer) => {
-      const item: Record<string, unknown> = {
-        docid: latestDocId,
-        change: JSON.stringify(`${buf.length};${buf.toString('base64')}`),
-        time: now,
-      };
-      if (latestUser) item.user = latestUser;
-      if (latestUserOriginal) item.useridoriginal = latestUserOriginal;
-      return item;
-    };
+    const rtChannel = data.metadata.rtChannelId;
+    if (!rtChannel) {
+      throw new Error('Cannot delete sheet: pad has no active real-time collaboration channel.');
+    }
 
-    return JSON.stringify({
-      type: 'saveChanges',
-      changes: [mkChange(txOpen), mkChange(rec)],
-      changesIndex: latestChangesIndex + 1,
-      locks: [
-        {
-          time: now - 100,
-          user: latestUser ?? latestUserOriginal ?? 'anonymous',
-          block: {
-            sheetId: 'addSheet',
-            type: 3,
-            subType: null,
-            guid: crypto.randomUUID(),
-            rangeOrObjectId: 'addSheet',
-          },
-        },
-      ],
-      excelAdditionalInfo: null,
-      startSaveChanges: true,
-      endSaveChanges: true,
-    });
+    await this.broadcastSheetDelete(targetSheetId, rtChannel, signal);
   }
 
-  private async broadcastSheetAddWithLockFallback(
-    name: string,
+  /**
+   * Broadcasts a `Workbook_SheetDelete` record to an already-known RT channel.
+   */
+  private async broadcastSheetDelete(
     sheetId: string,
-    insertBeforeIndex: number,
     rtChannel: string,
     signal?: AbortSignal,
   ): Promise<void> {
     const wsUrl = await this.getWebsocketUrl(signal);
     const { cryptKey, signKey } = this.getKeys();
-    const payload = await this.buildLockAwareSheetAddPayload(
-      rtChannel,
-      name,
-      sheetId,
-      insertBeforeIndex,
-      signal,
-    );
+    const payload = buildOnlyOfficeSheetDeletePayload(sheetId);
     await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
       timeoutMs: this.timeoutMs,
       signal,
@@ -370,100 +301,52 @@ export class CryptPadClient {
     });
   }
 
-  private async buildLockAwareCellUpdatePayload(
+  /**
+   * Broadcasts a `Worksheet_Rename` record to an already-known RT channel.
+   */
+  private async broadcastSheetRename(
+    sheetId: string | number,
+    oldName: string,
+    newName: string,
     rtChannel: string,
-    updates: OnlyOfficeCellUpdate[],
     signal?: AbortSignal,
-  ): Promise<string> {
+  ): Promise<void> {
     const wsUrl = await this.getWebsocketUrl(signal);
-    const { cryptKey } = this.getKeys();
-    const history = await fetchChannelHistory(wsUrl, rtChannel, cryptKey, {
+    const { cryptKey, signKey } = this.getKeys();
+    const payload = buildOnlyOfficeSheetRenamePayload(sheetId, oldName, newName);
+    await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
       timeoutMs: this.timeoutMs,
       signal,
+      signKey,
     });
+  }
 
-    let latestUser: string | undefined;
-    let latestUserOriginal: string | undefined;
-    let latestDocId = 'fresh';
-    let latestChangesIndex = 0;
+  /**
+   * Renames an existing worksheet tab by name in the CryptPad workbook.
+   *
+   * @param oldSheetName - Current name of the sheet tab (e.g. 'Sheet1').
+   * @param newSheetName - Desired new name for the tab (e.g. 'i18n').
+   * @param signal - Optional AbortSignal.
+   */
+  async renameSheet(
+    oldSheetName: string,
+    newSheetName: string,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (oldSheetName === newSheetName) return;
 
-    for (let i = history.length - 1; i >= 0; i--) {
-      try {
-        const parsed = JSON.parse(history[i]);
-        if (!parsed || typeof parsed !== 'object') continue;
-        const msg = parsed as {
-          changesIndex?: number;
-          changes?: Array<{ user?: string; useridoriginal?: string; docid?: string }>;
-        };
-        if (typeof msg.changesIndex === 'number') {
-          latestChangesIndex = Math.max(latestChangesIndex, msg.changesIndex);
-        }
-        if (Array.isArray(msg.changes)) {
-          for (const ch of msg.changes) {
-            if (!latestUser && typeof ch?.user === 'string' && ch.user.length > 0) {
-              latestUser = ch.user;
-            }
-            if (
-              !latestUserOriginal &&
-              typeof ch?.useridoriginal === 'string' &&
-              ch.useridoriginal.length > 0
-            ) {
-              latestUserOriginal = ch.useridoriginal;
-            }
-            if (typeof ch?.docid === 'string' && ch.docid.length > 0) {
-              latestDocId = ch.docid;
-            }
-            if (latestUser && latestUserOriginal) break;
-          }
-        }
-        if (latestUser && latestUserOriginal) break;
-      } catch {
-        // ignore malformed frames
-      }
+    const data = await this.fetchSheetData(signal);
+    const targetSheetId = data.sheetIds?.[oldSheetName];
+    if (!targetSheetId) {
+      throw new Error(`Cannot rename sheet "${oldSheetName}": sheet not found in the workbook.`);
     }
 
-    const basePayload = JSON.parse(buildOnlyOfficeChangePayload(updates)) as {
-      type: string;
-      changes: Array<{ change: string; time: number }>;
-      startSaveChanges: boolean;
-      endSaveChanges: boolean;
-      isExcel?: boolean;
-    };
+    const rtChannel = data.metadata.rtChannelId;
+    if (!rtChannel) {
+      throw new Error('Cannot rename sheet: pad has no active real-time collaboration channel.');
+    }
 
-    const changes = basePayload.changes.map((ch) => {
-      const item: Record<string, unknown> = {
-        docid: latestDocId,
-        change: ch.change,
-        time: ch.time,
-      };
-      if (latestUser) item.user = latestUser;
-      if (latestUserOriginal) item.useridoriginal = latestUserOriginal;
-      return item;
-    });
-
-    const primarySheetId = String(updates[0]?.sheetId ?? '6');
-
-    return JSON.stringify({
-      type: basePayload.type,
-      changes,
-      changesIndex: latestChangesIndex + 1,
-      locks: [
-        {
-          time: Date.now() - 20,
-          user: latestUser ?? latestUserOriginal ?? 'anonymous',
-          block: {
-            sheetId: primarySheetId,
-            type: 3,
-            subType: null,
-            guid: crypto.randomUUID(),
-            rangeOrObjectId: primarySheetId,
-          },
-        },
-      ],
-      excelAdditionalInfo: null,
-      startSaveChanges: basePayload.startSaveChanges,
-      endSaveChanges: basePayload.endSaveChanges,
-    });
+    await this.broadcastSheetRename(targetSheetId, oldSheetName, newSheetName, rtChannel, signal);
   }
 
   /**
@@ -630,9 +513,14 @@ export class CryptPadClient {
     }
 
     const multiSheets = convertCellsToMultiSheetRows(cells);
-    const discoveredSheetNames = new Set(Object.keys(multiSheets));
+    const discoveredSheetNames = new Set<string>();
     for (const name of Object.keys(sheetIdMap.nameToId)) {
       if (name && name.trim().length > 0) discoveredSheetNames.add(name);
+    }
+    if (discoveredSheetNames.size === 0) {
+      for (const name of Object.keys(multiSheets)) {
+        if (name && name.trim().length > 0) discoveredSheetNames.add(name);
+      }
     }
     const sheetNames = Array.from(discoveredSheetNames);
     const defaultSheet = multiSheets['Sheet1'] ? 'Sheet1' : sheetNames[0];
@@ -719,7 +607,7 @@ export class CryptPadClient {
 
     const wsUrl = await this.getWebsocketUrl(signal);
     const { cryptKey, signKey } = this.getKeys();
-    const payload = await this.buildLockAwareCellUpdatePayload(rtChannel, updates, signal);
+    const payload = buildOnlyOfficeChangePayload(updates);
 
     await broadcastChannelMessage(wsUrl, rtChannel, cryptKey, payload, {
       timeoutMs: this.timeoutMs,
@@ -754,55 +642,44 @@ export class CryptPadClient {
     if (rows.length === 0) return 0;
 
     const data = await this.fetchSheetData(options.signal);
+    let rtChannel = data.metadata.rtChannelId;
 
     let existingRows = data.sheets[sheetName]?.rows ?? [];
     let targetSheetId = data.sheetIds?.[sheetName];
     let justCreated = false;
 
     if (!targetSheetId) {
-      // No tab named `sheetName` exists yet — create one, mirroring Google Sheets'
-      // addSheet-on-missing-sheet behavior (src/utils/spreadsheetUpdater.ts). This
-      // deliberately does NOT fall back to reusing some other existing tab just
-      // because it happens to be the only one: an exact name match or a fresh
-      // tab, same as Google, keeps push behavior identical across providers.
-      this.onProgress?.(`Sheet "${sheetName}" not found — creating it.`);
-      targetSheetId = await this.createSheet(sheetName, data.sheetNames.length, options.signal);
-      existingRows = [];
-      justCreated = true;
+      // If this workbook has an untouched, empty starter 'Sheet1' (0 rows and 0 data cells),
+      // rename 'Sheet1' to the target sheetName instead of adding an unnecessary extra tab,
+      // avoiding a dangling empty dirty page in the workbook.
+      const isSheet1Empty =
+        data.sheetNames.includes('Sheet1') &&
+        (data.sheets['Sheet1']?.rows.length ?? 0) === 0 &&
+        Object.keys(data.sheets['Sheet1']?.cells ?? {}).length === 0;
 
-      // CryptPad may accept the RT message but still not persist the tab on some instances.
-      // Re-read metadata and fail loudly instead of silently claiming a successful push.
-      await new Promise((r) => setTimeout(r, 350));
-      const verifyData = await this.fetchSheetData(options.signal);
-      const persistedSheetId = verifyData.sheetIds?.[sheetName];
-      if (!persistedSheetId) {
-        this.onProgress?.(
-          `Sheet "${sheetName}" did not persist after initial create attempt. Retrying with lock-aware payload...`,
-        );
-        await this.broadcastSheetAddWithLockFallback(
-          sheetName,
-          targetSheetId,
-          data.sheetNames.length,
-          data.metadata.rtChannelId ?? '',
-          options.signal,
-        );
-        await new Promise((r) => setTimeout(r, 450));
-        const verifyAfterFallback = await this.fetchSheetData(options.signal);
-        const persistedAfterFallback = verifyAfterFallback.sheetIds?.[sheetName];
-        if (!persistedAfterFallback) {
-          throw new Error(
-            `Sheet "${sheetName}" could not be created remotely. Please create the tab manually in CryptPad (with header: key, de-de, en-gb), then run push again.`,
-          );
+      const shouldRenameSheet1 =
+        isSheet1Empty &&
+        sheetName !== 'Sheet1' &&
+        (data.sheetNames.length === 1 || sheetName === I18N_SHEET_NAME);
+
+      if (shouldRenameSheet1) {
+        const sheet1Id = data.sheetIds?.['Sheet1'] ?? '6';
+        this.onProgress?.(`Renaming fresh empty "Sheet1" tab to "${sheetName}".`);
+        if (rtChannel) {
+          await this.broadcastSheetRename(sheet1Id, 'Sheet1', sheetName, rtChannel, options.signal);
+        } else {
+          await this.renameSheet('Sheet1', sheetName, options.signal);
         }
-        targetSheetId = persistedAfterFallback;
+        targetSheetId = sheet1Id;
+        existingRows = [];
+        justCreated = true;
       } else {
-        targetSheetId = persistedSheetId;
+        this.onProgress?.(`Sheet "${sheetName}" not found — creating it.`);
+        targetSheetId = await this.createSheet(sheetName, data.sheetNames.length, options.signal);
+        existingRows = [];
+        justCreated = true;
       }
     }
-
-    // Resolved lazily below if still missing and actually needed — avoids an extra fetch
-    // for the common case where the pad already has a channel (the vast majority of pushes).
-    let rtChannel = data.metadata.rtChannelId;
 
     // Determine primary key column header ('key' or 'var'). Defaults to 'key' — the same
     // header a brand-new Google Sheets sheet gets (see spreadsheetUpdater.ts) — but an
@@ -934,6 +811,7 @@ export class CryptPadClient {
     }
 
     await this.sendCellUpdates(updates, options.signal, rtChannel);
+
     return updates.length;
   }
 }
