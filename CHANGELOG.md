@@ -1,3 +1,9 @@
+## [3.0.0-beta.15](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.14...v3.0.0-beta.15) (2026-09-13)
+
+### 🐛 Bug Fixes
+
+* support cell clear history items and ensure exact row ordering on push ([ab5e3e9](https://github.com/el-j/google-sheet-translations/commit/ab5e3e969a06472974ca78af3e51e1661802c19b))
+
 ## [3.0.0-beta.14](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.13...v3.0.0-beta.14) (2026-09-13)
 
 ### 🚀 Features
