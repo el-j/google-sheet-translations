@@ -776,28 +776,26 @@ export class CryptPadClient {
       });
     }
 
-    // Map existing keys to row index (1-based, header is 1, rows start at 2)
-    const keyToRowIdx = new Map<string, number>();
-    existingRows.forEach((r, idx) => {
-      const rowKey = r.var ?? r.key ?? r[keyColName];
-      if (rowKey) keyToRowIdx.set(rowKey, idx + 2);
-    });
+    const keyColIdx = findColIdx(keyColName);
+    const keyColLetter = colIndexToLetter(keyColIdx >= 0 ? keyColIdx : 0);
+    const sheetCells = data.sheets[sheetName]?.cells ?? {};
+    let maxPhysicalRow = 1;
+    for (const cellRef of Object.keys(sheetCells)) {
+      const parsed = parseCellRef(cellRef);
+      if (parsed && parsed.row > maxPhysicalRow) {
+        maxPhysicalRow = parsed.row;
+      }
+    }
 
-    let nextAvailableRow = existingRows.length + 2;
-
-    for (const row of rows) {
-      const rowKey = row.var ?? row.key ?? row[keyColName];
-      if (!rowKey) continue;
-      const targetRow = keyToRowIdx.get(rowKey) ?? nextAvailableRow++;
-      keyToRowIdx.set(rowKey, targetRow);
-
-      for (const [colName, val] of Object.entries(row)) {
-        const mappedColName = colName === 'key' || colName === 'var' ? keyColName : colName;
-        const colIdx = findColIdx(mappedColName);
-        if (colIdx >= 0 && val !== undefined) {
-          const matchedHeader = colNames[colIdx];
-          const existingVal = existingRows[targetRow - 2]?.[matchedHeader];
-          if (options.override || !existingVal || existingVal.trim().length === 0) {
+    if (options.override) {
+      // In override mode, the caller's row sequence establishes authoritative row ordering (Rows 2..N+1).
+      // This ensures 100% data fidelity, preserves caller order, and cleans up any previously corrupted or shifted rows.
+      rows.forEach((row, i) => {
+        const targetRow = i + 2;
+        for (const [colName, val] of Object.entries(row)) {
+          const mappedColName = colName === 'key' || colName === 'var' ? keyColName : colName;
+          const colIdx = findColIdx(mappedColName);
+          if (colIdx >= 0 && val !== undefined) {
             updates.push({
               sheet: sheetName,
               sheetId: targetSheetId,
@@ -805,6 +803,68 @@ export class CryptPadClient {
               row: targetRow,
               value: String(val),
             });
+          }
+        }
+      });
+
+      // Clear any orphan rows that previously existed beyond the incoming row count
+      const lastIncomingRow = rows.length + 1;
+      if (maxPhysicalRow > lastIncomingRow) {
+        for (let r = lastIncomingRow + 1; r <= maxPhysicalRow; r++) {
+          for (let c = 0; c < colNames.length; c++) {
+            const colLet = colIndexToLetter(c);
+            if (sheetCells[`${colLet}${r}`] || sheetCells[`${sheetName}!${colLet}${r}`]) {
+              updates.push({
+                sheet: sheetName,
+                sheetId: targetSheetId,
+                col: colLet,
+                row: r,
+                value: '',
+              });
+            }
+          }
+        }
+      }
+    } else {
+      // In non-override mode (fill-blanks/preserve-existing), map existing keys to their
+      // TRUE physical row index in the spreadsheet grid (not synthetic array index, avoiding gap-shifting).
+      const keyToRowIdx = new Map<string, number>();
+      for (const [cellRef, val] of Object.entries(sheetCells)) {
+        const parsed = parseCellRef(cellRef);
+        if (!parsed) continue;
+        if (parsed.col.toUpperCase() === keyColLetter && parsed.row > 1) {
+          const trimmedVal = val.trim();
+          if (trimmedVal.length > 0) {
+            keyToRowIdx.set(trimmedVal, parsed.row);
+          }
+        }
+      }
+
+      let nextAvailableRow = Math.max(maxPhysicalRow + 1, 2);
+
+      for (const row of rows) {
+        const rowKey = row.var ?? row.key ?? row[keyColName];
+        if (!rowKey) continue;
+        const targetRow = keyToRowIdx.get(rowKey) ?? nextAvailableRow++;
+        keyToRowIdx.set(rowKey, targetRow);
+
+        for (const [colName, val] of Object.entries(row)) {
+          const mappedColName = colName === 'key' || colName === 'var' ? keyColName : colName;
+          const colIdx = findColIdx(mappedColName);
+          if (colIdx >= 0 && val !== undefined) {
+            const colLetter = colIndexToLetter(colIdx);
+            const existingCellVal =
+              sheetCells[`${colLetter}${targetRow}`] ??
+              sheetCells[`${sheetName}!${colLetter}${targetRow}`];
+            if (!existingCellVal || existingCellVal.trim().length === 0) {
+              updates.push({
+                sheet: sheetName,
+                sheetId: targetSheetId,
+                col: colLetter,
+                row: targetRow,
+                value: String(val),
+              });
+            }
           }
         }
       }

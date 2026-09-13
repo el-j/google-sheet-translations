@@ -139,6 +139,35 @@ describe('CryptPad sheetParser unit tests', () => {
       expect(grid['B4']).toBe('BinaryVal');
     });
 
+    it('removes cleared cells when receiving OnlyOffice historyitem_Cell_Clear (0x012a0101)', () => {
+      // 1. Initial cell updates for A1 and B1
+      const setPayload = buildOnlyOfficeChangePayload([
+        { sheet: 'Sheet1', sheetId: '6', col: 'A', row: 1, value: 'Initial A1' },
+        { sheet: 'Sheet1', sheetId: '6', col: 'B', row: 1, value: 'Initial B1' },
+      ]);
+
+      // 2. Cell clear record for A1 (magic 0x012a0101, c1=0, r1=0, c2=0, r2=0)
+      const clearBuf = Buffer.alloc(80);
+      clearBuf.writeUInt32BE(0x012a0101, 4);
+      const sidBuf = Buffer.from('6', 'utf16le');
+      clearBuf.writeUInt32LE(sidBuf.length, 8);
+      sidBuf.copy(clearBuf, 12);
+      const offset = 12 + sidBuf.length;
+      clearBuf[offset] = 0x01; // range flag
+      clearBuf.writeUInt32LE(0, offset + 1); // c1 = 0
+      clearBuf.writeUInt32LE(0, offset + 5); // r1 = 0
+      clearBuf.writeUInt32LE(0, offset + 9); // c2 = 0
+      clearBuf.writeUInt32LE(0, offset + 13); // r2 = 0
+
+      const clearPayload = JSON.stringify({
+        changes: [{ change: JSON.stringify(`${clearBuf.length};${clearBuf.toString('base64')}`) }],
+      });
+
+      const grid = parseOnlyOfficeChanges([setPayload, clearPayload]);
+      expect(grid['A1']).toBeUndefined();
+      expect(grid['B1']).toBe('Initial B1');
+    });
+
     it('ignores unparseable messages or non-conforming changes', () => {
       expect(parseOnlyOfficeChanges(['NOT_JSON'])).toEqual({});
       expect(parseOnlyOfficeChanges([JSON.stringify({ changes: 'not-an-array' })])).toEqual({});
@@ -597,6 +626,28 @@ describe('CryptPad sheetParser unit tests', () => {
       expect(map.nameToId['i18n']).toBe('6');
       expect(map.idToName['6']).toBe('i18n');
       expect(map.nameToId['Sheet1']).toBeUndefined();
+    });
+
+    it('correctly parses cells at row 9 (r1=8), column I (c1=8), and row 265 without dropping them (byte 0x08 collision bug)', () => {
+      // Row 9 has r1=8 (0x08). Column I has c1=8 (0x08). Row 265 has r1=264 (264&0xff = 0x08).
+      // Previously, any byte 0x08 in the coordinate/header caused premature loop exit, dropping the cells.
+      const updates = [
+        { sheet: 'hero', sheetId: '1', col: 'A', row: 9, value: 'hero_initiative_1_tag' },
+        { sheet: 'hero', sheetId: '1', col: 'B', row: 9, value: 'Aktionsbündnis' },
+        { sheet: 'hero', sheetId: '1', col: 'C', row: 9, value: 'Action alliance' },
+        { sheet: 'hero', sheetId: '1', col: 'A', row: 10, value: 'hero_initiative_1_name' },
+        { sheet: 'hero', sheetId: '1', col: 'I', row: 2, value: 'col_I_value' },
+        { sheet: 'hero', sheetId: '1', col: 'A', row: 265, value: 'row_265_value' },
+      ];
+      const payload = buildOnlyOfficeChangePayload(updates, '1');
+      const grid = parseOnlyOfficeChanges([payload]);
+
+      expect(grid['A9']).toBe('hero_initiative_1_tag');
+      expect(grid['B9']).toBe('Aktionsbündnis');
+      expect(grid['C9']).toBe('Action alliance');
+      expect(grid['A10']).toBe('hero_initiative_1_name');
+      expect(grid['I2']).toBe('col_I_value');
+      expect(grid['A265']).toBe('row_265_value');
     });
   });
 });

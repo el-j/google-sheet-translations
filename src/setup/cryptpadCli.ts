@@ -257,10 +257,27 @@ async function main(): Promise<void> {
         process.exit(1);
       }
 
+      const inferredLocalSheetTitles =
+        !sheetTitles && localData
+          ? Array.from(
+              new Set(
+                Object.values(localData)
+                  .flatMap((localeSheets) => Object.keys(localeSheets ?? {}))
+                  .filter((name) => name && name.trim().length > 0),
+              ),
+            )
+          : undefined;
+      const effectiveSheetTitles =
+        sheetTitles && sheetTitles.length > 0
+          ? sheetTitles
+          : inferredLocalSheetTitles && inferredLocalSheetTitles.length > 0
+            ? inferredLocalSheetTitles
+            : undefined;
+
       const localeMapping = tryReadLocaleMapping(localesOutputPath);
       const includeI18nSheet = Boolean(
         options['include-i18n'] === 'true' ||
-        sheetTitles?.includes(I18N_SHEET_NAME) ||
+        effectiveSheetTitles?.includes(I18N_SHEET_NAME) ||
         (localData && Object.values(localData).some((loc) => loc && loc[I18N_SHEET_NAME])),
       );
       const outputProvider = createCryptPadSheetOutputProvider({
@@ -269,6 +286,7 @@ async function main(): Promise<void> {
         override: options.override === 'true',
         localeMapping,
         includeI18nSheet,
+        sheetTitles: effectiveSheetTitles,
       });
 
       const locales = Object.keys(localData);

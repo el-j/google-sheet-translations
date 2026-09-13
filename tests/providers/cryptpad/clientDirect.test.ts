@@ -672,4 +672,162 @@ describe('CryptPadDriveClient direct methods', () => {
         }),
     ).toThrow('is password protected, but no password was provided');
   });
+
+  describe('writeSheetRows row positioning & override behavior', () => {
+    it('writes rows sequentially from row 2 on override: true and clears orphan rows', async () => {
+      const client = new CryptPadClient({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+      });
+
+      // Existing sheet has header + 4 rows (rows 2..5)
+      vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+        cells: {
+          A1: 'key',
+          B1: 'en',
+          A2: 'old_key_1',
+          B2: 'val1',
+          A3: 'old_key_2',
+          B3: 'val2',
+          A4: 'old_key_3',
+          B4: 'val3',
+          A5: 'old_key_4',
+          B5: 'val4',
+        },
+        rows: [
+          { key: 'old_key_1', en: 'val1' },
+          { key: 'old_key_2', en: 'val2' },
+          { key: 'old_key_3', en: 'val3' },
+          { key: 'old_key_4', en: 'val4' },
+        ],
+        sheets: {
+          common: {
+            cells: {
+              A1: 'key',
+              B1: 'en',
+              A2: 'old_key_1',
+              B2: 'val1',
+              A3: 'old_key_2',
+              B3: 'val2',
+              A4: 'old_key_3',
+              B4: 'val3',
+              A5: 'old_key_4',
+              B5: 'val4',
+            },
+            rows: [
+              { key: 'old_key_1', en: 'val1' },
+              { key: 'old_key_2', en: 'val2' },
+              { key: 'old_key_3', en: 'val3' },
+              { key: 'old_key_4', en: 'val4' },
+            ],
+          },
+        },
+        sheetNames: ['common'],
+        sheetIds: { common: '6' },
+        metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt-chan-1' },
+      });
+
+      let sentUpdates: any[] = [];
+      vi.spyOn(client, 'sendCellUpdates').mockImplementation(async (updates) => {
+        sentUpdates = updates;
+      });
+
+      // Incoming: only 2 rows in a new order
+      const incomingRows = [
+        { key: 'new_first', en: 'First' },
+        { key: 'new_second', en: 'Second' },
+      ];
+
+      await client.writeSheetRows('common', incomingRows, { override: true });
+
+      // Headers (A1, B1)
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 1)?.value).toBe('key');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 1)?.value).toBe('en');
+
+      // Row 2: new_first
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 2)?.value).toBe('new_first');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 2)?.value).toBe('First');
+
+      // Row 3: new_second
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 3)?.value).toBe('new_second');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 3)?.value).toBe('Second');
+
+      // Orphan rows 4 and 5 must be cleared (value: '')
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 4)?.value).toBe('');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 4)?.value).toBe('');
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 5)?.value).toBe('');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 5)?.value).toBe('');
+    });
+
+    it('maps existing keys to true physical row numbers on override: false without gap-shifting', async () => {
+      const client = new CryptPadClient({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+      });
+
+      // Sheet has a gap: Row 2, Row 3, but row 4 was cleared/deleted, Row 5 has key_c
+      vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+        cells: {
+          A1: 'key',
+          B1: 'en',
+          A2: 'key_a',
+          B2: 'val_a',
+          A3: 'key_b',
+          B3: '',
+          A5: 'key_c',
+          B5: '',
+        },
+        rows: [
+          { key: 'key_a', en: 'val_a' },
+          { key: 'key_b', en: '' },
+          { key: 'key_c', en: '' },
+        ],
+        sheets: {
+          common: {
+            cells: {
+              A1: 'key',
+              B1: 'en',
+              A2: 'key_a',
+              B2: 'val_a',
+              A3: 'key_b',
+              B3: '',
+              A5: 'key_c',
+              B5: '',
+            },
+            rows: [
+              { key: 'key_a', en: 'val_a' },
+              { key: 'key_b', en: '' },
+              { key: 'key_c', en: '' },
+            ],
+          },
+        },
+        sheetNames: ['common'],
+        sheetIds: { common: '6' },
+        metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt-chan-1' },
+      });
+
+      let sentUpdates: any[] = [];
+      vi.spyOn(client, 'sendCellUpdates').mockImplementation(async (updates) => {
+        sentUpdates = updates;
+      });
+
+      const incomingRows = [
+        { key: 'key_b', en: 'filled_b' },
+        { key: 'key_c', en: 'filled_c' },
+        { key: 'key_new', en: 'val_new' },
+      ];
+
+      await client.writeSheetRows('common', incomingRows, { override: false });
+
+      // key_b was at physical row 3 -> written to row 3
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 3)?.value).toBe('filled_b');
+
+      // key_c was at physical row 5 -> MUST be written to row 5 (NOT shifted to row 4!)
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 5)?.value).toBe('filled_c');
+
+      // key_new is appended after max physical row (max was 5) -> row 6
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 6)?.value).toBe('key_new');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 6)?.value).toBe('val_new');
+    });
+  });
 });

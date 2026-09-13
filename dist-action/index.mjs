@@ -59471,16 +59471,55 @@ function parseOnlyOfficeChanges(rtMessages) {
 					if (buf[offsetAfterSheet] === 1) {
 						const c1 = buf.readUInt32LE(offsetAfterSheet + 1);
 						const r1 = buf.readUInt32LE(offsetAfterSheet + 5);
-						for (let k = offsetAfterSheet + 17; k < buf.length - 5; k++) if (buf[k] === 8) {
-							const strLen = buf.readUInt32LE(k + 1);
-							if (strLen >= 0 && strLen < 1e5 && k + 5 + strLen <= buf.length) {
-								const val = buf.subarray(k + 5, k + 5 + strLen).toString("utf16le");
-								const colLetter = colIndexToLetter(c1);
-								const tabName = sheetNames.get(sheetIdStr) && sheetNames.get(sheetIdStr) !== "Sheet1" ? sheetNames.get(sheetIdStr) : "";
-								const cellRef = `${tabName ? `${tabName}!` : ""}${colLetter}${r1 + 1}`;
-								cells[cellRef] = val;
+						const colLetter = colIndexToLetter(c1);
+						const tabName = sheetNames.get(sheetIdStr) && sheetNames.get(sheetIdStr) !== "Sheet1" ? sheetNames.get(sheetIdStr) : "";
+						const cellRef = `${tabName ? `${tabName}!` : ""}${colLetter}${r1 + 1}`;
+						let extracted = false;
+						if (offsetAfterSheet + 50 <= buf.length && buf[offsetAfterSheet + 45] === 8) {
+							const len = buf.readUInt32LE(offsetAfterSheet + 46);
+							if (len >= 0 && len % 2 === 0 && offsetAfterSheet + 50 + len <= buf.length) {
+								cells[cellRef] = buf.subarray(offsetAfterSheet + 50, offsetAfterSheet + 50 + len).toString("utf16le");
+								extracted = true;
 							}
-							break;
+						}
+						if (!extracted && offsetAfterSheet + 40 <= buf.length && buf[offsetAfterSheet + 35] === 8) {
+							const len = buf.readUInt32LE(offsetAfterSheet + 36);
+							if (len >= 0 && len % 2 === 0 && offsetAfterSheet + 40 + len <= buf.length) {
+								cells[cellRef] = buf.subarray(offsetAfterSheet + 40, offsetAfterSheet + 40 + len).toString("utf16le");
+								extracted = true;
+							}
+						}
+						if (!extracted) {
+							for (let k = offsetAfterSheet + 17; k < buf.length - 5; k++) if (buf[k] === 8 && (k === offsetAfterSheet + 17 || buf[k - 1] <= 5)) {
+								const strLen = buf.readUInt32LE(k + 1);
+								if (strLen >= 0 && strLen % 2 === 0 && strLen < 1e5 && k + 5 + strLen <= buf.length) {
+									cells[cellRef] = buf.subarray(k + 5, k + 5 + strLen).toString("utf16le");
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
+			if (magic === 19529985) {
+				const sheetIdLen = buf.readUInt32LE(8);
+				if (sheetIdLen > 0 && sheetIdLen < 200 && 12 + sheetIdLen + 17 <= buf.length) {
+					const sheetIdStr = buf.subarray(12, 12 + sheetIdLen).toString("utf16le");
+					const offsetAfterSheet = 12 + sheetIdLen;
+					if (buf[offsetAfterSheet] === 1) {
+						const c1 = buf.readUInt32LE(offsetAfterSheet + 1);
+						const r1 = buf.readUInt32LE(offsetAfterSheet + 5);
+						const c2 = buf.readUInt32LE(offsetAfterSheet + 9);
+						const r2 = buf.readUInt32LE(offsetAfterSheet + 13);
+						const tabName = sheetNames.get(sheetIdStr) && sheetNames.get(sheetIdStr) !== "Sheet1" ? sheetNames.get(sheetIdStr) : "";
+						const sheetPrefix = tabName ? `${tabName}!` : "";
+						for (let c = c1; c <= c2; c++) {
+							const colLetter = colIndexToLetter(c);
+							for (let r = r1; r <= r2; r++) {
+								const cellRef = `${sheetPrefix}${colLetter}${r + 1}`;
+								delete cells[cellRef];
+								if (!tabName) delete cells[`Sheet1!${colLetter}${r + 1}`];
+							}
 						}
 					}
 				}
@@ -60566,29 +60605,68 @@ var CryptPadClient = class {
 				value: name
 			});
 		});
-		const keyToRowIdx = /* @__PURE__ */ new Map();
-		existingRows.forEach((r, idx) => {
-			const rowKey = r.var ?? r.key ?? r[keyColName];
-			if (rowKey) keyToRowIdx.set(rowKey, idx + 2);
-		});
-		let nextAvailableRow = existingRows.length + 2;
-		for (const row of rows) {
-			const rowKey = row.var ?? row.key ?? row[keyColName];
-			if (!rowKey) continue;
-			const targetRow = keyToRowIdx.get(rowKey) ?? nextAvailableRow++;
-			keyToRowIdx.set(rowKey, targetRow);
-			for (const [colName, val] of Object.entries(row)) {
-				const colIdx = findColIdx(colName === "key" || colName === "var" ? keyColName : colName);
-				if (colIdx >= 0 && val !== void 0) {
-					const matchedHeader = colNames[colIdx];
-					const existingVal = existingRows[targetRow - 2]?.[matchedHeader];
-					if (options.override || !existingVal || existingVal.trim().length === 0) updates.push({
+		const keyColIdx = findColIdx(keyColName);
+		const keyColLetter = colIndexToLetter(keyColIdx >= 0 ? keyColIdx : 0);
+		const sheetCells = data.sheets[sheetName]?.cells ?? {};
+		let maxPhysicalRow = 1;
+		for (const cellRef of Object.keys(sheetCells)) {
+			const parsed = parseCellRef(cellRef);
+			if (parsed && parsed.row > maxPhysicalRow) maxPhysicalRow = parsed.row;
+		}
+		if (options.override) {
+			rows.forEach((row, i) => {
+				const targetRow = i + 2;
+				for (const [colName, val] of Object.entries(row)) {
+					const colIdx = findColIdx(colName === "key" || colName === "var" ? keyColName : colName);
+					if (colIdx >= 0 && val !== void 0) updates.push({
 						sheet: sheetName,
 						sheetId: targetSheetId,
 						col: colIndexToLetter(colIdx),
 						row: targetRow,
 						value: String(val)
 					});
+				}
+			});
+			const lastIncomingRow = rows.length + 1;
+			if (maxPhysicalRow > lastIncomingRow) for (let r = lastIncomingRow + 1; r <= maxPhysicalRow; r++) for (let c = 0; c < colNames.length; c++) {
+				const colLet = colIndexToLetter(c);
+				if (sheetCells[`${colLet}${r}`] || sheetCells[`${sheetName}!${colLet}${r}`]) updates.push({
+					sheet: sheetName,
+					sheetId: targetSheetId,
+					col: colLet,
+					row: r,
+					value: ""
+				});
+			}
+		} else {
+			const keyToRowIdx = /* @__PURE__ */ new Map();
+			for (const [cellRef, val] of Object.entries(sheetCells)) {
+				const parsed = parseCellRef(cellRef);
+				if (!parsed) continue;
+				if (parsed.col.toUpperCase() === keyColLetter && parsed.row > 1) {
+					const trimmedVal = val.trim();
+					if (trimmedVal.length > 0) keyToRowIdx.set(trimmedVal, parsed.row);
+				}
+			}
+			let nextAvailableRow = Math.max(maxPhysicalRow + 1, 2);
+			for (const row of rows) {
+				const rowKey = row.var ?? row.key ?? row[keyColName];
+				if (!rowKey) continue;
+				const targetRow = keyToRowIdx.get(rowKey) ?? nextAvailableRow++;
+				keyToRowIdx.set(rowKey, targetRow);
+				for (const [colName, val] of Object.entries(row)) {
+					const colIdx = findColIdx(colName === "key" || colName === "var" ? keyColName : colName);
+					if (colIdx >= 0 && val !== void 0) {
+						const colLetter = colIndexToLetter(colIdx);
+						const existingCellVal = sheetCells[`${colLetter}${targetRow}`] ?? sheetCells[`${sheetName}!${colLetter}${targetRow}`];
+						if (!existingCellVal || existingCellVal.trim().length === 0) updates.push({
+							sheet: sheetName,
+							sheetId: targetSheetId,
+							col: colLetter,
+							row: targetRow,
+							value: String(val)
+						});
+					}
 				}
 			}
 		}
@@ -60679,12 +60757,13 @@ const CRYPTPAD_SHEET_OUTPUT_CAPABILITIES = createCapabilitySet({ writeTables: tr
 * Converts nested TranslationData `[locale][sheet][key] = value` into
 * tabular rows `Record<sheetName, SheetRow[]>`.
 */
-function convertTranslationsToSheetRows(translations, localeMapping = {}, keyColumnName = "key", includeI18nSheet = false) {
+function convertTranslationsToSheetRows(translations, localeMapping = {}, keyColumnName = "key", includeI18nSheet = false, sheetTitles) {
 	const sheetRowsMap = {};
 	for (const [locale, sheets] of Object.entries(translations)) {
 		const colHeader = localeMapping[locale] ?? locale;
 		for (const [sheetName, keys] of Object.entries(sheets)) {
 			if (!includeI18nSheet && sheetName === "i18n") continue;
+			if (sheetTitles && sheetTitles.length > 0 && !sheetTitles.includes(sheetName)) continue;
 			if (!sheetRowsMap[sheetName]) sheetRowsMap[sheetName] = /* @__PURE__ */ new Map();
 			for (const [key, value] of Object.entries(keys)) {
 				if (!sheetRowsMap[sheetName].has(key)) sheetRowsMap[sheetName].set(key, { [keyColumnName]: key });
@@ -60717,7 +60796,7 @@ function createCryptPadSheetOutputProvider(options = {}) {
 				timeoutMs: options.timeoutMs
 			});
 			const effectiveMapping = options.localeMapping ?? payload.localeMapping ?? {};
-			const sheetRowsMap = convertTranslationsToSheetRows(payload.translations, effectiveMapping, options.keyColumnName ?? "key", options.includeI18nSheet ?? false);
+			const sheetRowsMap = convertTranslationsToSheetRows(payload.translations, effectiveMapping, options.keyColumnName ?? "key", options.includeI18nSheet ?? false, options.sheetTitles);
 			const updatedSheets = [];
 			let totalUpdatedCells = 0;
 			const sheetEntries = Object.entries(sheetRowsMap).sort(([a], [b]) => {

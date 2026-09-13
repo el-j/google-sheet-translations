@@ -307,21 +307,88 @@ export function parseOnlyOfficeChanges(rtMessages: string[]): CryptPadSheetGrid 
             if (buf[offsetAfterSheet] === 0x01) {
               const c1 = buf.readUInt32LE(offsetAfterSheet + 1);
               const r1 = buf.readUInt32LE(offsetAfterSheet + 5);
-              for (let k = offsetAfterSheet + 17; k < buf.length - 5; k++) {
-                if (buf[k] === 0x08) {
-                  const strLen = buf.readUInt32LE(k + 1);
-                  if (strLen >= 0 && strLen < 100000 && k + 5 + strLen <= buf.length) {
-                    const val = buf.subarray(k + 5, k + 5 + strLen).toString('utf16le');
-                    const colLetter = colIndexToLetter(c1);
-                    const tabName =
-                      sheetNames.get(sheetIdStr) && sheetNames.get(sheetIdStr) !== 'Sheet1'
-                        ? sheetNames.get(sheetIdStr)
-                        : '';
-                    const sheetPrefix = tabName ? `${tabName}!` : '';
-                    const cellRef = `${sheetPrefix}${colLetter}${r1 + 1}`;
-                    cells[cellRef] = val;
+              const colLetter = colIndexToLetter(c1);
+              const tabName =
+                sheetNames.get(sheetIdStr) && sheetNames.get(sheetIdStr) !== 'Sheet1'
+                  ? sheetNames.get(sheetIdStr)
+                  : '';
+              const sheetPrefix = tabName ? `${tabName}!` : '';
+              const cellRef = `${sheetPrefix}${colLetter}${r1 + 1}`;
+
+              // Attempt direct extraction at known canonical offsets first:
+              // 1. Plain-text cell string (CCellValue property 0) at offsetAfterSheet + 45
+              let extracted = false;
+              if (offsetAfterSheet + 50 <= buf.length && buf[offsetAfterSheet + 45] === 0x08) {
+                const len = buf.readUInt32LE(offsetAfterSheet + 46);
+                if (len >= 0 && len % 2 === 0 && offsetAfterSheet + 50 + len <= buf.length) {
+                  cells[cellRef] = buf
+                    .subarray(offsetAfterSheet + 50, offsetAfterSheet + 50 + len)
+                    .toString('utf16le');
+                  extracted = true;
+                }
+              }
+
+              // 2. Formula cell string (UndoRedoData_CellValueData property 0) at offsetAfterSheet + 35
+              if (
+                !extracted &&
+                offsetAfterSheet + 40 <= buf.length &&
+                buf[offsetAfterSheet + 35] === 0x08
+              ) {
+                const len = buf.readUInt32LE(offsetAfterSheet + 36);
+                if (len >= 0 && len % 2 === 0 && offsetAfterSheet + 40 + len <= buf.length) {
+                  cells[cellRef] = buf
+                    .subarray(offsetAfterSheet + 40, offsetAfterSheet + 40 + len)
+                    .toString('utf16le');
+                  extracted = true;
+                }
+              }
+
+              // 3. Fallback scan: look for property tag 0x08 where byte length is even and fits
+              if (!extracted) {
+                for (let k = offsetAfterSheet + 17; k < buf.length - 5; k++) {
+                  if (buf[k] === 0x08 && (k === offsetAfterSheet + 17 || buf[k - 1] <= 0x05)) {
+                    const strLen = buf.readUInt32LE(k + 1);
+                    if (
+                      strLen >= 0 &&
+                      strLen % 2 === 0 &&
+                      strLen < 100000 &&
+                      k + 5 + strLen <= buf.length
+                    ) {
+                      cells[cellRef] = buf.subarray(k + 5, k + 5 + strLen).toString('utf16le');
+                      break;
+                    }
                   }
-                  break;
+                }
+              }
+            }
+          }
+        }
+
+        // Cell clear: magic 0x012a0101 (AscCH.historyitem_Cell_Clear)
+        if (magic === 0x012a0101) {
+          const sheetIdLen = buf.readUInt32LE(8);
+          if (sheetIdLen > 0 && sheetIdLen < 200 && 12 + sheetIdLen + 17 <= buf.length) {
+            const sheetIdStr = buf.subarray(12, 12 + sheetIdLen).toString('utf16le');
+            const offsetAfterSheet = 12 + sheetIdLen;
+            if (buf[offsetAfterSheet] === 0x01) {
+              const c1 = buf.readUInt32LE(offsetAfterSheet + 1);
+              const r1 = buf.readUInt32LE(offsetAfterSheet + 5);
+              const c2 = buf.readUInt32LE(offsetAfterSheet + 9);
+              const r2 = buf.readUInt32LE(offsetAfterSheet + 13);
+              const tabName =
+                sheetNames.get(sheetIdStr) && sheetNames.get(sheetIdStr) !== 'Sheet1'
+                  ? sheetNames.get(sheetIdStr)
+                  : '';
+              const sheetPrefix = tabName ? `${tabName}!` : '';
+
+              for (let c = c1; c <= c2; c++) {
+                const colLetter = colIndexToLetter(c);
+                for (let r = r1; r <= r2; r++) {
+                  const cellRef = `${sheetPrefix}${colLetter}${r + 1}`;
+                  delete cells[cellRef];
+                  if (!tabName) {
+                    delete cells[`Sheet1!${colLetter}${r + 1}`];
+                  }
                 }
               }
             }

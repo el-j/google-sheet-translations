@@ -40,6 +40,8 @@ export interface CryptPadSheetOutputProviderOptions {
   includeI18nSheet?: boolean;
   /** Optional timeout in milliseconds for WebSocket operations. */
   timeoutMs?: number;
+  /** Optional list of sheet titles to push. When specified, only these sheets are pushed. */
+  sheetTitles?: string[];
 }
 
 export const CRYPTPAD_SHEET_OUTPUT_CAPABILITIES: ProviderCapabilitySet = createCapabilitySet({
@@ -55,23 +57,18 @@ export function convertTranslationsToSheetRows(
   localeMapping: Record<string, string> = {},
   keyColumnName: string = 'key',
   includeI18nSheet: boolean = false,
+  sheetTitles?: string[],
 ): Record<string, SheetRow[]> {
   const sheetRowsMap: Record<string, Map<string, SheetRow>> = {};
 
   for (const [locale, sheets] of Object.entries(translations)) {
-    // `localeMapping` is already normalizedLocale -> originalHeader (see
-    // src/utils/localeNormalizer.ts's createLocaleMapping: `localeMapping[normalized] = header`,
-    // the same shape rowTransformer.ts's SheetProcessingResult.localeMapping documents and
-    // Google's getOriginalHeaderForLocale expects). No reversal needed — a previous version
-    // of this function incorrectly reversed it, which silently wrote the normalized locale
-    // code (e.g. "en-GB") as the header instead of the real original header (e.g. "en")
-    // whenever they differed (issue #165).
     const colHeader = localeMapping[locale] ?? locale;
 
     for (const [sheetName, keys] of Object.entries(sheets)) {
       // The i18n sheet is a reserved metadata sheet (locale display names).
       // Unless explicitly requested, translation key pushes omit it to match Google Sheets.
       if (!includeI18nSheet && sheetName === I18N_SHEET_NAME) continue;
+      if (sheetTitles && sheetTitles.length > 0 && !sheetTitles.includes(sheetName)) continue;
 
       if (!sheetRowsMap[sheetName]) {
         sheetRowsMap[sheetName] = new Map();
@@ -130,6 +127,7 @@ export function createCryptPadSheetOutputProvider(
         effectiveMapping,
         options.keyColumnName ?? 'key',
         options.includeI18nSheet ?? false,
+        options.sheetTitles,
       );
       const updatedSheets: string[] = [];
       let totalUpdatedCells = 0;
