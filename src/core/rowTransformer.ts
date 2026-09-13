@@ -74,12 +74,19 @@ export function transformRowsToSheetData(
       const languageCells = rows.map((row: SheetRow) => {
         const keyField = Object.keys(row).find((k) => k.toLowerCase() === keyColumn);
 
-        if (!keyField || !row[keyField] || !row[originalHeader]) {
+        if (!keyField || !row[keyField]) {
+          // Only skip rows whose *key* column is absent or empty.
+          // A row whose *translation value* is absent or empty-string is valid —
+          // it means the key exists but hasn't been translated yet. Dropping it
+          // here would cause the key to vanish from local files after a pull,
+          // which is the root cause of "keys go missing" (Bug #1).
           return {};
         }
 
         const rowLocal: SheetRow = {};
-        rowLocal[row[keyField].toString().toLowerCase()] = row[originalHeader];
+        // Use nullish coalescing so an explicitly empty translation ('')
+        // is written as an empty string rather than being treated as falsy.
+        rowLocal[row[keyField].toString().toLowerCase()] = row[originalHeader] ?? '';
         return rowLocal;
       });
 

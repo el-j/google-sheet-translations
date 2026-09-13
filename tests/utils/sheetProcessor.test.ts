@@ -75,7 +75,10 @@ describe('sheetProcessor', () => {
 
     expect(result.success).toBe(true);
     expect(result.locales).toEqual(['en']);
-    expect(result.translations.en.home).toEqual({ welcome: 'Welcome' });
+    // After Bug #1 fix: a row with a key but no translation value is preserved
+    // with an empty string (''), rather than being silently dropped.
+    // Only rows with NO key column at all (e.g. { en: 'Missing key' }) are skipped.
+    expect(result.translations.en.home).toEqual({ welcome: 'Welcome', missing_translation: '' });
   });
 
   test('processRawRows tolerates locale entries without mapping', async () => {

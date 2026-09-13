@@ -1,5 +1,6 @@
 import { findLocalChanges } from '../../../src/utils/dataConverter/findLocalChanges';
 import type { TranslationData } from '../../../src/types';
+import { describe, test, expect } from 'vitest';
 
 describe('findLocalChanges', () => {
   test('should return empty changes when local data is empty', () => {
@@ -320,5 +321,33 @@ describe('findLocalChanges', () => {
         about: { title: 'À propos' },
       },
     });
+  });
+
+  // Bug #2 regression: an existing remote key with an empty-string value must NOT be
+  // treated as absent. Before the fix, `!spreadsheetData[locale][sheet][key]` was falsy
+  // for '' which caused the key to be incorrectly included in the changes set.
+  test('should NOT treat a remote key with an empty-string value as a new key (Bug #2)', () => {
+    const localData: TranslationData = {
+      'de-de': {
+        hero: {
+          hero_btn: 'Klick mich', // same value as local
+          hero_untranslated: 'some local value',
+        },
+      },
+    };
+    // Remote has both keys — hero_untranslated just hasn't been translated yet (''
+    // is a defined value meaning "exists but empty", NOT "missing").
+    const spreadsheetData: TranslationData = {
+      'de-de': {
+        hero: {
+          hero_btn: 'Klick mich',
+          hero_untranslated: '',
+        },
+      },
+    };
+
+    const result = findLocalChanges(localData, spreadsheetData);
+    // Neither key is new — both exist in the remote spreadsheet.
+    expect(result).toEqual({});
   });
 });

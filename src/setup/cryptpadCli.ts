@@ -14,6 +14,7 @@ import {
   writeTranslationFiles,
 } from '../utils/fileWriter';
 import { readDataJson } from '../utils/readDataJson';
+import { deepMergeTranslations } from '../utils/translationMerge';
 import { I18N_SHEET_NAME } from '../constants';
 import type { SyncConflictPolicy } from '../providers/syncEngine';
 
@@ -221,14 +222,27 @@ async function main(): Promise<void> {
         tableNames: effectiveSheetTitles,
       });
 
-      writeTranslationFiles(result.translations, result.locales, translationsOutputDir);
+      // Bug #4 fix: deep-merge remote result into local data so developer-added
+      // keys that have not been pushed yet survive the pull without being erased.
+      // Remote values always win for keys that exist in both (remote is the
+      // authoritative translator source); keys present only locally are preserved.
+      const mergedPullOutput = localData
+        ? deepMergeTranslations(result.translations, localData)
+        : result.translations;
+
+      // Combine locale lists: remote locales + any local-only locales.
+      const allPullLocales = Array.from(
+        new Set([...result.locales, ...Object.keys(localData ?? {})]),
+      ).filter(Boolean);
+
+      writeTranslationFiles(mergedPullOutput, allPullLocales, translationsOutputDir);
       writeLocalesFile(result.locales, result.localeMapping, localesOutputPath);
-      if (result.locales.length > 0) {
-        writeLanguageDataFile(result.translations, result.locales, dataJsonPath);
+      if (allPullLocales.length > 0) {
+        writeLanguageDataFile(mergedPullOutput, allPullLocales, dataJsonPath);
       }
 
       console.log(
-        `Successfully pulled ${result.locales.length} locale(s) into ${translationsOutputDir}`,
+        `Successfully pulled ${result.locales.length} remote locale(s) into ${translationsOutputDir}`,
       );
       break;
     }
@@ -296,10 +310,28 @@ async function main(): Promise<void> {
         localTranslationsForSync: localData ?? undefined,
       });
 
-      writeTranslationFiles(result.translations, result.locales, translationsOutputDir);
+      // Bug #3 fix: `result.translations` is the remote snapshot captured *before*
+      // the sync write-back (the pipeline does not re-fetch after pushing).  If the
+      // developer added keys locally that were just pushed to CryptPad, those keys
+      // are absent from `result.translations`, so writing it verbatim would silently
+      // discard them.
+      //
+      // Strategy: deep-merge remote (authoritative for existing keys) with local
+      // additions (keys that only exist locally, i.e. just pushed but not yet in the
+      // remote snapshot).  This ensures the written output always contains the union
+      // of what is in CryptPad and what the developer added locally.
+      const mergedSyncOutput = localData
+        ? deepMergeTranslations(result.translations, localData)
+        : result.translations;
+
+      const allSyncLocales = Array.from(
+        new Set([...result.locales, ...Object.keys(localData ?? {})]),
+      ).filter(Boolean);
+
+      writeTranslationFiles(mergedSyncOutput, allSyncLocales, translationsOutputDir);
       writeLocalesFile(result.locales, result.localeMapping, localesOutputPath);
-      if (result.locales.length > 0) {
-        writeLanguageDataFile(result.translations, result.locales, dataJsonPath);
+      if (allSyncLocales.length > 0) {
+        writeLanguageDataFile(mergedSyncOutput, allSyncLocales, dataJsonPath);
       }
 
       console.log(

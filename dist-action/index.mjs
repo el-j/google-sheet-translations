@@ -45745,9 +45745,9 @@ function transformRowsToSheetData(rows, sheetTitle, deps) {
 			if (!originalHeader) continue;
 			const nonEmptyLanguageCells = rows.map((row) => {
 				const keyField = Object.keys(row).find((k) => k.toLowerCase() === keyColumn);
-				if (!keyField || !row[keyField] || !row[originalHeader]) return {};
+				if (!keyField || !row[keyField]) return {};
 				const rowLocal = {};
-				rowLocal[row[keyField].toString().toLowerCase()] = row[originalHeader];
+				rowLocal[row[keyField].toString().toLowerCase()] = row[originalHeader] ?? "";
 				return rowLocal;
 			}).filter((cell) => Object.keys(cell).length > 0);
 			const prepareObj = {};
@@ -46216,7 +46216,7 @@ function findLocalChanges(localData, spreadsheetData) {
 		for (const sheet of Object.keys(localData[locale])) {
 			if (!localData[locale][sheet]) continue;
 			if (sheet === "i18n") continue;
-			for (const key of Object.keys(localData[locale][sheet])) if (!resolvedLocale || !spreadsheetData[resolvedLocale]?.[sheet] || !spreadsheetData[resolvedLocale][sheet][key]) {
+			for (const key of Object.keys(localData[locale][sheet])) if (!resolvedLocale || !spreadsheetData[resolvedLocale]?.[sheet] || spreadsheetData[resolvedLocale][sheet][key] === void 0) {
 				if (!changes[locale]) changes[locale] = {};
 				if (!changes[locale][sheet]) changes[locale][sheet] = {};
 				changes[locale][sheet][key] = localData[locale][sheet][key];

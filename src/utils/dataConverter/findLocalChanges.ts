@@ -40,11 +40,15 @@ export function findLocalChanges(
 
       // Check each key in local data
       for (const key of Object.keys(localData[locale][sheet])) {
-        // If the spreadsheet doesn't have this locale, sheet, or key, it's a new key
+        // If the spreadsheet doesn't have this locale, sheet,
+        // A key is considered "new" (absent from remote) only when the lookup
+        // returns `undefined`.  Using a truthiness check (`!value`) would
+        // incorrectly treat an existing key whose translation is an empty string
+        // ("") as absent, causing it to be re-pushed unnecessarily (Bug #2).
         const isNewKey =
           !resolvedLocale ||
           !spreadsheetData[resolvedLocale]?.[sheet] ||
-          !spreadsheetData[resolvedLocale][sheet][key];
+          spreadsheetData[resolvedLocale][sheet][key] === undefined;
 
         // If it's a new key, add it to changes
         if (isNewKey) {

@@ -42,12 +42,15 @@ describe('rowTransformer core', () => {
         "translations": {
           "de-DE": {
             "home": {
+              "cta": "",
+              "empty": "",
               "welcome": "Willkommen",
             },
           },
           "en-us": {
             "home": {
               "cta": "Buy",
+              "empty": "",
               "welcome": "Welcome",
             },
           },
@@ -100,5 +103,37 @@ describe('rowTransformer core', () => {
         },
       }
     `);
+  });
+
+  // Bug #1 regression: rows with an empty-string translation value must be
+  // preserved in the output (they represent "key exists, needs translation").
+  // Before the fix, `!row[originalHeader]` was falsy for '' and the row was dropped.
+  it('preserves rows with empty-string translation values (Bug #1)', () => {
+    const logger = {
+      warn: vi.fn(),
+      error: vi.fn(),
+      log: vi.fn(),
+    };
+    const rows = [
+      { key: 'hero_title', en: 'Hero Title', de: 'Heldenbereich' },
+      { key: 'hero_btn', en: 'Click Me', de: '' }, // de not yet translated
+      { key: 'new_key', en: 'New Key', de: '' }, // brand-new key
+    ];
+    const result = transformRowsToSheetData(rows, 'hero', {
+      filterValidLocales,
+      createLocaleMapping,
+      logger,
+    });
+    expect(result.success).toBe(true);
+    // `en` header normalizes to `en-GB`, `de` normalizes to `de-DE`
+    const en = result.translations['en-GB']['hero'];
+    const de = result.translations['de-DE']['hero'];
+    // All three keys must appear in both locales
+    expect(en).toHaveProperty('hero_title', 'Hero Title');
+    expect(en).toHaveProperty('hero_btn', 'Click Me');
+    expect(en).toHaveProperty('new_key', 'New Key');
+    // German untranslated keys must exist as empty string, NOT be absent
+    expect(de).toHaveProperty('hero_btn', '');
+    expect(de).toHaveProperty('new_key', '');
   });
 });

@@ -56,6 +56,8 @@ jobs:
           echo "Target branch: $TARGET_BRANCH"
           # Fetch and force-update tags so floating tags never cause git fetch rejection
           git fetch --tags --force --prune
+          # Fetch semantic-release notes so prerelease channel associations are preserved
+          git fetch origin "+refs/notes/*:refs/notes/*" || true
           for remote in $(git branch -r | grep -v '\->'); do
             branch="${remote#origin/}"
             if [ "$branch" != "$TARGET_BRANCH" ]; then
@@ -110,7 +112,9 @@ jobs:
           git add package.json package-lock.json dist-action/index.mjs
           git commit -m "chore(beta): publish v${NEXT_VERSION} to npm [skip ci]" || true
           git tag -a "v${NEXT_VERSION}" -m "v${NEXT_VERSION}" || true
+          git notes --ref="semantic-release-v${NEXT_VERSION}" add -f -m "{\"channels\":[\"${TARGET_BRANCH}\"]}" "v${NEXT_VERSION}" || true
           git push origin HEAD:"${{ github.event.workflow_run.head_branch || github.ref_name }}" --follow-tags || true
+          git push origin "refs/notes/semantic-release-v${NEXT_VERSION}" || true
           exit 0
 
       - name: Release
