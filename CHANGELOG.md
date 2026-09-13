@@ -1,3 +1,14 @@
+## [3.0.0-beta.13](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.12...v3.0.0-beta.13) (2026-09-13)
+
+### 🚀 Features
+
+* add sheet deletion and renaming capabilities to CryptPad client ([08bab13](https://github.com/el-j/google-sheet-translations/commit/08bab136c6bdaf12934562314f6076b2a5ad188a))
+* enhance CryptPad integration with lock-aware payloads for sheet additions and updates ([787393b](https://github.com/el-j/google-sheet-translations/commit/787393bbe918728022555bebb9ffe04b81bab6da))
+
+### 🐛 Bug Fixes
+
+* normalize relative websocketPath values in resolveCryptPadWebsocketUrl ([07b1723](https://github.com/el-j/google-sheet-translations/commit/07b17238814997364ea9a84e5800c45ff889dc0a))
+
 ## [3.0.0-beta.12](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.11...v3.0.0-beta.12) (2026-09-10)
 
 ### 🚀 Features
