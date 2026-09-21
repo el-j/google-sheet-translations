@@ -21,7 +21,7 @@ describe('readDataJson', () => {
     (fs.existsSync as Mock).mockReturnValue(false);
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(fs.existsSync).toHaveBeenCalledWith('/path/to/languageData.json');
     expect(result).toBeNull();
   });
@@ -29,10 +29,10 @@ describe('readDataJson', () => {
   test('should read and parse languageData.json successfully', () => {
     // Mock file existence and content
     (fs.existsSync as Mock).mockReturnValue(true);
-    
+
     const mockData = [
       { home: { en: { welcome: 'Welcome' } } },
-      { about: { en: { title: 'About Us' } } }
+      { about: { en: { title: 'About Us' } } },
     ];
     (fs.readFileSync as Mock).mockReturnValue(JSON.stringify(mockData));
 
@@ -40,13 +40,13 @@ describe('readDataJson', () => {
     const mockConversionResult = {
       en: {
         home: { welcome: 'Welcome' },
-        about: { title: 'About Us' }
-      }
+        about: { title: 'About Us' },
+      },
     };
     (convertFromDataJsonFormat as Mock).mockReturnValue(mockConversionResult);
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(fs.readFileSync).toHaveBeenCalledWith('/path/to/languageData.json', 'utf8');
     expect(convertFromDataJsonFormat).toHaveBeenCalledWith(mockData);
     expect(result).toEqual(mockConversionResult);
@@ -58,7 +58,7 @@ describe('readDataJson', () => {
     (fs.readFileSync as Mock).mockReturnValue('Invalid JSON');
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
   });
@@ -71,7 +71,7 @@ describe('readDataJson', () => {
     });
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
   });
@@ -80,14 +80,14 @@ describe('readDataJson', () => {
     // Mock successful file read but conversion failure
     (fs.existsSync as Mock).mockReturnValue(true);
     (fs.readFileSync as Mock).mockReturnValue('[]');
-    
+
     // Mock conversion throwing an error
     (convertFromDataJsonFormat as Mock).mockImplementation(() => {
       throw new Error('Invalid format');
     });
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
   });
@@ -108,7 +108,7 @@ describe('readDataJson', () => {
     (fs.existsSync as Mock).mockReturnValue(false);
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(fs.existsSync).toHaveBeenCalledWith('/path/to/languageData.json');
     expect(result).toBeNull();
   });
@@ -116,10 +116,10 @@ describe('readDataJson', () => {
   test('should read and parse languageData.json successfully', () => {
     // Mock file existence and content
     (fs.existsSync as Mock).mockReturnValue(true);
-    
+
     const mockData = [
       { home: { en: { welcome: 'Welcome' } } },
-      { about: { en: { title: 'About Us' } } }
+      { about: { en: { title: 'About Us' } } },
     ];
     (fs.readFileSync as Mock).mockReturnValue(JSON.stringify(mockData));
 
@@ -127,13 +127,13 @@ describe('readDataJson', () => {
     const mockConversionResult = {
       en: {
         home: { welcome: 'Welcome' },
-        about: { title: 'About Us' }
-      }
+        about: { title: 'About Us' },
+      },
     };
     (convertFromDataJsonFormat as Mock).mockReturnValue(mockConversionResult);
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(fs.readFileSync).toHaveBeenCalledWith('/path/to/languageData.json', 'utf8');
     expect(convertFromDataJsonFormat).toHaveBeenCalledWith(mockData);
     expect(result).toEqual(mockConversionResult);
@@ -145,7 +145,7 @@ describe('readDataJson', () => {
     (fs.readFileSync as Mock).mockReturnValue('Invalid JSON');
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
   });
@@ -158,7 +158,7 @@ describe('readDataJson', () => {
     });
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
   });
@@ -167,14 +167,14 @@ describe('readDataJson', () => {
     // Mock successful file read but conversion failure
     (fs.existsSync as Mock).mockReturnValue(true);
     (fs.readFileSync as Mock).mockReturnValue('[]');
-    
+
     // Mock conversion throwing an error
     (convertFromDataJsonFormat as Mock).mockImplementation(() => {
       throw new Error('Invalid format');
     });
 
     const result = readDataJson('/path/to/languageData.json');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBeNull();
   });

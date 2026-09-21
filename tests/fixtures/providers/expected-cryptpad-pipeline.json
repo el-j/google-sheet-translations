@@ -1,0 +1,22 @@
+{
+  "en-GB": {
+    "home": {
+      "welcome": "Welcome",
+      "cta": "Buy"
+    },
+    "about": {
+      "headline": "About us",
+      "body": "This is our project"
+    }
+  },
+  "de-DE": {
+    "home": {
+      "welcome": "Willkommen",
+      "cta": "Kaufen"
+    },
+    "about": {
+      "headline": "Uber uns",
+      "body": "Dies ist unser Projekt"
+    }
+  }
+}

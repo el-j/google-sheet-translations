@@ -28,9 +28,7 @@ describe('withRetry', () => {
 
   test('retries on HTTP 429 and succeeds on second attempt', async () => {
     const rateLimitErr = { status: 429 };
-    const fn = vi.fn()
-      .mockRejectedValueOnce(rateLimitErr)
-      .mockResolvedValue('ok');
+    const fn = vi.fn().mockRejectedValueOnce(rateLimitErr).mockResolvedValue('ok');
 
     const promise = withRetry(fn, 'test', 100);
     await vi.runAllTimersAsync();
@@ -43,9 +41,7 @@ describe('withRetry', () => {
 
   test('retries on HTTP 503 and succeeds on second attempt', async () => {
     const serviceErr = { status: 503 };
-    const fn = vi.fn()
-      .mockRejectedValueOnce(serviceErr)
-      .mockResolvedValue('done');
+    const fn = vi.fn().mockRejectedValueOnce(serviceErr).mockResolvedValue('done');
 
     const promise = withRetry(fn, 'test', 100);
     await vi.runAllTimersAsync();
@@ -57,9 +53,7 @@ describe('withRetry', () => {
 
   test('also detects rate-limit errors via response.status', async () => {
     const nestedErr = { response: { status: 429 } };
-    const fn = vi.fn()
-      .mockRejectedValueOnce(nestedErr)
-      .mockResolvedValue('nested-ok');
+    const fn = vi.fn().mockRejectedValueOnce(nestedErr).mockResolvedValue('nested-ok');
 
     const promise = withRetry(fn, 'test', 100);
     await vi.runAllTimersAsync();

@@ -30,7 +30,7 @@ describe_if('Integration: public demo spreadsheet', () => {
     expect(rows.length).toBeGreaterThan(0);
     // First row must have a 'key' column (case-insensitive)
     const firstRow = rows[0];
-    const hasKey = Object.keys(firstRow).some(k => k.toLowerCase() === 'key');
+    const hasKey = Object.keys(firstRow).some((k) => k.toLowerCase() === 'key');
     expect(hasKey).toBe(true);
   }, 30_000);
 
@@ -68,7 +68,7 @@ describe_if('Integration: public demo spreadsheet', () => {
 
     // Check that translation files were written
     expect(fs.existsSync(translationsDir)).toBe(true);
-    const files = fs.readdirSync(translationsDir).filter(f => f.endsWith('.json'));
+    const files = fs.readdirSync(translationsDir).filter((f) => f.endsWith('.json'));
     expect(files.length).toBeGreaterThan(0);
     console.log(`✅ Integration: wrote ${files.length} translation file(s): ${files.join(', ')}`);
   }, 30_000);

@@ -33,10 +33,7 @@ export async function moveSpreadsheetToFolder(
   // When no key credentials are present, buildGoogleAuth falls back to WIF / ADC
   // (GOOGLE_APPLICATION_CREDENTIALS), which google-auth-library picks up automatically.
 
-  const driveAuth = buildGoogleAuth(
-    ['https://www.googleapis.com/auth/drive.file'],
-    credentials,
-  );
+  const driveAuth = buildGoogleAuth(['https://www.googleapis.com/auth/drive.file'], credentials);
 
   // Step 1: fetch current parents so we can remove them after the move
   const fileRes = await driveAuth.request<{ parents?: string[] }>({

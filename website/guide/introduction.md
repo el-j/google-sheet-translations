@@ -33,7 +33,7 @@ The package handles the entire roundtrip:
 
 - **Collaborative Editing**: Translators, copywriters, and content editors work directly in familiar spreadsheets without needing Git access.
 - **Privacy & Sovereignty**: Use [CryptPad](/guide/non-google-providers) when strings cannot be stored on US cloud infrastructure or when zero-auth ingestion is desired.
-- **Framework Agnostic**: Works out of the box with Next.js, Nuxt, Remix, Vite, SvelteKit, or any Node.js application that consumes JSON translations.
+- **Framework Agnostic**: Works out of the box with Next.js, Astro, Nuxt, Remix, Vite, SvelteKit, or any Node.js application that consumes JSON translations.
 - **Automation in CI/CD**: Run zero-config sync via GitHub Actions on a schedule or workflow dispatch.
 - **Type Safety**: Strictly typed row parsing, locale filtering, and auto-generated TypeScript declarations prevent runtime key typos.
 

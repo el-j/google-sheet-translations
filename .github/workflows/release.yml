@@ -7,6 +7,12 @@ name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      force_beta_prerelease:
+        description: 'Force a new beta prerelease on develop even when no code commits were added.'
+        required: false
+        default: false
+        type: boolean
   workflow_run:
     workflows: ["CI"]
     types: [completed]
@@ -38,7 +44,7 @@ jobs:
 
     steps:
       - name: Checkout (full history required by semantic-release)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.workflow_run.head_branch || github.ref_name }}
           fetch-depth: 0
@@ -50,6 +56,8 @@ jobs:
           echo "Target branch: $TARGET_BRANCH"
           # Fetch and force-update tags so floating tags never cause git fetch rejection
           git fetch --tags --force --prune
+          # Fetch semantic-release notes so prerelease channel associations are preserved
+          git fetch origin "+refs/notes/*:refs/notes/*" || true
           for remote in $(git branch -r | grep -v '\->'); do
             branch="${remote#origin/}"
             if [ "$branch" != "$TARGET_BRANCH" ]; then
@@ -76,33 +84,66 @@ jobs:
       - name: Build action bundle
         run: npm run build:action
 
+      - name: Force beta prerelease when requested
+        if: github.event_name == 'workflow_dispatch' && github.ref_name == 'develop' && inputs.force_beta_prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          NEXT_VERSION=$(npx semver "$CURRENT_VERSION" -i prerelease --preid beta)
+
+          while git ls-remote --tags origin "refs/tags/v${NEXT_VERSION}" | grep -q .; do
+            NEXT_VERSION=$(npx semver "$NEXT_VERSION" -i prerelease --preid beta)
+          done
+
+          echo "Current version: $CURRENT_VERSION"
+          echo "Forced beta version: $NEXT_VERSION"
+
+          npm version "$NEXT_VERSION" --no-git-tag-version
+          npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
+          npm publish --access public --tag beta --dry-run
+          npm publish --access public --tag beta
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
+          git add package.json package-lock.json dist-action/index.mjs
+          git commit -m "chore(beta): publish v${NEXT_VERSION} to npm [skip ci]" || true
+          git tag -a "v${NEXT_VERSION}" -m "v${NEXT_VERSION}" || true
+          git notes --ref="semantic-release-v${NEXT_VERSION}" add -f -m "{\"channels\":[\"${TARGET_BRANCH}\"]}" "v${NEXT_VERSION}" || true
+          git push origin HEAD:"${{ github.event.workflow_run.head_branch || github.ref_name }}" --follow-tags || true
+          git push origin "refs/notes/semantic-release-v${NEXT_VERSION}" || true
+          exit 0
+
       - name: Release
+        if: github.event_name != 'workflow_dispatch' || !inputs.force_beta_prerelease
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npx semantic-release
 
-      # After a successful STABLE release on main, update the floating major-version tag
-      # (e.g. v2) so that GitHub Action users referencing @v2 always get
-      # the latest 2.x.x stable release.
-      - name: Update floating major-version tag
+      # If stable release on main, update floating major tag (e.g. v3)
+      - name: Update floating major tag on main
         if: steps.release.outcome == 'success' && (github.event.workflow_run.head_branch == 'main' || github.ref_name == 'main')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+          git fetch --tags --force
+          TAG=$(git tag --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+          echo "Most recent stable release tag: $TAG"
+
+          if [ -n "$TAG" ]; then
+            VERSION="${TAG#v}"
             MAJOR=$(echo "$VERSION" | cut -d. -f1)
-            echo "Stable released version: v${VERSION}"
-            echo "Updating floating tag: v${MAJOR}"
+            echo "Updating floating tag: v${MAJOR} -> $TAG"
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
-            git tag -fa "v${MAJOR}" -m "Update v${MAJOR} tag to v${VERSION}"
-            git push origin "v${MAJOR}" --force
-          else
-            echo "Skipping floating tag update for pre-release version v${VERSION}"
+            git tag -fa "v${MAJOR}" "$TAG" -m "Update v${MAJOR} tag to $TAG" || true
+            git push origin "v${MAJOR}" --force || echo "Warning: could not force-push v${MAJOR}"
           fi
 
       # When a stable release is created on main, merge the release commit
@@ -110,6 +151,7 @@ jobs:
       # never diverge and stay 100% conflict-free.
       - name: Sync main release commit back to develop
         if: steps.release.outcome == 'success' && (github.event.workflow_run.head_branch == 'main' || github.ref_name == 'main')
+        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -120,5 +162,11 @@ jobs:
 
           git fetch origin develop
           git checkout develop
-          git merge main -m "chore(sync): back-merge release v${VERSION} into develop [skip ci]"
+          git merge main -m "chore(sync): back-merge release v${VERSION} into develop [skip ci]" || {
+            echo "Merge conflict detected during back-merge. Preserving develop dependencies and syncing changelog..."
+            git checkout --ours package.json package-lock.json 2>/dev/null || true
+            git checkout --theirs CHANGELOG.md 2>/dev/null || true
+            git add CHANGELOG.md package.json package-lock.json 2>/dev/null || true
+            git commit -m "chore(sync): back-merge release v${VERSION} into develop (resolved) [skip ci]" || true
+          }
           git push origin develop || echo "Skipping push if develop is already up to date"

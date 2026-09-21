@@ -7,12 +7,12 @@ vi.mock('../../src/utils/validateEnv', () => ({
   validateEnv: vi.fn().mockReturnValue({
     GOOGLE_CLIENT_EMAIL: 'test@example.com',
     GOOGLE_PRIVATE_KEY: 'test-private-key',
-    GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id'
+    GOOGLE_SPREADSHEET_ID: 'test-spreadsheet-id',
   }),
   validateCredentials: vi.fn().mockReturnValue({
     GOOGLE_CLIENT_EMAIL: 'test@example.com',
     GOOGLE_PRIVATE_KEY: 'test-private-key',
-  })
+  }),
 }));
 
 vi.mock('google-auth-library', () => {
@@ -55,7 +55,7 @@ describe('createAuthClient', () => {
             private_key: 'test-private-key',
           }),
           scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        })
+        }),
       );
     });
 
@@ -77,7 +77,7 @@ describe('createAuthClient', () => {
           credentials: expect.objectContaining({
             private_key: keyWithRealNewlines,
           }),
-        })
+        }),
       );
     });
 
@@ -97,7 +97,7 @@ describe('createAuthClient', () => {
           credentials: expect.objectContaining({
             private_key: keyWithRealNewlines,
           }),
-        })
+        }),
       );
     });
   });
@@ -112,10 +112,10 @@ describe('createAuthClient', () => {
       expect(MockGoogleAuth).toHaveBeenCalledWith(
         expect.objectContaining({
           scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-        })
+        }),
       );
       expect(MockGoogleAuth).toHaveBeenCalledWith(
-        expect.not.objectContaining({ credentials: expect.anything() })
+        expect.not.objectContaining({ credentials: expect.anything() }),
       );
     });
 
@@ -150,9 +150,11 @@ describe('buildGoogleAuth', () => {
 
     expect(MockGoogleAuth).toHaveBeenCalledWith(
       expect.objectContaining({
-        credentials: expect.objectContaining({ client_email: 'sa@project.iam.gserviceaccount.com' }),
+        credentials: expect.objectContaining({
+          client_email: 'sa@project.iam.gserviceaccount.com',
+        }),
         scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-      })
+      }),
     );
   });
 
@@ -162,17 +164,16 @@ describe('buildGoogleAuth', () => {
     expect(MockGoogleAuth).toHaveBeenCalledWith(
       expect.objectContaining({
         scopes: ['https://www.googleapis.com/auth/drive.readonly'],
-      })
+      }),
     );
     expect(MockGoogleAuth).toHaveBeenCalledWith(
-      expect.not.objectContaining({ credentials: expect.anything() })
+      expect.not.objectContaining({ credentials: expect.anything() }),
     );
   });
 });
 
 describe('normalizePrivateKey', () => {
-  const PEM_REAL_NEWLINES =
-    '-----BEGIN PRIVATE KEY-----\nMIIEfake\n-----END PRIVATE KEY-----\n';
+  const PEM_REAL_NEWLINES = '-----BEGIN PRIVATE KEY-----\nMIIEfake\n-----END PRIVATE KEY-----\n';
   const PEM_ESCAPED_NEWLINES =
     '-----BEGIN PRIVATE KEY-----\\nMIIEfake\\n-----END PRIVATE KEY-----\\n';
 

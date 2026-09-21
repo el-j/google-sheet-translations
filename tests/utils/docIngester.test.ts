@@ -1,4 +1,9 @@
-import { exportDoc, entriesToSeedKeys, entriesToTranslationData, ingestDoc } from '../../src/utils/docIngester';
+import {
+  exportDoc,
+  entriesToSeedKeys,
+  entriesToTranslationData,
+  ingestDoc,
+} from '../../src/utils/docIngester';
 import type { DocManifestEntry } from '../../src/utils/driveProjectIndex';
 import type { DriveDocFile } from '../../src/utils/driveDocScanner';
 
@@ -180,7 +185,9 @@ describe('entriesToTranslationData', () => {
   });
 
   it('ignores prototype-polluting locale, sheet, and key names', () => {
-    expect(entriesToTranslationData([{ sheetName: 'hero', key: 'title', value: 'Hello' }], '__proto__')).toEqual({});
+    expect(
+      entriesToTranslationData([{ sheetName: 'hero', key: 'title', value: 'Hello' }], '__proto__'),
+    ).toEqual({});
 
     const data = entriesToTranslationData(
       [
@@ -377,7 +384,7 @@ describe('ingestDoc', () => {
       expect.objectContaining({
         title: '!!!',
         sourceLocale: 'en',
-      })
+      }),
     );
   });
 });

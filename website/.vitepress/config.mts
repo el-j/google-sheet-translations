@@ -28,7 +28,7 @@ if (isPreview) {
 
 export default defineConfig({
   title: '@el-j/google-sheet-translations',
-  description: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js integration.',
+  description: 'Fetch, sync and manage translations from Google Spreadsheets and CryptPad with TypeScript. Supports Drive folder management, multi-spreadsheet merge, image sync, bidirectional sync, auto-translation, and Next.js/Astro integration.',
 
   // GitHub Pages base path
   base,
@@ -36,6 +36,9 @@ export default defineConfig({
 
   // Clean URLs
   cleanUrls: true,
+
+  // Ignore cross-version and external dead links during multi-version bundling
+  ignoreDeadLinks: true,
 
   // Head tags
   head: headConfigs,
@@ -97,6 +100,7 @@ export default defineConfig({
             { text: 'What is New in v3?', link: '/guide/v3-overview' },
             { text: 'Migrating from v2 to v3', link: '/guide/provider-migration-v3' },
             { text: 'Non-Google Providers (CryptPad)', link: '/guide/non-google-providers' },
+            { text: 'CryptPad Full Sync & Drive', link: '/guide/cryptpad-full-sync' },
             { text: 'Provider Runtime Architecture', link: '/guide/provider-runtime' },
             { text: 'Full Sync & Conflict Policies', link: '/guide/full-sync-operations-v3' },
           ],
@@ -120,6 +124,7 @@ export default defineConfig({
             { text: 'Public Sheets (No Auth)', link: '/guide/public-sheets' },
             { text: 'Live Demo', link: '/guide/live-demo' },
             { text: 'Next.js Integration', link: '/guide/nextjs' },
+            { text: 'Astro Integration', link: '/guide/astro' },
             { text: 'Locale Filtering', link: '/guide/locale-filtering' },
           ],
         },

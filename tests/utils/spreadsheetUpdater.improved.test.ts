@@ -9,17 +9,17 @@ vi.mock('../../src/utils/rateLimiter', () => ({
 describe('spreadsheetUpdater - improved auto-translate formula', () => {
   const mockDoc = {
     sheetsByTitle: {
-      'test': {
+      test: {
         getRows: vi.fn(),
-        addRows: vi.fn().mockResolvedValue(undefined)
-      }
-    }
+        addRows: vi.fn().mockResolvedValue(undefined),
+      },
+    },
   };
 
   const mockRows = [
     {
-      toObject: () => ({ key: 'existing', en: 'Existing', de: 'Bestehend' })
-    }
+      toObject: () => ({ key: 'existing', en: 'Existing', de: 'Bestehend' }),
+    },
   ];
 
   beforeEach(() => {
@@ -31,9 +31,9 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     const changes: TranslationData = {
       en: {
         test: {
-          newkey: 'New Key Value'
-        }
-      }
+          newkey: 'New Key Value',
+        },
+      },
     };
 
     await updateSpreadsheetWithLocalChanges(mockDoc as any, changes, 1, true);
@@ -48,7 +48,7 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     // Verify the formula format uses dynamic extraction from header cells
     expect(addedRow).toHaveProperty('key', 'newkey');
     expect(addedRow).toHaveProperty('en', 'New Key Value');
-    
+
     // Check for auto-translate formula in other columns (assuming 'de' exists)
     const formulaValue = addedRow.de;
     if (formulaValue) {
@@ -68,18 +68,18 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     // Mock a different header structure
     const mockRowsWithDifferentHeaders = [
       {
-        toObject: () => ({ identifier: 'test', english: 'Test', german: 'Test' })
-      }
+        toObject: () => ({ identifier: 'test', english: 'Test', german: 'Test' }),
+      },
     ];
-    
+
     mockDoc.sheetsByTitle.test.getRows.mockResolvedValue(mockRowsWithDifferentHeaders);
 
     const changes: TranslationData = {
       english: {
         test: {
-          newitem: 'New Item'
-        }
-      }
+          newitem: 'New Item',
+        },
+      },
     };
 
     await updateSpreadsheetWithLocalChanges(mockDoc as any, changes, 1, true);
@@ -90,7 +90,7 @@ describe('spreadsheetUpdater - improved auto-translate formula', () => {
     // Should adapt to the different column structure
     expect(addedRow).toHaveProperty('identifier', 'newitem');
     expect(addedRow).toHaveProperty('english', 'New Item');
-    
+
     // Formula should use the correct column references for this structure
     const formulaValue = addedRow.german;
     if (formulaValue) {

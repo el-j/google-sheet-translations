@@ -1,3 +1,179 @@
+## [3.0.0-beta.15](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.14...v3.0.0-beta.15) (2026-09-13)
+
+### 🐛 Bug Fixes
+
+* support cell clear history items and ensure exact row ordering on push ([ab5e3e9](https://github.com/el-j/google-sheet-translations/commit/ab5e3e969a06472974ca78af3e51e1661802c19b))
+
+## [3.0.0-beta.14](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.13...v3.0.0-beta.14) (2026-09-13)
+
+### 🚀 Features
+
+* eliminate translation data loss on CryptPad pull/push/sync and fix release workflow git notes ([d46cf54](https://github.com/el-j/google-sheet-translations/commit/d46cf542559bbb0b969949f05fb5cbd8beb86b0c))
+
+## [3.0.0-beta.13](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.12...v3.0.0-beta.13) (2026-09-13)
+
+### 🚀 Features
+
+* add sheet deletion and renaming capabilities to CryptPad client ([08bab13](https://github.com/el-j/google-sheet-translations/commit/08bab136c6bdaf12934562314f6076b2a5ad188a))
+* enhance CryptPad integration with lock-aware payloads for sheet additions and updates ([787393b](https://github.com/el-j/google-sheet-translations/commit/787393bbe918728022555bebb9ffe04b81bab6da))
+
+### 🐛 Bug Fixes
+
+* normalize relative websocketPath values in resolveCryptPadWebsocketUrl ([07b1723](https://github.com/el-j/google-sheet-translations/commit/07b17238814997364ea9a84e5800c45ff889dc0a))
+
+## [3.0.0-beta.12](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.11...v3.0.0-beta.12) (2026-09-10)
+
+### 🚀 Features
+
+* **cryptpad:** implement header linking to i18n sheet for new sheets, add formula support ([aa16eff](https://github.com/el-j/google-sheet-translations/commit/aa16effe2c2c7aae2c61abbb1ec7dd9215cafea7))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** unify sync semantics with Google Sheets, fix header parity ([#164](https://github.com/el-j/google-sheet-translations/issues/164), [#165](https://github.com/el-j/google-sheet-translations/issues/165)) ([7c115d8](https://github.com/el-j/google-sheet-translations/commit/7c115d829b0b2bd58c693b1eb7e88b9940b2c486))
+* normalize relative websocketPath values in resolveCryptPadWebsocketUrl ([07b1723](https://github.com/el-j/google-sheet-translations/commit/07b17238814997364ea9a84e5800c45ff889dc0a))
+
+## [3.0.0-beta.12](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.11...v3.0.0-beta.12) (2026-09-10)
+
+### 🚀 Features
+
+* **cryptpad:** implement header linking to i18n sheet for new sheets, add formula support ([aa16eff](https://github.com/el-j/google-sheet-translations/commit/aa16effe2c2c7aae2c61abbb1ec7dd9215cafea7))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** unify sync semantics with Google Sheets, fix header parity ([#164](https://github.com/el-j/google-sheet-translations/issues/164), [#165](https://github.com/el-j/google-sheet-translations/issues/165)) ([7c115d8](https://github.com/el-j/google-sheet-translations/commit/7c115d829b0b2bd58c693b1eb7e88b9940b2c486))
+
+## [3.0.0-beta.12](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.11...v3.0.0-beta.12) (2026-09-10)
+
+### 🚀 Features
+
+* **cryptpad:** implement header linking to i18n sheet for new sheets, add formula support ([aa16eff](https://github.com/el-j/google-sheet-translations/commit/aa16effe2c2c7aae2c61abbb1ec7dd9215cafea7))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** unify sync semantics with Google Sheets, fix header parity ([#164](https://github.com/el-j/google-sheet-translations/issues/164), [#165](https://github.com/el-j/google-sheet-translations/issues/165)) ([7c115d8](https://github.com/el-j/google-sheet-translations/commit/7c115d829b0b2bd58c693b1eb7e88b9940b2c486))
+
+## [3.0.0-beta.12](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.11...v3.0.0-beta.12) (2026-09-10)
+
+### 🚀 Features
+
+* **cryptpad:** implement header linking to i18n sheet for new sheets, add formula support ([aa16eff](https://github.com/el-j/google-sheet-translations/commit/aa16effe2c2c7aae2c61abbb1ec7dd9215cafea7))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** unify sync semantics with Google Sheets, fix header parity ([#164](https://github.com/el-j/google-sheet-translations/issues/164), [#165](https://github.com/el-j/google-sheet-translations/issues/165)) ([7c115d8](https://github.com/el-j/google-sheet-translations/commit/7c115d829b0b2bd58c693b1eb7e88b9940b2c486))
+
+## [3.0.0-beta.12](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.11...v3.0.0-beta.12) (2026-09-10)
+
+### 🚀 Features
+
+* **cryptpad:** implement header linking to i18n sheet for new sheets, add formula support ([aa16eff](https://github.com/el-j/google-sheet-translations/commit/aa16effe2c2c7aae2c61abbb1ec7dd9215cafea7))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** unify sync semantics with Google Sheets, fix header parity ([#164](https://github.com/el-j/google-sheet-translations/issues/164), [#165](https://github.com/el-j/google-sheet-translations/issues/165)) ([7c115d8](https://github.com/el-j/google-sheet-translations/commit/7c115d829b0b2bd58c693b1eb7e88b9940b2c486))
+
+## [3.0.0-beta.12](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.11...v3.0.0-beta.12) (2026-09-10)
+
+### 🚀 Features
+
+* **cryptpad:** implement header linking to i18n sheet for new sheets, add formula support ([aa16eff](https://github.com/el-j/google-sheet-translations/commit/aa16effe2c2c7aae2c61abbb1ec7dd9215cafea7))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** unify sync semantics with Google Sheets, fix header parity ([#164](https://github.com/el-j/google-sheet-translations/issues/164), [#165](https://github.com/el-j/google-sheet-translations/issues/165)) ([7c115d8](https://github.com/el-j/google-sheet-translations/commit/7c115d829b0b2bd58c693b1eb7e88b9940b2c486))
+
+## [3.0.0-beta.11](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.10...v3.0.0-beta.11) (2026-09-09)
+
+### 🚀 Features
+
+* **cryptpad:** implement real Sheet_Add support, auto-create missing sheets ([2bb8907](https://github.com/el-j/google-sheet-translations/commit/2bb890775569fd69ef7553a34a2bc7eebc5693e4))
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** close three provider-parity gaps with Google Sheets ([734163a](https://github.com/el-j/google-sheet-translations/commit/734163af141dc35ee160e06a559fd8c253bcc16f)), closes [#161](https://github.com/el-j/google-sheet-translations/issues/161) [#162](https://github.com/el-j/google-sheet-translations/issues/162) [#163](https://github.com/el-j/google-sheet-translations/issues/163) [#164](https://github.com/el-j/google-sheet-translations/issues/164) [#165](https://github.com/el-j/google-sheet-translations/issues/165)
+
+### 📝 Documentation
+
+* add Astro integration guide ([5423215](https://github.com/el-j/google-sheet-translations/commit/54232159bd4b0c5c9b96842abca29c6626debcca))
+
+## [3.0.0-beta.10](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.9...v3.0.0-beta.10) (2026-09-09)
+
+### 🐛 Bug Fixes
+
+* **cryptpad:** auto-detect localeHeaderMapping from locales.ts on push ([8d07883](https://github.com/el-j/google-sheet-translations/commit/8d078833452f698494fc1cf0ff52904217f318d5))
+* **cryptpad:** correct OnlyOffice binary payload format and RT channel registration ([834b201](https://github.com/el-j/google-sheet-translations/commit/834b201db22c0ed35c6536e19643d7f73c943596))
+* **cryptpad:** ensure ChainPad aborts to prevent hanging and improve error handling in metadata extraction ([a72e5af](https://github.com/el-j/google-sheet-translations/commit/a72e5af3fe68fa47430528a6419da8a264e4fe43))
+
+### ♻️ Refactoring
+
+* **cryptpad:** isolate ChainPad vendor dependency and provide typed module wrapper ([a13cfcd](https://github.com/el-j/google-sheet-translations/commit/a13cfcd0e170b53bf4d6b34a2aa47a9b17587dfe))
+
+## [3.0.0-beta.9](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.8...v3.0.0-beta.9) (2026-09-08)
+
+### 🚀 Features
+
+* implement Ed25519 signing for CryptPad real-time messages and update channel initialization protocols to ensure OnlyOffice compatibility. ([c633577](https://github.com/el-j/google-sheet-translations/commit/c633577c827a6a3cded42987a9f9f9933c3b00d6))
+
+### 📝 Documentation
+
+* highlight v3 provider platform, headless cryptpad sync, and update changelog ([#160](https://github.com/el-j/google-sheet-translations/issues/160)) ([17a980e](https://github.com/el-j/google-sheet-translations/commit/17a980e5678a6126a16788e6a9fb169698bbda8c))
+
+## [3.0.0-beta.8](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.7...v3.0.0-beta.8) (2026-09-08)
+
+### 🚀 Features
+
+* **website:** implement in-place reactive translation via navbar language switcher ([#158](https://github.com/el-j/google-sheet-translations/issues/158)) ([2bc3179](https://github.com/el-j/google-sheet-translations/commit/2bc3179c69a5106bfacc822a7ca0443060cd3180))
+
+## [3.0.0-beta.7](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.6...v3.0.0-beta.7) (2026-09-07)
+
+### 🐛 Bug Fixes
+
+* **ci:** read release tag from git instead of stale package.json in bundle-attach step ([a9e76c5](https://github.com/el-j/google-sheet-translations/commit/a9e76c5620cd5007cc2b468329e149fd96214aee))
+
+## [3.0.0-beta.6](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.5...v3.0.0-beta.6) (2026-09-07)
+
+### 🚀 Features
+
+* **cryptpad:** auto-initialize OnlyOffice RT channel headlessly ([603cd66](https://github.com/el-j/google-sheet-translations/commit/603cd66e64e690153dd5d5526ddde07287f7eb36))
+
+## [3.0.0-beta.5](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.4...v3.0.0-beta.5) (2026-09-07)
+
+### 🚀 Features
+
+* **cryptpad:** add full bidirectional sync, multi-sheet tabs, and drive folder support ([fa73f78](https://github.com/el-j/google-sheet-translations/commit/fa73f783b26e5df645513c98a2f304317cd2ab38))
+* **cryptpad:** support 'var' and 'key' header row conventions interchangeably with Google Sheets parity ([39e0358](https://github.com/el-j/google-sheet-translations/commit/39e035831aa87ada3db577c904419c75b21565a5))
+
+### 🐛 Bug Fixes
+
+* **ci:** update dist-action bundle and automate in pre-commit hook ([9f91365](https://github.com/el-j/google-sheet-translations/commit/9f91365206b63bf8d6a125bbaac298ddb8d147a7))
+* **release:** downgrade conventional-changelog-conventionalcommits to 8.0.0 for semantic-release compatibility ([9a5dd9b](https://github.com/el-j/google-sheet-translations/commit/9a5dd9bda76e9a655ad1f16a32450adaadf94508))
+* **release:** preserve develop package dependencies during main back-merge ([7d91345](https://github.com/el-j/google-sheet-translations/commit/7d9134571b7b235f47e16cebb35ad6ca39cf5ad6))
+
+### ♻️ Refactoring
+
+* simplify test expectation formatting for sheet rows ([da43c7b](https://github.com/el-j/google-sheet-translations/commit/da43c7be3a5d819b92ae15f2aeb8c41fd10161fe))
+
+## [3.0.0-beta.4](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.3...v3.0.0-beta.4) (2026-09-07)
+
+### 🚀 Features
+
+* **cryptpad:** add headless cryptpad sheet provider and CryptPadClient with password support ([554da3b](https://github.com/el-j/google-sheet-translations/commit/554da3b9a49d36e5e2c2a4553cf9a16d69775b47))
+
+### 🐛 Bug Fixes
+
+* **docs:** add ignoreDeadLinks to prevent cross-version link check failures ([44b188c](https://github.com/el-j/google-sheet-translations/commit/44b188ce82c763e8bc1ce8839b420eaaa7b67b7d))
+
+### 📝 Documentation
+
+* add cryptpad-sheet and CryptPadClient to v3 overview and feature matrix ([93cce88](https://github.com/el-j/google-sheet-translations/commit/93cce88dec8469b0bebd2ceeb3fced76b09013b4))
+* complete CryptPad provider & client documentation and API references ([ed9a3c7](https://github.com/el-j/google-sheet-translations/commit/ed9a3c78dcbf763c4a902adfc2bf80a8d47d8ad8))
+* ensure origin/main and origin/develop are fetched before building bundle ([0047f42](https://github.com/el-j/google-sheet-translations/commit/0047f425eb76657fd275cae6919633b4c43e1220))
+* make bundle builder symmetric across main and develop branches ([239b12a](https://github.com/el-j/google-sheet-translations/commit/239b12a52ad1c155c0aa9da22d195e3157f94ab9))
+* sync symmetric bundle builder to main ([d5620e5](https://github.com/el-j/google-sheet-translations/commit/d5620e5e6585f97b05113c7facde2a91efad088d))
+* **theme:** fix dark mode styling, banner navigation offset, and expand v3 migration & CryptPad docs ([aed153b](https://github.com/el-j/google-sheet-translations/commit/aed153b13647645b431e45514bb3afd1890a72e4))
+* **theme:** sync dark mode, banner layout, and v3 migration docs to main ([18a1ec7](https://github.com/el-j/google-sheet-translations/commit/18a1ec77750673e462ffe24301da2604378d8126))
+* update multi-version switcher, preview bundle, and docs deployment pipeline ([d2c5556](https://github.com/el-j/google-sheet-translations/commit/d2c55567bb7efbb40cd5b9c9855bf98a75537d11))
+
 ## [2.2.0](https://github.com/el-j/google-sheet-translations/compare/v2.1.4...v2.2.0) (2026-08-30)
 
 ### 🚀 Features

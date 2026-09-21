@@ -49,6 +49,10 @@ The auto-translation feature will add Google Translate formulas in the spreadshe
 
 Shows how to use Google Sheet Translations in a Next.js project using the instrumentation feature.
 
+### Astro Integration (`astro-integration.ts`)
+
+Shows how to refresh translation files automatically before `astro dev` / `astro build` via a small local Astro integration hooking into `astro:config:setup`. See the full walkthrough in `website/guide/astro.md`, including a plain npm-script alternative and reading translations at build/runtime.
+
 ## Running Examples
 
 To run any example, install the dependencies first:

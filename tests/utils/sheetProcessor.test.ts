@@ -43,7 +43,9 @@ describe('sheetProcessor', () => {
       originalMapping: {},
       success: false,
     });
-    expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('No rows found in sheet "home"'));
+    expect(console.warn).toHaveBeenCalledWith(
+      expect.stringContaining('No rows found in sheet "home"'),
+    );
   });
 
   test('processRawRows returns empty result when no valid locale columns exist', async () => {
@@ -67,17 +69,16 @@ describe('sheetProcessor', () => {
     });
 
     const result = await processRawRows(
-      [
-        { key: 'WELCOME', en: 'Welcome' },
-        { key: 'MISSING_TRANSLATION' },
-        { en: 'Missing key' },
-      ],
+      [{ key: 'WELCOME', en: 'Welcome' }, { key: 'MISSING_TRANSLATION' }, { en: 'Missing key' }],
       'home',
     );
 
     expect(result.success).toBe(true);
     expect(result.locales).toEqual(['en']);
-    expect(result.translations.en.home).toEqual({ welcome: 'Welcome' });
+    // After Bug #1 fix: a row with a key but no translation value is preserved
+    // with an empty string (''), rather than being silently dropped.
+    // Only rows with NO key column at all (e.g. { en: 'Missing key' }) are skipped.
+    expect(result.translations.en.home).toEqual({ welcome: 'Welcome', missing_translation: '' });
   });
 
   test('processRawRows tolerates locale entries without mapping', async () => {
@@ -148,9 +149,7 @@ describe('sheetProcessor', () => {
     });
 
     const sheet = {
-      getRows: vi.fn().mockResolvedValue([
-        { toObject: () => ({ key: 'HELLO', en: 'Hello' }) },
-      ]),
+      getRows: vi.fn().mockResolvedValue([{ toObject: () => ({ key: 'HELLO', en: 'Hello' }) }]),
     };
 
     const result = await processSheet(sheet as never, 'home', 100);
@@ -168,9 +167,7 @@ describe('sheetProcessor', () => {
       originalMapping: { en: 'en', 'en-US': 'en' },
     });
 
-    const rows = [
-      { key: 'greet', en: 'Hello', 'en-US': 'Hello US' },
-    ];
+    const rows = [{ key: 'greet', en: 'Hello', 'en-US': 'Hello US' }];
 
     const result = await processRawRows(rows, 'home');
     expect(result.success).toBe(true);

@@ -1,4 +1,4 @@
-import type { TranslationData, TranslationValue } from "../../types";
+import type { TranslationData, TranslationValue } from '../../types';
 
 /**
  * Converts the translation object to the expected languageData.json format
@@ -7,59 +7,57 @@ import type { TranslationData, TranslationValue } from "../../types";
  * @returns Converted data in the format expected for languageData.json
  */
 export function convertToDataJsonFormat(
-	translationObj: TranslationData,
-	locales: string[],
+  translationObj: TranslationData,
+  locales: string[],
 ): Record<string, unknown>[] {
-	const result: Record<string, unknown>[] = [];
-	console.log("Converting translation object to languageData.json format...");
+  const result: Record<string, unknown>[] = [];
+  console.log('Converting translation object to languageData.json format...');
 
-	// Get all sheet names from all locales to make sure we don't miss any
-	const allSheets = new Set<string>();
-	for (const locale of Object.keys(translationObj)) {
-		if (translationObj[locale]) {
-			for (const sheet of Object.keys(translationObj[locale])) {
-				allSheets.add(sheet);
-			}
-		}
-	}
+  // Get all sheet names from all locales to make sure we don't miss any
+  const allSheets = new Set<string>();
+  for (const locale of Object.keys(translationObj)) {
+    if (translationObj[locale]) {
+      for (const sheet of Object.keys(translationObj[locale])) {
+        allSheets.add(sheet);
+      }
+    }
+  }
 
-	console.log(`Found ${allSheets.size} sheets across all locales`);
+  console.log(`Found ${allSheets.size} sheets across all locales`);
 
-	// Process each sheet
-	for (const sheetTitle of allSheets) {
-		// Create a new project object with the sheet title as the main key
-		const projectData: Record<
-			string,
-			Record<string, Record<string, TranslationValue>>
-		> = {};
-		projectData[sheetTitle] = {};
+  // Process each sheet
+  for (const sheetTitle of allSheets) {
+    // Create a new project object with the sheet title as the main key
+    const projectData: Record<string, Record<string, Record<string, TranslationValue>>> = {};
+    projectData[sheetTitle] = {};
 
-		// For each locale, add all key-value pairs
-		for (const locale of locales) {
-			if (translationObj?.[locale]?.[sheetTitle]) { // Use original locale case for lookup
+    // For each locale, add all key-value pairs
+    for (const locale of locales) {
+      if (translationObj?.[locale]?.[sheetTitle]) {
+        // Use original locale case for lookup
 
-				const translations = translationObj[locale][sheetTitle];
+        const translations = translationObj[locale][sheetTitle];
 
-				// Spread into a new object to avoid prototype-polluting assignment
-				projectData[sheetTitle][locale] = { ...translations };
+        // Spread into a new object to avoid prototype-polluting assignment
+        projectData[sheetTitle][locale] = { ...translations };
 
-				// Log how many translations we found for debugging
-				console.log(
-					`Found ${
-						Object.keys(translations).length
-					} keys for locale ${locale} in sheet ${sheetTitle}`,
-				);
-			}
-		}
+        // Log how many translations we found for debugging
+        console.log(
+          `Found ${
+            Object.keys(translations).length
+          } keys for locale ${locale} in sheet ${sheetTitle}`,
+        );
+      }
+    }
 
-		// Only add non-empty projects
-		if (Object.keys(projectData[sheetTitle]).length > 0) {
-			result.push(projectData);
-		}
-	}
+    // Only add non-empty projects
+    if (Object.keys(projectData[sheetTitle]).length > 0) {
+      result.push(projectData);
+    }
+  }
 
-	console.log(`Created ${result.length} sheet entries for languageData.json`);
-	return result;
+  console.log(`Created ${result.length} sheet entries for languageData.json`);
+  return result;
 }
 
 export default convertToDataJsonFormat;

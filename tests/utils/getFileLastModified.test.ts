@@ -12,10 +12,10 @@ describe('getFileLastModified', () => {
   test('should return the modification time for an existing file', () => {
     // Create a mock date for the file's mtime
     const mockDate = new Date('2023-01-01T12:00:00Z');
-    
+
     // Mock the fs.statSync to return our mock date
     (fs.statSync as Mock).mockReturnValue({
-      mtime: mockDate
+      mtime: mockDate,
     });
 
     const filePath = '/path/to/existing/file.json';
@@ -60,10 +60,7 @@ describe('getFileLastModified', () => {
     const filePath = '/some/specific/path.json';
     getFileLastModified(filePath);
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      expect.stringContaining(filePath),
-      expect.any(Error)
-    );
+    expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining(filePath), expect.any(Error));
     consoleSpy.mockRestore();
   });
 });

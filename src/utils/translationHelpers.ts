@@ -18,8 +18,8 @@ import type { TranslationData, TranslationValue } from '../types';
  * translation keys it contains.
  */
 export interface SheetSummary {
-	sheet: string;
-	count: number;
+  sheet: string;
+  count: number;
 }
 
 /**
@@ -58,14 +58,14 @@ export type TranslationSummary = Record<string, SheetSummary[]>;
  * ```
  */
 export function getTranslationSummary(translations: TranslationData): TranslationSummary {
-	const summary: TranslationSummary = {};
-	for (const locale of Object.keys(translations)) {
-		summary[locale] = Object.entries(translations[locale]).map(([sheet, keys]) => ({
-			sheet,
-			count: Object.keys(keys as object).length,
-		}));
-	}
-	return summary;
+  const summary: TranslationSummary = {};
+  for (const locale of Object.keys(translations)) {
+    summary[locale] = Object.entries(translations[locale]).map(([sheet, keys]) => ({
+      sheet,
+      count: Object.keys(keys as object).length,
+    }));
+  }
+  return summary;
 }
 
 // ---------------------------------------------------------------------------
@@ -102,19 +102,19 @@ export function getTranslationSummary(translations: TranslationData): Translatio
  * ```
  */
 export function getLocaleDisplayName(
-	locale: string,
-	translations: TranslationData,
-	i18nSheet = 'i18n',
+  locale: string,
+  translations: TranslationData,
+  i18nSheet = 'i18n',
 ): string {
-	const localeData = translations[locale];
-	if (!localeData) return locale;
+  const localeData = translations[locale];
+  if (!localeData) return locale;
 
-	const sheetData = localeData[i18nSheet];
-	if (!sheetData) return locale;
+  const sheetData = localeData[i18nSheet];
+  if (!sheetData) return locale;
 
-	// Keys in the i18n sheet are lowercase locale codes
-	const name = sheetData[locale] ?? sheetData[locale.toLowerCase()];
-	return typeof name === 'string' ? name : locale;
+  // Keys in the i18n sheet are lowercase locale codes
+  const name = sheetData[locale] ?? sheetData[locale.toLowerCase()];
+  return typeof name === 'string' ? name : locale;
 }
 
 // ---------------------------------------------------------------------------
@@ -149,20 +149,20 @@ export function getLocaleDisplayName(
  * ```
  */
 export function mergeSheets(
-	translations: TranslationData,
-	locale: string,
-	sheetNames?: string[],
+  translations: TranslationData,
+  locale: string,
+  sheetNames?: string[],
 ): Record<string, TranslationValue> {
-	const localeData = translations[locale];
-	if (!localeData) return {};
+  const localeData = translations[locale];
+  if (!localeData) return {};
 
-	const sheets = sheetNames ?? Object.keys(localeData);
-	const merged: Record<string, TranslationValue> = {};
-	for (const sheetName of sheets) {
-		const sheetData = localeData[sheetName];
-		if (sheetData) {
-			Object.assign(merged, sheetData);
-		}
-	}
-	return merged;
+  const sheets = sheetNames ?? Object.keys(localeData);
+  const merged: Record<string, TranslationValue> = {};
+  for (const sheetName of sheets) {
+    const sheetData = localeData[sheetName];
+    if (sheetData) {
+      Object.assign(merged, sheetData);
+    }
+  }
+  return merged;
 }
