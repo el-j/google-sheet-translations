@@ -25,7 +25,9 @@ describe('Package exports', () => {
     expect(packageExports.convertToDataJsonFormat).toBe(convertToDataJsonFormat);
     expect(packageExports.convertFromDataJsonFormat).toBe(convertFromDataJsonFormat);
     expect(packageExports.findLocalChanges).toBe(findLocalChanges);
-    expect(packageExports.updateSpreadsheetWithLocalChanges).toBe(updateSpreadsheetWithLocalChanges);
+    expect(packageExports.updateSpreadsheetWithLocalChanges).toBe(
+      updateSpreadsheetWithLocalChanges,
+    );
   });
 
   test('should export all public API symbols', () => {
@@ -98,9 +100,34 @@ describe('Package exports', () => {
       'exportDoc',
       'entriesToSeedKeys',
       'entriesToTranslationData',
+      // provider capabilities and policies
+      'PROVIDER_CAPABILITIES',
+      'EMPTY_PROVIDER_CAPABILITIES',
+      'OPERATION_CAPABILITY_REQUIREMENTS',
+      'createCapabilitySet',
+      'missingCapabilities',
+      'hasRequiredCapabilities',
+      'assertRequiredCapabilities',
+      'assertOperationCapabilities',
+      // concrete Google provider adapters
+      'createGoogleSheetsInputProvider',
+      'createGoogleSheetsOutputProvider',
+      'createGoogleSheetsSyncProvider',
+      'GOOGLE_SHEETS_PROVIDER_CAPABILITIES',
+      // concrete CryptPad provider adapter
+      'createCryptPadCsvInputProvider',
+      'CRYPTPAD_CSV_INPUT_CAPABILITIES',
+      // provider pipeline orchestrator
+      'runProviderPipeline',
+      // provider config schema + legacy mapping
+      'validateProviderRuntimeConfig',
+      'assertValidProviderRuntimeConfig',
+      'mapLegacyGoogleOptionsToProviderConfig',
+      'createProvidersFromRuntimeConfig',
+      'requiresGoogleAuthForRuntimeConfig',
     ];
 
-    expectedKeys.forEach(key => {
+    expectedKeys.forEach((key) => {
       expect(packageExports).toHaveProperty(key);
     });
   });

@@ -1,4 +1,4 @@
-import type { GoogleSpreadsheet } from "google-spreadsheet";
+import type { GoogleSpreadsheet } from 'google-spreadsheet';
 
 /**
  * Converts a 0-based column index to a spreadsheet column letter (A, B, ..., Z, AA, AB, ...)
@@ -7,13 +7,13 @@ import type { GoogleSpreadsheet } from "google-spreadsheet";
  * @returns Spreadsheet column letter (e.g. 0 -> 'A', 26 -> 'AA')
  */
 export function columnIndexToLetter(index: number): string {
-    let result = '';
-    let i = index;
-    do {
-        result = String.fromCharCode(65 + (i % 26)) + result;
-        i = Math.floor(i / 26) - 1;
-    } while (i >= 0);
-    return result;
+  let result = '';
+  let i = index;
+  do {
+    result = String.fromCharCode(65 + (i % 26)) + result;
+    i = Math.floor(i / 26) - 1;
+  } while (i >= 0);
+  return result;
 }
 
 /**
@@ -28,18 +28,18 @@ export function columnIndexToLetter(index: number): string {
  * @returns `","` or `";"` – the argument separator to use in generated formulas.
  */
 export function getFormulaSeparator(doc: GoogleSpreadsheet): string {
-    try {
-        // google-spreadsheet stores the raw Sheets API properties after loadInfo()
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const locale: string = (doc as any)._rawProperties?.locale || '';
-        // English, Japanese, Korean, Chinese, Thai, Indonesian, Malay use comma
-        if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ',';
-    } catch {
-        // Fall through to default
-    }
-    // Default: semicolon (covers German, French, Spanish, Italian, Russian,
-    // Turkish, Polish, and most other locales)
-    return ';';
+  try {
+    // google-spreadsheet stores the raw Sheets API properties after loadInfo()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const locale: string = (doc as any)._rawProperties?.locale || '';
+    // English, Japanese, Korean, Chinese, Thai, Indonesian, Malay use comma
+    if (/^(en|ja|ko|zh|th|id|ms)/i.test(locale)) return ',';
+  } catch {
+    // Fall through to default
+  }
+  // Default: semicolon (covers German, French, Spanish, Italian, Russian,
+  // Turkish, Polish, and most other locales)
+  return ';';
 }
 
 /**
@@ -63,12 +63,12 @@ export function getFormulaSeparator(doc: GoogleSpreadsheet): string {
  * @returns Formula fragment string for language code extraction
  */
 export function langCodeFormula(cellRef: string, sep: string): string {
-    // Strip the region part: LOWER(IFERROR(LEFT(ref, FIND("-",ref)-1), ref))
-    const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
-    // Keep the full lowercased value for Chinese variants
-    const full = `LOWER(${cellRef})`;
-    // IF the code starts with "zh-", keep the full code; otherwise extract the prefix
-    return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
+  // Strip the region part: LOWER(IFERROR(LEFT(ref, FIND("-",ref)-1), ref))
+  const prefix = `LOWER(IFERROR(LEFT(${cellRef}${sep}FIND("-"${sep}${cellRef})-1)${sep}${cellRef}))`;
+  // Keep the full lowercased value for Chinese variants
+  const full = `LOWER(${cellRef})`;
+  // IF the code starts with "zh-", keep the full code; otherwise extract the prefix
+  return `IF(LOWER(LEFT(${cellRef}${sep}3))="zh-"${sep}${full}${sep}${prefix})`;
 }
 
 /**
@@ -80,9 +80,9 @@ export function langCodeFormula(cellRef: string, sep: string): string {
  * @returns `=GOOGLETRANSLATE(INDIRECT("B"&ROW()); langCodeFormula($B$1); langCodeFormula(C$1))`
  */
 export function buildGoogleTranslateFormula(
-    sourceColLetter: string,
-    targetColLetter: string,
-    sep: string
+  sourceColLetter: string,
+  targetColLetter: string,
+  sep: string,
 ): string {
-    return `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColLetter}$1`, sep)})`;
+  return `=GOOGLETRANSLATE(INDIRECT("${sourceColLetter}"&ROW())${sep}${langCodeFormula(`$${sourceColLetter}$1`, sep)}${sep}${langCodeFormula(`${targetColLetter}$1`, sep)})`;
 }

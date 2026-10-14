@@ -252,6 +252,47 @@ When `drive-folder-id` is set the action scans the Drive folder for every
 Google Spreadsheet, fetches and merges all of them, and writes the combined
 translation files.
 
+---
+
+## Mode 3 — Provider runtime config (v3)
+
+You can run the action through the v3 provider runtime using one of:
+
+- `provider-config` (inline JSON)
+- `provider-config-path` (path to JSON file)
+
+These are mutually exclusive.
+
+Example with `provider-config-path`:
+
+```yaml
+- name: Run provider pipeline
+  uses: el-j/google-sheet-translations@v2
+  with:
+    provider-config-path: 'provider.config.json'
+    sheet-titles: 'home,about'
+```
+
+Example `provider.config.json` for CryptPad CSV:
+
+```json
+{
+  "input": {
+    "provider": "cryptpad-csv",
+    "options": {
+      "sources": [
+        {
+          "tableName": "home",
+          "url": "https://cryptpad.fr/.../export.csv"
+        }
+      ]
+    }
+  }
+}
+```
+
+If your provider config references Google output/sync adapters, authentication is required (WIF or service-account key).
+
 ```yaml
 # .github/workflows/drive-translations.yml
 name: Sync Drive Translations

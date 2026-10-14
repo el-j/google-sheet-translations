@@ -10,8 +10,8 @@ import { setTimeout as delay } from 'node:timers/promises';
  * @returns A promise that resolves after the specified delay
  */
 export function wait(seconds: number, reason: string): Promise<void> {
-	console.log('wait', seconds, reason);
-	return delay(seconds * 1000);
+  console.log('wait', seconds, reason);
+  return delay(seconds * 1000);
 }
 
 export default wait;

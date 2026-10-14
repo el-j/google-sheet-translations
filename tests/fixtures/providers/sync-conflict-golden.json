@@ -1,0 +1,36 @@
+{
+  "localChanges": [
+    {
+      "path": "en::home::welcome",
+      "locale": "en",
+      "sheet": "home",
+      "key": "welcome",
+      "type": "update",
+      "before": "Hello",
+      "after": "Hello local"
+    }
+  ],
+  "remoteChanges": [
+    {
+      "path": "en::home::welcome",
+      "locale": "en",
+      "sheet": "home",
+      "key": "welcome",
+      "type": "update",
+      "before": "Hello",
+      "after": "Hello remote"
+    }
+  ],
+  "conflicts": [
+    {
+      "path": "en::home::welcome",
+      "locale": "en",
+      "sheet": "home",
+      "key": "welcome",
+      "baseValue": "Hello",
+      "localValue": "Hello local",
+      "remoteValue": "Hello remote",
+      "reason": "diverged-update"
+    }
+  ]
+}

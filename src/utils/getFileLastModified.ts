@@ -1,4 +1,4 @@
-import fs from "node:fs";
+import fs from 'node:fs';
 
 /**
  * Gets the last modified time of a file
@@ -6,11 +6,11 @@ import fs from "node:fs";
  * @returns The last modified time as a Date object, or null if file doesn't exist
  */
 export function getFileLastModified(filePath: string): Date | null {
-	try {
-		const stats = fs.statSync(filePath);
-		return stats.mtime;
-	} catch (error) {
-		console.warn(`Could not read file stats for "${filePath}":`, error);
-		return null;
-	}
+  try {
+    const stats = fs.statSync(filePath);
+    return stats.mtime;
+  } catch (error) {
+    console.warn(`Could not read file stats for "${filePath}":`, error);
+    return null;
+  }
 }

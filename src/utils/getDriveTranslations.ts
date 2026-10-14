@@ -8,7 +8,11 @@ import type { ScanDriveFolderOptions } from './driveFolderScanner';
 import { scanDriveFolderForSpreadsheets } from './driveFolderScanner';
 import type { DriveImageSyncOptions, DriveImageSyncResult } from './driveImageSync';
 import { syncDriveImages } from './driveImageSync';
-import type { DocManifestEntry, DriveProjectManifest, SpreadsheetManifestEntry } from './driveProjectIndex';
+import type {
+  DocManifestEntry,
+  DriveProjectManifest,
+  SpreadsheetManifestEntry,
+} from './driveProjectIndex';
 import { buildManifest, readManifest, writeManifest } from './driveProjectIndex';
 import type { ScanDriveFolderForDocsOptions } from './driveDocScanner';
 import { scanDriveFolderForDocs } from './driveDocScanner';
@@ -269,7 +273,7 @@ export async function manageDriveTranslations(
   if (driveFolderId && filteredIds.length === 0 && translationOptions.autoCreate !== false) {
     console.log(
       `[manageDriveTranslations] Drive folder "${driveFolderId}" contains no spreadsheets. ` +
-      `Bootstrapping a new spreadsheet…`,
+        `Bootstrapping a new spreadsheet…`,
     );
     const authClient = createAuthClient();
     const bootstrapTitle = translationOptions.spreadsheetTitle ?? 'google-sheet-translations';
@@ -367,11 +371,12 @@ export async function manageDriveTranslations(
 
   // Write project manifest
   let manifest: DriveProjectManifest | undefined;
-  let docIngestResults: Array<{ docName: string; action: 'created' | 'refreshed' | 'skipped' }> | undefined;
+  let docIngestResults:
+    | Array<{ docName: string; action: 'created' | 'refreshed' | 'skipped' }>
+    | undefined;
   const docEntries: DocManifestEntry[] = [];
 
-  const resolvedManifestPath =
-    manifestPath ?? path.join(baseOutputDir, 'i18n-manifest.json');
+  const resolvedManifestPath = manifestPath ?? path.join(baseOutputDir, 'i18n-manifest.json');
 
   // ── Doc ingestion ───────────────────────────────────────────────────────────
   if (driveFolderId && scanForDocs) {
@@ -382,9 +387,7 @@ export async function manageDriveTranslations(
       folderId: driveFolderId,
     };
     const discoveredDocs = await scanDriveFolderForDocs(docScanOptions);
-    console.log(
-      `[manageDriveTranslations] Found ${discoveredDocs.length} doc(s) in Drive folder`,
-    );
+    console.log(`[manageDriveTranslations] Found ${discoveredDocs.length} doc(s) in Drive folder`);
 
     docIngestResults = [];
 
@@ -398,9 +401,7 @@ export async function manageDriveTranslations(
       }
 
       // Find the previous manifest entry for this doc (if any)
-      const existingEntry = previousManifest?.docs?.find(
-        (d) => d.id === docFile.id,
-      );
+      const existingEntry = previousManifest?.docs?.find((d) => d.id === docFile.id);
 
       const ingesterOptions: DocIngesterOptions = {
         targetLocales: docTargetLocales,
@@ -415,10 +416,7 @@ export async function manageDriveTranslations(
         docEntries.push(result.entry);
         docIngestResults.push({ docName: docFile.name, action: result.action });
       } catch (err) {
-        console.error(
-          `[manageDriveTranslations] Failed to ingest doc "${docFile.name}":`,
-          err,
-        );
+        console.error(`[manageDriveTranslations] Failed to ingest doc "${docFile.name}":`, err);
         // Keep the previous entry intact so we don't lose the linkedSpreadsheetId
         if (existingEntry) docEntries.push(existingEntry);
       }

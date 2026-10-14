@@ -22,7 +22,7 @@ describe('isDataJsonNewer', () => {
     (getFileLastModified as Mock).mockReturnValue(null);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(getFileLastModified).toHaveBeenCalledWith('/path/to/languageData.json');
     expect(result).toBe(false);
   });
@@ -31,12 +31,12 @@ describe('isDataJsonNewer', () => {
     // Mock getFileLastModified to return a date for languageData.json
     const dataJsonDate = new Date('2023-01-02T12:00:00Z');
     (getFileLastModified as Mock).mockReturnValue(dataJsonDate);
-    
+
     // Mock readdirSync to return an empty array (no translation files)
     (fs.readdirSync as Mock).mockReturnValue([]);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(fs.readdirSync).toHaveBeenCalledWith('/path/to/translations');
     expect(result).toBe(true);
   });
@@ -46,7 +46,7 @@ describe('isDataJsonNewer', () => {
     const dataJsonDate = new Date('2023-01-10T12:00:00Z'); // Newer date
     const translationDate1 = new Date('2023-01-01T12:00:00Z');
     const translationDate2 = new Date('2023-01-05T12:00:00Z');
-    
+
     // Setup mocks
     (getFileLastModified as Mock).mockImplementation((filePath) => {
       if (filePath === '/path/to/languageData.json') return dataJsonDate;
@@ -54,11 +54,11 @@ describe('isDataJsonNewer', () => {
       if (filePath === '/path/to/translations/fr.json') return translationDate2;
       return null;
     });
-    
+
     (fs.readdirSync as Mock).mockReturnValue(['en.json', 'fr.json']);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(result).toBe(true);
   });
 
@@ -67,7 +67,7 @@ describe('isDataJsonNewer', () => {
     const dataJsonDate = new Date('2023-01-05T12:00:00Z');
     const translationDate1 = new Date('2023-01-01T12:00:00Z');
     const translationDate2 = new Date('2023-01-10T12:00:00Z'); // Newer than languageData.json
-    
+
     // Setup mocks
     (getFileLastModified as Mock).mockImplementation((filePath) => {
       if (filePath === '/path/to/languageData.json') return dataJsonDate;
@@ -75,11 +75,11 @@ describe('isDataJsonNewer', () => {
       if (filePath === '/path/to/translations/fr.json') return translationDate2;
       return null;
     });
-    
+
     (fs.readdirSync as Mock).mockReturnValue(['en.json', 'fr.json']);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(result).toBe(false);
   });
 
@@ -104,14 +104,14 @@ describe('isDataJsonNewer', () => {
   test('should return false and log warning if a non-ENOENT error occurs', () => {
     // Mock getFileLastModified to return a date for languageData.json
     (getFileLastModified as Mock).mockReturnValue(new Date());
-    
+
     // Mock readdirSync to throw a generic (non-ENOENT) error
     (fs.readdirSync as Mock).mockImplementation(() => {
       throw new Error('Permission denied');
     });
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBe(false);
   });
@@ -120,19 +120,19 @@ describe('isDataJsonNewer', () => {
     // Mock dates for comparison
     const dataJsonDate = new Date('2023-01-10T12:00:00Z');
     const translationDate = new Date('2023-01-01T12:00:00Z');
-    
+
     // Setup mocks
     (getFileLastModified as Mock).mockImplementation((filePath) => {
       if (filePath === '/path/to/languageData.json') return dataJsonDate;
       if (filePath.endsWith('.json')) return translationDate;
       return null;
     });
-    
+
     // Return a mix of JSON and non-JSON files
     (fs.readdirSync as Mock).mockReturnValue(['en.json', 'README.md', '.gitignore']);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     // Should only check the JSON file
     expect(getFileLastModified).toHaveBeenCalledWith('/path/to/translations/en.json');
     expect(getFileLastModified).not.toHaveBeenCalledWith('/path/to/translations/README.md');
@@ -156,7 +156,7 @@ describe('isDataJsonNewer', () => {
     (getFileLastModified as Mock).mockReturnValue(null);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(getFileLastModified).toHaveBeenCalledWith('/path/to/languageData.json');
     expect(result).toBe(false);
   });
@@ -165,12 +165,12 @@ describe('isDataJsonNewer', () => {
     // Mock getFileLastModified to return a date for languageData.json
     const dataJsonDate = new Date('2023-01-02T12:00:00Z');
     (getFileLastModified as Mock).mockReturnValue(dataJsonDate);
-    
+
     // Mock readdirSync to return an empty array (no translation files)
     (fs.readdirSync as Mock).mockReturnValue([]);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(fs.readdirSync).toHaveBeenCalledWith('/path/to/translations');
     expect(result).toBe(true);
   });
@@ -180,7 +180,7 @@ describe('isDataJsonNewer', () => {
     const dataJsonDate = new Date('2023-01-10T12:00:00Z'); // Newer date
     const translationDate1 = new Date('2023-01-01T12:00:00Z');
     const translationDate2 = new Date('2023-01-05T12:00:00Z');
-    
+
     // Setup mocks
     (getFileLastModified as Mock).mockImplementation((filePath) => {
       if (filePath === '/path/to/languageData.json') return dataJsonDate;
@@ -188,11 +188,11 @@ describe('isDataJsonNewer', () => {
       if (filePath === '/path/to/translations/fr.json') return translationDate2;
       return null;
     });
-    
+
     (fs.readdirSync as Mock).mockReturnValue(['en.json', 'fr.json']);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(result).toBe(true);
   });
 
@@ -201,7 +201,7 @@ describe('isDataJsonNewer', () => {
     const dataJsonDate = new Date('2023-01-05T12:00:00Z');
     const translationDate1 = new Date('2023-01-01T12:00:00Z');
     const translationDate2 = new Date('2023-01-10T12:00:00Z'); // Newer than languageData.json
-    
+
     // Setup mocks
     (getFileLastModified as Mock).mockImplementation((filePath) => {
       if (filePath === '/path/to/languageData.json') return dataJsonDate;
@@ -209,11 +209,11 @@ describe('isDataJsonNewer', () => {
       if (filePath === '/path/to/translations/fr.json') return translationDate2;
       return null;
     });
-    
+
     (fs.readdirSync as Mock).mockReturnValue(['en.json', 'fr.json']);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(result).toBe(false);
   });
 
@@ -237,14 +237,14 @@ describe('isDataJsonNewer', () => {
   test('should return false and log warning if a non-ENOENT error occurs', () => {
     // Mock getFileLastModified to return a date for languageData.json
     (getFileLastModified as Mock).mockReturnValue(new Date());
-    
+
     // Mock readdirSync to throw a generic (non-ENOENT) error
     (fs.readdirSync as Mock).mockImplementation(() => {
       throw new Error('Permission denied');
     });
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     expect(console.warn).toHaveBeenCalled();
     expect(result).toBe(false);
   });
@@ -253,19 +253,19 @@ describe('isDataJsonNewer', () => {
     // Mock dates for comparison
     const dataJsonDate = new Date('2023-01-10T12:00:00Z');
     const translationDate = new Date('2023-01-01T12:00:00Z');
-    
+
     // Setup mocks
     (getFileLastModified as Mock).mockImplementation((filePath) => {
       if (filePath === '/path/to/languageData.json') return dataJsonDate;
       if (filePath.endsWith('.json')) return translationDate;
       return null;
     });
-    
+
     // Return a mix of JSON and non-JSON files
     (fs.readdirSync as Mock).mockReturnValue(['en.json', 'README.md', '.gitignore']);
 
     const result = isDataJsonNewer('/path/to/languageData.json', '/path/to/translations');
-    
+
     // Should only check the JSON file
     expect(getFileLastModified).toHaveBeenCalledWith('/path/to/translations/en.json');
     expect(getFileLastModified).not.toHaveBeenCalledWith('/path/to/translations/README.md');

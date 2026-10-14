@@ -1,0 +1,833 @@
+// @ts-nocheck
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { CryptPadClient } from '../../../src/providers/cryptpad/client';
+import { CryptPadDriveClient } from '../../../src/providers/cryptpad/driveClient';
+import * as netfluxModule from '../../../src/providers/cryptpad/netflux';
+
+describe('CryptPadClient direct methods', () => {
+  it('writeSheetRows computes cell coordinates and calls sendCellUpdates', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: {
+        common: {
+          cells: { A1: 'key', B1: 'en', A2: 'btn.save', B2: 'Old Save' },
+          rows: [{ key: 'btn.save', en: 'Old Save' }],
+        },
+      },
+      sheetNames: ['common'],
+      sheetIds: { common: '8200316732097412_745' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    const sendUpdatesSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    // 1. Without override: does not overwrite existing 'Old Save'
+    const countNoOverride = await client.writeSheetRows(
+      'common',
+      [
+        { key: 'btn.save', en: 'New Save' },
+        { key: 'btn.cancel', en: 'Cancel' },
+      ],
+      { override: false },
+    );
+
+    expect(sendUpdatesSpy).toHaveBeenCalledTimes(1);
+    expect(countNoOverride).toBeGreaterThanOrEqual(1);
+
+    // 2. With override: overwrites 'btn.save'
+    sendUpdatesSpy.mockClear();
+    const countWithOverride = await client.writeSheetRows(
+      'common',
+      [{ key: 'btn.save', en: 'New Save' }],
+      { override: true },
+    );
+
+    expect(sendUpdatesSpy).toHaveBeenCalledTimes(1);
+    expect(countWithOverride).toBeGreaterThanOrEqual(1);
+
+    // 3. Empty rows: returns 0 without calling sendCellUpdates
+    sendUpdatesSpy.mockClear();
+    const emptyCount = await client.writeSheetRows('common', []);
+    expect(emptyCount).toBe(0);
+    expect(sendUpdatesSpy).not.toHaveBeenCalled();
+  });
+
+  it('fetchSheetRows returns rows for specific sheet or default', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [{ key: 'def', en: 'Default' }],
+      sheets: {
+        common: { cells: {}, rows: [{ key: 'save', en: 'Save' }] },
+        auth: { cells: {}, rows: [{ key: 'login', en: 'Login' }] },
+      },
+      sheetNames: ['common', 'auth'],
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const commonRows = await client.fetchSheetRows('common');
+    expect(commonRows).toEqual([{ key: 'save', en: 'Save' }]);
+
+    const fallbackRows = await client.fetchSheetRows('nonexistent');
+    expect(fallbackRows).toEqual([{ key: 'def', en: 'Default' }]);
+  });
+
+  it('sendCellUpdates auto-initializes RT channel if missing (headless, no browser required)', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' }, // no rtChannelId
+    });
+
+    // initializeRtChannel should be called and should return a new channel ID
+    const initSpy = vi
+      .spyOn(client, 'initializeRtChannel')
+      .mockResolvedValue('abcdef1234567890abcdef1234567890');
+
+    // broadcastChannelMessage will be called with the new RT channel
+    vi.spyOn(netfluxModule, 'broadcastChannelMessage').mockResolvedValue(undefined);
+
+    await client.sendCellUpdates([{ sheet: 'common', col: 'A', row: 1, value: 'test' }]);
+
+    expect(initSpy).toHaveBeenCalledOnce();
+  });
+
+  it('uses the progress callback without emitting console output when auto-initializing a missing RT channel', async () => {
+    const onProgress = vi.fn();
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+      onProgress,
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const initSpy = vi
+      .spyOn(client, 'initializeRtChannel')
+      .mockResolvedValue('abcdef1234567890abcdef1234567890');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+    await client.sendCellUpdates([{ sheet: 'common', col: 'A', row: 1, value: 'test' }]);
+
+    expect(initSpy).toHaveBeenCalledOnce();
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    expect(onProgress).toHaveBeenCalledWith(
+      'No OnlyOffice RT channel found. Initializing headlessly (no browser required)...',
+    );
+    expect(onProgress).toHaveBeenCalledWith(
+      'RT channel initialized: abcdef1234567890abcdef1234567890',
+    );
+    expect(logSpy).not.toHaveBeenCalled();
+    logSpy.mockRestore();
+  });
+
+  it('initializeRtChannel generates 32-hex channel and broadcasts metadata patch envelope', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+
+    const channelId = await client.initializeRtChannel();
+    expect(channelId).toHaveLength(32);
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+
+    const broadcastCall = broadcastSpy.mock.calls[0];
+    const envelope = JSON.parse(broadcastCall[3]);
+    expect(envelope[0]).toBe(2);
+    const innerJson = JSON.parse(envelope[1][0][0][2]);
+    expect(innerJson.content.channel).toBe(channelId);
+  });
+
+  it('createSheet broadcasts a real Sheet_Add record to the existing RT channel and returns the new sheetId', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: { common: { cells: {}, rows: [] } },
+      sheetNames: ['common'],
+      sheetIds: { common: 'existing-id' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt-chan-1' },
+    });
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+
+    const newSheetId = await client.createSheet('checkout');
+
+    expect(typeof newSheetId).toBe('string');
+    expect(newSheetId).not.toBe('existing-id');
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    const [wsUrl, channel, , payload] = broadcastSpy.mock.calls[0];
+    expect(wsUrl).toBe('wss://cryptpad.fr/cryptpad_websocket');
+    expect(channel).toBe('rt-chan-1'); // broadcasts to the existing RT channel, not the metadata channel
+
+    const parsed = JSON.parse(payload);
+    expect(parsed.type).toBe('saveChanges');
+    expect(parsed.changes).toHaveLength(2); // txOpen + the sheet-add record
+  });
+
+  it('createSheet auto-initializes the RT channel first when the pad has never been opened by a real client', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' }, // no rtChannelId
+    });
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    const initSpy = vi
+      .spyOn(client, 'initializeRtChannel')
+      .mockResolvedValue('abcdef1234567890abcdef1234567890');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+
+    await client.createSheet('common');
+
+    expect(initSpy).toHaveBeenCalledOnce();
+    const [, channel] = broadcastSpy.mock.calls[0];
+    expect(channel).toBe('abcdef1234567890abcdef1234567890');
+  });
+
+  it('fetchSheetData retrieves metadata and RT channel changes', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+
+    // 1. Metadata returns rtChannel
+    const metaMessage = JSON.stringify([
+      1,
+      [[0, 0, JSON.stringify({ content: { channel: 'rt-chan-123' } })]],
+    ]);
+
+    // 2. RT channel returns cell update
+    const rtPayload = JSON.stringify({
+      changes: [
+        {
+          change: `asc_1;${Buffer.from(
+            Buffer.concat([
+              Buffer.from([0x08, 4, 0, 0, 0]),
+              Buffer.from('A1', 'utf16le'),
+              Buffer.from([0x08, 6, 0, 0, 0]),
+              Buffer.from('var', 'utf16le'),
+            ]),
+          ).toString('base64')}`,
+        },
+      ],
+    });
+
+    vi.spyOn(netfluxModule, 'fetchChannelHistory').mockImplementation(async (_url, channelHex) => {
+      if (channelHex === 'rt-chan-123') {
+        return [rtPayload];
+      }
+      return [metaMessage];
+    });
+
+    const result = await client.fetchSheetData();
+    expect(result.url).toBe('https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890');
+    expect(result.metadata.rtChannelId).toBe('rt-chan-123');
+  });
+
+  it('fetchSheetData returns empty cells when no RT channel exists in metadata', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    vi.spyOn(netfluxModule, 'fetchChannelHistory').mockResolvedValue(['{}']);
+
+    const result = await client.fetchSheetData();
+    expect(result.cells).toEqual({});
+    expect(result.metadata.rtChannelId).toBeUndefined();
+  });
+
+  it('detects var and key columns from first incoming row when sheet is empty', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const createSheetSpy = vi.spyOn(client, 'createSheet').mockResolvedValue('new-sheet-id');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    // Incoming row with 'var'
+    await client.writeSheetRows('empty', [{ var: 'intro.title', en: 'Hi' }]);
+    expect(createSheetSpy).toHaveBeenCalledWith('empty', 0, undefined);
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+
+    // Incoming row with 'key'
+    await client.writeSheetRows('empty', [{ key: 'intro.title', en: 'Hi' }]);
+    expect(sendSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('writeSheetRows skips rows without key and ignores undefined values', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {
+        common: {
+          cells: { A1: 'var', B1: 'en', A2: 'existing.key', B2: 'Existing Value' },
+          rows: [{ var: 'existing.key', en: 'Existing Value' }],
+        },
+      },
+      sheetNames: ['common'],
+      sheetIds: { common: '8200316732097412_745' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [
+      { en: 'no key property' } as any,
+      { var: 'new.key', en: undefined as any, es: 'Nuevo' },
+    ]);
+
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const updates = sendSpy.mock.calls[0][0];
+    // Should only have created entries for header + new.key + es (not for undefined en)
+    expect(updates.some((u) => u.value === 'Nuevo')).toBe(true);
+  });
+
+  it('writeSheetRows creates a new tab (via createSheet) when the target sheet has no matching tab, mirroring Google Sheets addSheet-on-missing-sheet', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {
+        common: { cells: {}, rows: [] },
+        auth: { cells: {}, rows: [] },
+      },
+      sheetNames: ['common', 'auth'],
+      sheetIds: { common: '8200316732097412_745', auth: '8200316732097412_746' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1' },
+    });
+
+    const createSheetSpy = vi
+      .spyOn(client, 'createSheet')
+      .mockResolvedValue('8200316732097412_999');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await client.writeSheetRows('checkout', [{ var: 'new.key', en: 'New' }]);
+
+    // Inserted after the 2 existing tabs, matching Google's "just append" behavior.
+    expect(createSheetSpy).toHaveBeenCalledWith('checkout', 2, undefined);
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const updates = sendSpy.mock.calls[0][0];
+    expect(updates.every((u) => u.sheetId === '8200316732097412_999')).toBe(true);
+  });
+
+  it('linkHeadersToI18nSheet defaults to false — new sheets get literal headers unless opted in (issue #165)', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      sheetIds: {},
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    vi.spyOn(client, 'createSheet').mockResolvedValue('new-sheet-id');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [{ key: 'btn.save', en: 'Save' }]);
+
+    // No opt-in -> exactly one broadcast (data + literal header), no i18n sheet touched.
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const updates = sendSpy.mock.calls[0][0];
+    expect(updates.filter((u) => u.row === 1).every((u) => u.value !== undefined)).toBe(true);
+    expect(updates.some((u) => u.sheet === 'i18n')).toBe(false);
+  });
+
+  it("linkHeadersToI18nSheet=true creates the i18n sheet and links a brand-new sheet's header to it (issue #165)", async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {},
+      sheetNames: [],
+      sheetIds: {},
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    // Only the target sheet ("common") goes through the public createSheet — the i18n
+    // sheet is created via the internal broadcastSheetAdd (netflux directly) to avoid an
+    // extra fetchSheetData round-trip per push (see broadcastSheetAdd's doc comment).
+    const createSheetSpy = vi.spyOn(client, 'createSheet').mockResolvedValueOnce('common-sheet-id');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [{ key: 'btn.save', en: 'Save' }], {
+      linkHeadersToI18nSheet: true,
+    });
+
+    expect(createSheetSpy).toHaveBeenCalledTimes(1);
+    expect(createSheetSpy).toHaveBeenCalledWith('common', 0, undefined);
+
+    // The i18n Sheet_Add went out directly over netflux (rtChannel 'rt1', already known —
+    // no extra fetchSheetData), not via the public createSheet.
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    const [, rtChannelArg, , i18nPayload] = broadcastSpy.mock.calls[0];
+    expect(rtChannelArg).toBe('rt1');
+    const parsedPayload = JSON.parse(i18nPayload as string);
+    const addRecordChange = JSON.parse(parsedPayload.changes[1].change);
+    const addBuf = Buffer.from(addRecordChange.split(';')[1], 'base64');
+    expect(addBuf.readUInt32BE(4)).toBe(0x012b0100); // historyitem_Workbook_SheetAdd
+    // Extract the generated i18n sheetId the same way parseOnlyOfficeChanges would.
+    const strings: string[] = [];
+    for (let j = 0; j < addBuf.length - 4; j++) {
+      if (addBuf[j] === 0x08) {
+        const len = addBuf.readUInt32LE(j + 1);
+        if (len > 0 && j + 5 + len <= addBuf.length) {
+          strings.push(addBuf.subarray(j + 5, j + 5 + len).toString('utf16le'));
+        }
+      }
+    }
+    expect(strings[0]).toBe('i18n');
+    const i18nSheetId = strings[1];
+
+    // 1) literal header written to the newly-created i18n sheet
+    // 2) linked (formula) header written to the newly-created "common" sheet
+    // 3) data row written to "common"
+    expect(sendSpy).toHaveBeenCalledTimes(3);
+    // Every sub-step reuses the already-known rtChannel — no redundant re-fetch.
+    expect(sendSpy.mock.calls.every((c) => c[2] === 'rt1')).toBe(true);
+
+    const i18nHeaderCall = sendSpy.mock.calls.find((c) =>
+      c[0].some((u) => u.sheetId === i18nSheetId),
+    );
+    expect(i18nHeaderCall![0]).toEqual([
+      { sheet: 'i18n', sheetId: i18nSheetId, col: 'A', row: 1, value: 'key' },
+      { sheet: 'i18n', sheetId: i18nSheetId, col: 'B', row: 1, value: 'en' },
+    ]);
+
+    const linkedHeaderCall = sendSpy.mock.calls.find((c) =>
+      c[0].some((u) => u.sheetId === 'common-sheet-id' && u.row === 1),
+    );
+    expect(linkedHeaderCall![0]).toEqual([
+      { sheet: 'common', sheetId: 'common-sheet-id', col: 'A', row: 1, formula: 'i18n!A1' },
+      { sheet: 'common', sheetId: 'common-sheet-id', col: 'B', row: 1, formula: 'i18n!B1' },
+    ]);
+  });
+
+  it("linkHeadersToI18nSheet=true never rewrites an existing sheet's header on a later push (issue #165)", async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+      cells: {},
+      rows: [],
+      sheets: {
+        common: {
+          cells: { A1: 'key', B1: 'en', A2: 'btn.save', B2: 'Save' },
+          rows: [{ key: 'btn.save', en: 'Save' }],
+        },
+      },
+      sheetNames: ['common'],
+      sheetIds: { common: 'common-sheet-id' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    const createSheetSpy = vi.spyOn(client, 'createSheet');
+    const sendSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    await client.writeSheetRows('common', [{ key: 'btn.cancel', en: 'Cancel' }], {
+      linkHeadersToI18nSheet: true,
+    });
+
+    // Existing sheet -> no sheet creation, no i18n sheet touched. The header row is still
+    // rewritten literally (same pre-existing idempotent behavior), never as a formula.
+    expect(createSheetSpy).not.toHaveBeenCalled();
+    expect(sendSpy).toHaveBeenCalledTimes(1);
+    const updates = sendSpy.mock.calls[0][0];
+    const headerUpdates = updates.filter((u) => u.row === 1);
+    expect(headerUpdates.length).toBeGreaterThan(0);
+    expect(headerUpdates.every((u) => u.formula === undefined)).toBe(true);
+  });
+
+  it('fetchSheetData handles sheets that have no cells in groupedCells', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+    });
+
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    // Channel history returns metadata with RT channel and change for Sheet1 only
+    const metaMessage = JSON.stringify({
+      content: { channel: 'rt-chan-123' },
+    });
+    const rtPayload = JSON.stringify({
+      changes: [{ change: '10;{"Sheet1":[]}' }],
+    });
+
+    vi.spyOn(netfluxModule, 'fetchChannelHistory').mockImplementation(async (_ws, channel) => {
+      if (channel === 'rt-chan-123') return [rtPayload];
+      return [metaMessage];
+    });
+
+    const result = await client.fetchSheetData();
+    expect(result.sheets).toBeDefined();
+  });
+
+  it('renameSheet broadcasts SheetRename record to RT channel', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: { Sheet1: { cells: {}, rows: [] } },
+      sheetNames: ['Sheet1'],
+      sheetIds: { Sheet1: '6' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+    vi.spyOn(client, 'getWebsocketUrl').mockResolvedValue('wss://cryptpad.fr/cryptpad_websocket');
+    const broadcastSpy = vi
+      .spyOn(netfluxModule, 'broadcastChannelMessage')
+      .mockResolvedValue(undefined);
+
+    await client.renameSheet('Sheet1', 'i18n');
+
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    expect(broadcastSpy).toHaveBeenCalledWith(
+      'wss://cryptpad.fr/cryptpad_websocket',
+      'rt1',
+      expect.any(Uint8Array),
+      expect.stringContaining('"saveChanges"'),
+      expect.objectContaining({ signKey: expect.any(Uint8Array) }),
+    );
+  });
+
+  it('writeSheetRows automatically renames fresh empty Sheet1 tab to target sheetName', async () => {
+    const client = new CryptPadClient({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+      url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+      cells: {},
+      rows: [],
+      sheets: { Sheet1: { cells: {}, rows: [] } },
+      sheetNames: ['Sheet1'],
+      sheetIds: { Sheet1: '6' },
+      metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt1' },
+    });
+
+    const renameSpy = vi.spyOn(client, 'broadcastSheetRename').mockResolvedValue(undefined);
+    const createSheetSpy = vi.spyOn(client, 'createSheet');
+    const sendUpdatesSpy = vi.spyOn(client, 'sendCellUpdates').mockResolvedValue(undefined);
+
+    const count = await client.writeSheetRows('i18n', [
+      { key: 'de', en: 'German' },
+      { key: 'en', en: 'English' },
+    ]);
+
+    expect(count).toBeGreaterThan(0);
+    // Sheet1 should be renamed to i18n
+    expect(renameSpy).toHaveBeenCalledWith('6', 'Sheet1', 'i18n', 'rt1', undefined);
+    // No new sheet should have been created with createSheet
+    expect(createSheetSpy).not.toHaveBeenCalled();
+    // Cells should be written directly to the renamed sheetId '6'
+    expect(sendUpdatesSpy).toHaveBeenCalledTimes(1);
+    const updates = sendUpdatesSpy.mock.calls[0][0];
+    expect(updates.every((u) => u.sheetId === '6')).toBe(true);
+  });
+});
+
+describe('CryptPadDriveClient direct methods', () => {
+  it('parses array format and object format in Netflux history', async () => {
+    const client = new CryptPadDriveClient({
+      url: 'https://cryptpad.fr/drive/#/2/drive/edit/seed/p/',
+      password: 'test',
+    });
+
+    vi.spyOn(netfluxModule, 'resolveCryptPadWebsocketUrl').mockResolvedValue(
+      'wss://cryptpad.fr/cryptpad_websocket',
+    );
+    vi.spyOn(netfluxModule, 'fetchChannelHistory').mockResolvedValue([
+      // Object format
+      JSON.stringify({
+        files: {
+          f1: {
+            title: 'Sheet One',
+            href: '/sheet/#/2/sheet/edit/s1/p/',
+            type: 'sheet',
+          },
+        },
+      }),
+      // Array format
+      JSON.stringify([
+        {
+          id: 'f2',
+          title: 'Sheet Two',
+          url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/s2/p/',
+          type: 'sheet',
+        },
+      ]),
+    ]);
+
+    const items = await client.listDriveItems();
+    expect(items).toHaveLength(2);
+    expect(items.map((i) => i.title)).toEqual(['Sheet One', 'Sheet Two']);
+
+    const sheets = await client.listSheets();
+    expect(sheets).toHaveLength(2);
+  });
+
+  it('throws when url is missing or invalid in CryptPadDriveClient', () => {
+    expect(() => new CryptPadDriveClient({} as any)).toThrow(
+      'CryptPadDriveClient requires a valid "url" option.',
+    );
+  });
+
+  it('throws when url is missing or password is missing for password-protected pad in CryptPadClient', () => {
+    expect(() => new CryptPadClient({} as any)).toThrow(
+      'CryptPadClient requires a valid "url" option.',
+    );
+
+    expect(
+      () =>
+        new CryptPadClient({
+          url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed/p/',
+          password: '',
+        }),
+    ).toThrow('is password protected, but no password was provided');
+  });
+
+  describe('writeSheetRows row positioning & override behavior', () => {
+    it('writes rows sequentially from row 2 on override: true and clears orphan rows', async () => {
+      const client = new CryptPadClient({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+      });
+
+      // Existing sheet has header + 4 rows (rows 2..5)
+      vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+        cells: {
+          A1: 'key',
+          B1: 'en',
+          A2: 'old_key_1',
+          B2: 'val1',
+          A3: 'old_key_2',
+          B3: 'val2',
+          A4: 'old_key_3',
+          B4: 'val3',
+          A5: 'old_key_4',
+          B5: 'val4',
+        },
+        rows: [
+          { key: 'old_key_1', en: 'val1' },
+          { key: 'old_key_2', en: 'val2' },
+          { key: 'old_key_3', en: 'val3' },
+          { key: 'old_key_4', en: 'val4' },
+        ],
+        sheets: {
+          common: {
+            cells: {
+              A1: 'key',
+              B1: 'en',
+              A2: 'old_key_1',
+              B2: 'val1',
+              A3: 'old_key_2',
+              B3: 'val2',
+              A4: 'old_key_3',
+              B4: 'val3',
+              A5: 'old_key_4',
+              B5: 'val4',
+            },
+            rows: [
+              { key: 'old_key_1', en: 'val1' },
+              { key: 'old_key_2', en: 'val2' },
+              { key: 'old_key_3', en: 'val3' },
+              { key: 'old_key_4', en: 'val4' },
+            ],
+          },
+        },
+        sheetNames: ['common'],
+        sheetIds: { common: '6' },
+        metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt-chan-1' },
+      });
+
+      let sentUpdates: any[] = [];
+      vi.spyOn(client, 'sendCellUpdates').mockImplementation(async (updates) => {
+        sentUpdates = updates;
+      });
+
+      // Incoming: only 2 rows in a new order
+      const incomingRows = [
+        { key: 'new_first', en: 'First' },
+        { key: 'new_second', en: 'Second' },
+      ];
+
+      await client.writeSheetRows('common', incomingRows, { override: true });
+
+      // Headers (A1, B1)
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 1)?.value).toBe('key');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 1)?.value).toBe('en');
+
+      // Row 2: new_first
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 2)?.value).toBe('new_first');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 2)?.value).toBe('First');
+
+      // Row 3: new_second
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 3)?.value).toBe('new_second');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 3)?.value).toBe('Second');
+
+      // Orphan rows 4 and 5 must be cleared (value: '')
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 4)?.value).toBe('');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 4)?.value).toBe('');
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 5)?.value).toBe('');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 5)?.value).toBe('');
+    });
+
+    it('maps existing keys to true physical row numbers on override: false without gap-shifting', async () => {
+      const client = new CryptPadClient({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890/',
+      });
+
+      // Sheet has a gap: Row 2, Row 3, but row 4 was cleared/deleted, Row 5 has key_c
+      vi.spyOn(client, 'fetchSheetData').mockResolvedValue({
+        url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/seed1234567890',
+        cells: {
+          A1: 'key',
+          B1: 'en',
+          A2: 'key_a',
+          B2: 'val_a',
+          A3: 'key_b',
+          B3: '',
+          A5: 'key_c',
+          B5: '',
+        },
+        rows: [
+          { key: 'key_a', en: 'val_a' },
+          { key: 'key_b', en: '' },
+          { key: 'key_c', en: '' },
+        ],
+        sheets: {
+          common: {
+            cells: {
+              A1: 'key',
+              B1: 'en',
+              A2: 'key_a',
+              B2: 'val_a',
+              A3: 'key_b',
+              B3: '',
+              A5: 'key_c',
+              B5: '',
+            },
+            rows: [
+              { key: 'key_a', en: 'val_a' },
+              { key: 'key_b', en: '' },
+              { key: 'key_c', en: '' },
+            ],
+          },
+        },
+        sheetNames: ['common'],
+        sheetIds: { common: '6' },
+        metadata: { app: 'sheet', mode: 'edit', channelId: 'c1', rtChannelId: 'rt-chan-1' },
+      });
+
+      let sentUpdates: any[] = [];
+      vi.spyOn(client, 'sendCellUpdates').mockImplementation(async (updates) => {
+        sentUpdates = updates;
+      });
+
+      const incomingRows = [
+        { key: 'key_b', en: 'filled_b' },
+        { key: 'key_c', en: 'filled_c' },
+        { key: 'key_new', en: 'val_new' },
+      ];
+
+      await client.writeSheetRows('common', incomingRows, { override: false });
+
+      // key_b was at physical row 3 -> written to row 3
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 3)?.value).toBe('filled_b');
+
+      // key_c was at physical row 5 -> MUST be written to row 5 (NOT shifted to row 4!)
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 5)?.value).toBe('filled_c');
+
+      // key_new is appended after max physical row (max was 5) -> row 6
+      expect(sentUpdates.find((u) => u.col === 'A' && u.row === 6)?.value).toBe('key_new');
+      expect(sentUpdates.find((u) => u.col === 'B' && u.row === 6)?.value).toBe('val_new');
+    });
+  });
+});

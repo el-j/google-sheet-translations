@@ -1,7 +1,4 @@
-import {
-  scanDriveFolderForDocs,
-  inferLocaleFromDocName,
-} from '../../src/utils/driveDocScanner';
+import { scanDriveFolderForDocs, inferLocaleFromDocName } from '../../src/utils/driveDocScanner';
 
 vi.mock('google-auth-library', () => ({
   GoogleAuth: vi.fn().mockImplementation(function (this: any) {
@@ -203,9 +200,7 @@ describe('scanDriveFolderForDocs', () => {
   });
 
   it('sets sourceLocale to undefined when filename has no locale suffix', async () => {
-    const files = [
-      { id: 'doc1', name: 'general-content', mimeType: DOC_MIME },
-    ];
+    const files = [{ id: 'doc1', name: 'general-content', mimeType: DOC_MIME }];
 
     mockFetch
       .mockResolvedValueOnce(mockOkResponse(files))
@@ -222,9 +217,9 @@ describe('scanDriveFolderForDocs', () => {
     delete process.env.GOOGLE_CLIENT_EMAIL;
     delete process.env.GOOGLE_PRIVATE_KEY;
 
-    await expect(
-      scanDriveFolderForDocs({ folderId: 'root-id' }),
-    ).rejects.toThrow('Google Drive credentials required');
+    await expect(scanDriveFolderForDocs({ folderId: 'root-id' })).rejects.toThrow(
+      'Google Drive credentials required',
+    );
 
     process.env.GOOGLE_CLIENT_EMAIL = origEmail;
     process.env.GOOGLE_PRIVATE_KEY = origKey;
@@ -237,9 +232,9 @@ describe('scanDriveFolderForDocs', () => {
       text: async () => 'Forbidden',
     });
 
-    await expect(
-      scanDriveFolderForDocs({ folderId: 'root-id', credentials }),
-    ).rejects.toThrow('Drive API error 403');
+    await expect(scanDriveFolderForDocs({ folderId: 'root-id', credentials })).rejects.toThrow(
+      'Drive API error 403',
+    );
   });
 
   it('scans deeply nested subfolders and constructs full folderPath', async () => {

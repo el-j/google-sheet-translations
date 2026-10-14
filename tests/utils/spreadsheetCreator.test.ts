@@ -27,14 +27,20 @@ describe('createSpreadsheet', () => {
   const mockDoc = {
     loadInfo: vi.fn().mockResolvedValue(undefined),
     sheetsByTitle: {
-      '__welcome__': mockWelcomeSheet,
-      'i18n': mockI18nSheet,
+      __welcome__: mockWelcomeSheet,
+      i18n: mockI18nSheet,
     },
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class { constructor() { return mockDoc as any; } } as any);
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(
+      class {
+        constructor() {
+          return mockDoc as any;
+        }
+      } as any,
+    );
     vi.spyOn(console, 'log').mockImplementation(() => {});
     vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
@@ -66,7 +72,7 @@ describe('createSpreadsheet', () => {
     await createSpreadsheet(mockAuthClient as any, {
       sourceLocale: 'en',
       targetLocales: ['de', 'fr'],
-      seedKeys: { 'hello': 'Hello' },
+      seedKeys: { hello: 'Hello' },
     });
     expect(mockI18nSheet.setHeaderRow).toHaveBeenCalledWith(['key', 'en', 'de', 'fr']);
     expect(mockI18nSheet.addRows).toHaveBeenCalledWith(
@@ -89,14 +95,16 @@ describe('createSpreadsheet', () => {
   });
 
   test('skips welcome and i18n population when those sheets are missing', async () => {
-    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class {
-      constructor() {
-        return {
-          loadInfo: vi.fn().mockResolvedValue(undefined),
-          sheetsByTitle: {},
-        } as any;
-      }
-    } as any);
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(
+      class {
+        constructor() {
+          return {
+            loadInfo: vi.fn().mockResolvedValue(undefined),
+            sheetsByTitle: {},
+          } as any;
+        }
+      } as any,
+    );
 
     await createSpreadsheet(mockAuthClient as any, {
       seedKeys: { hello: 'Hello' },
@@ -111,7 +119,7 @@ describe('createSpreadsheet', () => {
     const throwingDoc = {
       loadInfo: vi.fn().mockResolvedValue(undefined),
       sheetsByTitle: {
-        '__welcome__': mockWelcomeSheet,
+        __welcome__: mockWelcomeSheet,
         i18n: mockI18nSheet,
       },
     };
@@ -122,7 +130,13 @@ describe('createSpreadsheet', () => {
       },
     });
 
-    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class { constructor() { return throwingDoc as any; } } as any);
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(
+      class {
+        constructor() {
+          return throwingDoc as any;
+        }
+      } as any,
+    );
 
     await createSpreadsheet(mockAuthClient as any, {
       sourceLocale: 'en',
@@ -138,13 +152,19 @@ describe('createSpreadsheet', () => {
     const englishLocaleDoc = {
       loadInfo: vi.fn().mockResolvedValue(undefined),
       sheetsByTitle: {
-        '__welcome__': mockWelcomeSheet,
+        __welcome__: mockWelcomeSheet,
         i18n: mockI18nSheet,
       },
       _rawProperties: { locale: 'en_US' },
     };
 
-    (GoogleSpreadsheet as unknown as Mock).mockImplementation(class { constructor() { return englishLocaleDoc as any; } } as any);
+    (GoogleSpreadsheet as unknown as Mock).mockImplementation(
+      class {
+        constructor() {
+          return englishLocaleDoc as any;
+        }
+      } as any,
+    );
 
     await createSpreadsheet(mockAuthClient as any, {
       sourceLocale: 'en',

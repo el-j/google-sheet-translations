@@ -18,26 +18,82 @@ While Google Sheets is ubiquitous, many teams have requirements that Google Clou
 
 ## CryptPad Integration
 
-[CryptPad](https://cryptpad.org) is an open-source, end-to-end encrypted collaboration suite. In v3, `@el-j/google-sheet-translations` offers a complete triad of CryptPad providers:
+[CryptPad](https://cryptpad.org) is an open-source, end-to-end encrypted collaboration suite. In v3, `@el-j/google-sheet-translations` offers native, zero-browser tooling and a complete suite of CryptPad providers:
 
 ```
-                      ┌────────────────────────┐
-                      │   CryptPad Instance    │
-                      └───────────┬────────────┘
-                                  │
-         ┌────────────────────────┼────────────────────────┐
-         ▼                        ▼                        ▼
-┌──────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│  cryptpad-csv    │    │cryptpad-workspace│    │ cryptpad-assets  │
-│  (Input Provider)│    │(Output & Sync)   │    │  (Asset Sync)    │
-│  • Public CSV    │    │  • 3-Way Diff    │    │  • Remote Images │
-│  • Zero Auth     │    │  • Snapshots     │    │  • Manifest Sync │
-└──────────────────┘    └──────────────────┘    └──────────────────┘
+                            ┌────────────────────────┐
+                            │   CryptPad Instance    │
+                            │ (Zero-Knowledge E2EE)  │
+                            └───────────┬────────────┘
+                                        │
+          ┌─────────────────────────────┼─────────────────────────────┐
+          ▼                             ▼                             ▼
+┌──────────────────┐          ┌──────────────────┐          ┌──────────────────┐
+│  cryptpad-sheet  │          │cryptpad-workspace│          │ cryptpad-assets  │
+│ (Native E2EE API)│          │ (Output & Sync)  │          │  (Asset Sync)    │
+│ • Netflux WS     │          │ • 3-Way Diff     │          │ • Remote Images  │
+│ • Passwords (/p/)│          │ • Snapshots      │          │ • Manifest Sync  │
+│ • OnlyOffice OOXML          │ • Conflict Policy│          │ • Content Hashes │
+└──────────────────┘          └──────────────────┘          └──────────────────┘
 ```
 
-### 1. Ingesting Tables: `cryptpad-csv`
+### 1. Native E2EE Sheets: `cryptpad-sheet` & `CryptPadClient`
 
-The `cryptpad-csv` provider reads spreadsheet exports or raw CSV files without needing any authentication keys.
+Unlike traditional cloud APIs, CryptPad stores **zero plaintext data** on the server. `@el-j/google-sheet-translations` brings native client-side cryptographic tooling directly to Node.js / CI without requiring a browser or bot!
+
+It performs:
+1. **Client-Side Key Derivation**: Uses SHA-512 dual hashing to derive symmetric XSalsa20-Poly1305 encryption keys and Netflux channel identifiers, supporting **password-protected** pads (`.../p/`).
+2. **Netflux Protocol Streaming**: Connects directly via WebSocket (`wss://{host}/cryptpad_websocket`) to the instance, joins the channel, and requests document history from the `historyKeeper` daemon.
+3. **Decryption & Change Processing**: Decrypts incremental OnlyOffice patches in memory via TweetNaCl, reconstructing the spreadsheet cell grid (`A1`, `B1`, `C1`, ...) into canonical translation rows.
+
+#### Configuration in `provider.config.json`
+
+```json
+{
+  "input": {
+    "provider": "cryptpad-sheet",
+    "options": {
+      "url": "https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/",
+      "password": "my-sheet-password",
+      "tableName": "common"
+    }
+  }
+}
+```
+
+Or via environment variables in CI:
+
+```bash
+CRYPTPAD_URL="https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/"
+CRYPTPAD_PASSWORD="my-sheet-password"
+```
+
+#### Standalone `CryptPadClient` Programmatic Usage
+
+You can also use the underlying `CryptPadClient` directly in any backend or automation script (just like the Google API client, but for CryptPad!):
+
+```typescript
+import { CryptPadClient } from '@el-j/google-sheet-translations';
+
+const client = new CryptPadClient({
+  url: 'https://cryptpad.fr/sheet/#/2/sheet/edit/1Mkpyf9OK3nMCVcMVp2WssQ1/p/',
+  password: 'my-sheet-password',
+});
+
+// Fetch raw decrypted cells and metadata
+const { cells, metadata } = await client.fetchSheetData();
+console.log('Decrypted cell A1:', cells['A1']);
+
+// Or fetch structured translation rows: [ { key: '...', en: '...', de: '...' } ]
+const rows = await client.fetchSheetRows();
+console.log('Rows count:', rows.length);
+```
+
+---
+
+### 2. Public CSV Ingestion: `cryptpad-csv`
+
+For unencrypted or public spreadsheet CSV exports where password protection is not required, use `cryptpad-csv`:
 
 #### Configuration in `provider.config.json`
 
@@ -46,9 +102,12 @@ The `cryptpad-csv` provider reads spreadsheet exports or raw CSV files without n
   "input": {
     "provider": "cryptpad-csv",
     "options": {
-      "csvUrl": "https://cryptpad.fr/file/your-sheet-export.csv",
-      "tableName": "common",
-      "timeoutMs": 10000
+      "sources": [
+        {
+          "tableName": "common",
+          "url": "https://cryptpad.fr/file/your-sheet-export.csv"
+        }
+      ]
     }
   }
 }
@@ -63,8 +122,12 @@ import {
 } from '@el-j/google-sheet-translations';
 
 const inputProvider = createCryptPadCsvInputProvider({
-  csvUrl: 'https://cryptpad.example.org/export/translations.csv',
-  tableName: 'common',
+  sources: [
+    {
+      tableName: 'common',
+      url: 'https://cryptpad.example.org/export/translations.csv',
+    },
+  ],
 });
 
 const result = await runProviderPipeline({
