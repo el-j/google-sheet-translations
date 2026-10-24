@@ -83,9 +83,7 @@ describe('readPublicSheet', () => {
       },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
 
@@ -100,9 +98,7 @@ describe('readPublicSheet', () => {
       table: { cols: [{ id: 'A', label: 'key', type: 'string' }], rows: [] },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     const rows = await readPublicSheet('SPREADSHEET_ID', 'empty_sheet');
     expect(rows).toEqual([]);
@@ -120,9 +116,7 @@ describe('readPublicSheet', () => {
       },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
 
@@ -141,9 +135,7 @@ describe('readPublicSheet', () => {
       },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
 
@@ -163,9 +155,7 @@ describe('readPublicSheet', () => {
       },
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     const rows = await readPublicSheet('SPREADSHEET_ID', 'home');
     expect(rows[0]).toEqual({ key: 'hello', en: '' });
@@ -178,9 +168,7 @@ describe('readPublicSheet', () => {
       table: null,
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow('Access denied');
   });
@@ -191,18 +179,14 @@ describe('readPublicSheet', () => {
       table: null,
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).resolves.toEqual([]);
   });
 
   test('throws when the response body is not a valid gviz wrapper', async () => {
     const { trigger } = buildFakeHttp(200, '<html>Login required</html>');
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow(
       /Failed to parse response/,
@@ -214,9 +198,7 @@ describe('readPublicSheet', () => {
       200,
       '/*O_o*/\ngoogle.visualization.Query.setResponse({not-valid-json});',
     );
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow(
       /Failed to parse response/,
@@ -230,9 +212,7 @@ describe('readPublicSheet', () => {
       table: null,
     };
     const { trigger } = buildFakeHttp(200, gvizWrap(payload));
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow('Unknown error');
   });
@@ -251,9 +231,7 @@ describe('readPublicSheet', () => {
 
   test('throws on HTTP 4xx responses', async () => {
     const { trigger } = buildFakeHttp(403, 'Forbidden');
-    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) =>
-      trigger(cb),
-    );
+    (https.get as Mock).mockImplementation((_url: string, cb: (r: unknown) => void) => trigger(cb));
 
     await expect(readPublicSheet('SPREADSHEET_ID', 'home')).rejects.toThrow(/Failed to fetch/);
   });

@@ -1,8 +1,17 @@
 import * as core from '@actions/core';
+import fs from 'node:fs';
 import path from 'node:path';
 import { getSpreadSheetData } from './getSpreadSheetData';
 import { manageDriveTranslations } from './utils/getDriveTranslations';
 import type { SpreadsheetOptions } from './utils/configurationHandler';
+import {
+  assertValidProviderRuntimeConfig,
+  createProvidersFromRuntimeConfig,
+  requiresGoogleAuthForRuntimeConfig,
+  runProviderPipeline,
+} from './providers';
+import { writeLanguageDataFile, writeLocalesFile, writeTranslationFiles } from './utils/fileWriter';
+import { readDataJson } from './utils/readDataJson';
 
 /**
  * Main GitHub Action entrypoint.
@@ -15,115 +24,200 @@ import type { SpreadsheetOptions } from './utils/configurationHandler';
  * @throws {Error} If authentication or required inputs are missing or sync fails.
  */
 export async function run(): Promise<void> {
-	try {
-		// ── Authentication setup ────────────────────────────────────────────────
-		// WIF mode: GOOGLE_APPLICATION_CREDENTIALS is set by google-github-actions/auth
-		// Classic key mode: google-client-email and google-private-key inputs are used
-		const clientEmail = core.getInput('google-client-email');
-		const privateKey = core.getInput('google-private-key');
+  try {
+    const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
 
-		if (clientEmail) {
-			process.env.GOOGLE_CLIENT_EMAIL = clientEmail;
-		}
-		if (privateKey) {
-			process.env.GOOGLE_PRIVATE_KEY = privateKey;
-		}
+    // ── Authentication setup ────────────────────────────────────────────────
+    // WIF mode: GOOGLE_APPLICATION_CREDENTIALS is set by google-github-actions/auth
+    // Classic key mode: google-client-email and google-private-key inputs are used
+    const clientEmail = core.getInput('google-client-email');
+    const privateKey = core.getInput('google-private-key');
 
-		// Validate that at least one auth mode is configured
-		if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
-			throw new Error(
-				'Authentication required: provide either\n' +
-				'  (A) google-client-email + google-private-key inputs (classic service-account key), or\n' +
-				'  (B) a google-github-actions/auth step before this action (Workload Identity Federation).',
-			);
-		}
+    if (clientEmail) {
+      process.env.GOOGLE_CLIENT_EMAIL = clientEmail;
+    }
+    if (privateKey) {
+      process.env.GOOGLE_PRIVATE_KEY = privateKey;
+    }
 
-		const spreadsheetIdInput = core.getInput('google-spreadsheet-id');
-		if (spreadsheetIdInput) {
-			process.env.GOOGLE_SPREADSHEET_ID = spreadsheetIdInput;
-		}
+    const spreadsheetIdInput = core.getInput('google-spreadsheet-id');
+    if (spreadsheetIdInput) {
+      process.env.GOOGLE_SPREADSHEET_ID = spreadsheetIdInput;
+    }
 
-		const sheetTitles = core
-			.getInput('sheet-titles', { required: true })
-			.split(',')
-			.map((s) => s.trim())
-			.filter(Boolean);
+    const sheetTitles = core
+      .getInput('sheet-titles', { required: true })
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
-		const workspaceDir = process.env.GITHUB_WORKSPACE ?? process.cwd();
-		const translationsOutputDir = core.getInput('translations-output-dir') || 'translations';
-		const localesOutputPath = core.getInput('locales-output-path') || 'src/i18n/locales.ts';
-		const dataJsonPath = core.getInput('data-json-path') || 'src/lib/languageData.json';
+    const translationsOutputDir = core.getInput('translations-output-dir') || 'translations';
+    const localesOutputPath = core.getInput('locales-output-path') || 'src/i18n/locales.ts';
+    const dataJsonPath = core.getInput('data-json-path') || 'src/lib/languageData.json';
+    const providerConfigInput = core.getInput('provider-config')?.trim();
+    const providerConfigPathInput = core.getInput('provider-config-path')?.trim();
 
-		const rowLimitInput = core.getInput('row-limit') || '100';
-		const waitSecondsInput = core.getInput('wait-seconds') || '1';
-		const rowLimitRaw = parseInt(rowLimitInput, 10);
-		const waitSecondsRaw = parseInt(waitSecondsInput, 10);
-		if (isNaN(rowLimitRaw) || rowLimitRaw <= 0) {
-			throw new Error(`Invalid row-limit value: "${rowLimitInput}". Must be a positive integer.`);
-		}
-		if (isNaN(waitSecondsRaw) || waitSecondsRaw <= 0) {
-			throw new Error(`Invalid wait-seconds value: "${waitSecondsInput}". Must be a positive integer.`);
-		}
+    if (providerConfigInput && providerConfigPathInput) {
+      throw new Error('Use either provider-config or provider-config-path, not both.');
+    }
 
-		const options: SpreadsheetOptions = {
-			rowLimit: rowLimitRaw,
-			waitSeconds: waitSecondsRaw,
-			translationsOutputDir: path.resolve(workspaceDir, translationsOutputDir),
-			localesOutputPath: path.resolve(workspaceDir, localesOutputPath),
-			dataJsonPath: path.resolve(workspaceDir, dataJsonPath),
-			syncLocalChanges: core.getInput('sync-local-changes') !== 'false',
-			autoTranslate: core.getInput('auto-translate') === 'true',
-			override: core.getInput('override') === 'true',
-			cleanPush: core.getInput('clean-push') === 'true',
-			spreadsheetId: spreadsheetIdInput || undefined,
-			autoCreate: core.getInput('auto-create') !== 'false',
-			spreadsheetTitle: core.getInput('spreadsheet-title') || 'google-sheet-translations',
-			sourceLocale: core.getInput('source-locale') || 'en',
-			targetLocales: core
-				.getInput('target-locales')
-				.split(',')
-				.map((s) => s.trim())
-				.filter(Boolean),
-		};
+    const rowLimitInput = core.getInput('row-limit') || '100';
+    const waitSecondsInput = core.getInput('wait-seconds') || '1';
+    const rowLimitRaw = parseInt(rowLimitInput, 10);
+    const waitSecondsRaw = parseInt(waitSecondsInput, 10);
+    if (isNaN(rowLimitRaw) || rowLimitRaw <= 0) {
+      throw new Error(`Invalid row-limit value: "${rowLimitInput}". Must be a positive integer.`);
+    }
+    if (isNaN(waitSecondsRaw) || waitSecondsRaw <= 0) {
+      throw new Error(
+        `Invalid wait-seconds value: "${waitSecondsInput}". Must be a positive integer.`,
+      );
+    }
 
-		const driveFolderId = core.getInput('drive-folder-id') || undefined;
-		const scanForSpreadsheets = core.getInput('scan-for-spreadsheets') !== 'false';
-		const spreadsheetIdsRaw = core.getInput('spreadsheet-ids');
-		const spreadsheetIds = spreadsheetIdsRaw
-			? spreadsheetIdsRaw
-					.split(',')
-					.map((s) => s.trim())
-					.filter(Boolean)
-			: undefined;
-		const syncImages = core.getInput('sync-images') === 'true';
-		const imageOutputPath = core.getInput('image-output-path') || './public/remote-images';
+    const options: SpreadsheetOptions = {
+      rowLimit: rowLimitRaw,
+      waitSeconds: waitSecondsRaw,
+      translationsOutputDir: path.resolve(workspaceDir, translationsOutputDir),
+      localesOutputPath: path.resolve(workspaceDir, localesOutputPath),
+      dataJsonPath: path.resolve(workspaceDir, dataJsonPath),
+      syncLocalChanges: core.getInput('sync-local-changes') !== 'false',
+      autoTranslate: core.getInput('auto-translate') === 'true',
+      override: core.getInput('override') === 'true',
+      cleanPush: core.getInput('clean-push') === 'true',
+      spreadsheetId: spreadsheetIdInput || undefined,
+      autoCreate: core.getInput('auto-create') !== 'false',
+      spreadsheetTitle: core.getInput('spreadsheet-title') || 'google-sheet-translations',
+      sourceLocale: core.getInput('source-locale') || 'en',
+      targetLocales: core
+        .getInput('target-locales')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    };
 
-		let localeCount: number;
+    const driveFolderId = core.getInput('drive-folder-id') || undefined;
+    const scanForSpreadsheets = core.getInput('scan-for-spreadsheets') !== 'false';
+    const spreadsheetIdsRaw = core.getInput('spreadsheet-ids');
+    const spreadsheetIds = spreadsheetIdsRaw
+      ? spreadsheetIdsRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : undefined;
+    const syncImages = core.getInput('sync-images') === 'true';
+    const imageOutputPath = core.getInput('image-output-path') || './public/remote-images';
+    const absTranslationsOutputDir = path.resolve(workspaceDir, translationsOutputDir);
+    const absLocalesOutputPath = path.resolve(workspaceDir, localesOutputPath);
+    const absDataJsonPath = path.resolve(workspaceDir, dataJsonPath);
 
-		if (driveFolderId || (spreadsheetIds && spreadsheetIds.length > 0)) {
-			const driveResult = await manageDriveTranslations({
-				driveFolderId,
-				scanForSpreadsheets,
-				spreadsheetIds,
-				syncImages,
-				imageOutputPath: syncImages ? imageOutputPath : undefined,
-				docTitles: sheetTitles,
-				translationOptions: options,
-			});
-			localeCount = Object.keys(driveResult.translations).length;
-		} else {
-			const translations = await getSpreadSheetData(sheetTitles, options);
-			localeCount = Object.keys(translations).length;
-		}
+    let localeCount: number;
+    if (providerConfigInput || providerConfigPathInput) {
+      const rawConfig = providerConfigInput
+        ? providerConfigInput
+        : fs.readFileSync(path.resolve(workspaceDir, providerConfigPathInput), 'utf8');
+      const providerConfig = assertValidProviderRuntimeConfig(JSON.parse(rawConfig));
 
-		core.setOutput('translations-dir', path.resolve(workspaceDir, translationsOutputDir));
-		core.setOutput('locales-file', path.resolve(workspaceDir, localesOutputPath));
-		core.setOutput('data-json-file', path.resolve(workspaceDir, dataJsonPath));
+      if (
+        requiresGoogleAuthForRuntimeConfig(providerConfig) &&
+        !process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+        (!clientEmail || !privateKey)
+      ) {
+        throw new Error(
+          'Authentication required for selected provider configuration: provide either\n' +
+            '  (A) google-client-email + google-private-key inputs (classic service-account key), or\n' +
+            '  (B) a google-github-actions/auth step before this action (Workload Identity Federation).',
+        );
+      }
 
-		core.info(`✅ Fetched translations for ${localeCount} locales`);
-	} catch (error) {
-		core.setFailed(error instanceof Error ? error.message : String(error));
-	}
+      const providers = createProvidersFromRuntimeConfig(providerConfig);
+      const localDataForSync = readDataJson(absDataJsonPath) ?? undefined;
+
+      const assetTargetDirInput = core.getInput('asset-target-dir')?.trim();
+      const configAssetTargetDir =
+        typeof providerConfig.assetSync?.options?.targetDirectory === 'string' &&
+        providerConfig.assetSync.options.targetDirectory.trim().length > 0
+          ? providerConfig.assetSync.options.targetDirectory.trim()
+          : undefined;
+      const effectiveAssetTargetDir = assetTargetDirInput || configAssetTargetDir;
+
+      const assetDeleteMissingInput = core.getInput('asset-delete-missing')?.trim();
+      const effectiveAssetDeleteMissing = assetDeleteMissingInput
+        ? assetDeleteMissingInput === 'true'
+        : Boolean(providerConfig.assetSync?.options?.deleteMissing);
+
+      const assetSync = effectiveAssetTargetDir
+        ? {
+            targetDirectory: path.resolve(workspaceDir, effectiveAssetTargetDir),
+            deleteMissing: effectiveAssetDeleteMissing,
+          }
+        : undefined;
+
+      const pipelineResult = await runProviderPipeline({
+        inputProvider: providers.inputProvider,
+        outputProvider: providers.outputProvider,
+        syncProvider: providers.syncProvider,
+        assetSyncProvider: providers.assetSyncProvider,
+        assetSync,
+        tableNames: sheetTitles,
+        localTranslationsForSync: localDataForSync,
+      });
+
+      writeTranslationFiles(
+        pipelineResult.translations,
+        pipelineResult.locales,
+        absTranslationsOutputDir,
+      );
+      writeLocalesFile(pipelineResult.locales, pipelineResult.localeMapping, absLocalesOutputPath);
+
+      if (pipelineResult.locales.length > 0) {
+        writeLanguageDataFile(pipelineResult.translations, pipelineResult.locales, absDataJsonPath);
+      }
+
+      if (pipelineResult.assetSyncResult) {
+        const { manifestCount, downloaded, updated, deleted, skipped } =
+          pipelineResult.assetSyncResult;
+        core.info(
+          `Asset sync completed: ${manifestCount} manifest entr${manifestCount === 1 ? 'y' : 'ies'}, ` +
+            `${downloaded.length} downloaded, ${updated.length} updated, ${deleted.length} deleted, ${skipped.length} skipped.`,
+        );
+      }
+
+      localeCount = pipelineResult.locales.length;
+    } else {
+      // Validate that at least one auth mode is configured
+      if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && (!clientEmail || !privateKey)) {
+        throw new Error(
+          'Authentication required: provide either\n' +
+            '  (A) google-client-email + google-private-key inputs (classic service-account key), or\n' +
+            '  (B) a google-github-actions/auth step before this action (Workload Identity Federation).',
+        );
+      }
+
+      if (driveFolderId || (spreadsheetIds && spreadsheetIds.length > 0)) {
+        const driveResult = await manageDriveTranslations({
+          driveFolderId,
+          scanForSpreadsheets,
+          spreadsheetIds,
+          syncImages,
+          imageOutputPath: syncImages ? imageOutputPath : undefined,
+          docTitles: sheetTitles,
+          translationOptions: options,
+        });
+        localeCount = Object.keys(driveResult.translations).length;
+      } else {
+        const translations = await getSpreadSheetData(sheetTitles, options);
+        localeCount = Object.keys(translations).length;
+      }
+    }
+
+    core.setOutput('translations-dir', absTranslationsOutputDir);
+    core.setOutput('locales-file', absLocalesOutputPath);
+    core.setOutput('data-json-file', absDataJsonPath);
+
+    core.info(`✅ Fetched translations for ${localeCount} locales`);
+  } catch (error) {
+    core.setFailed(error instanceof Error ? error.message : String(error));
+  }
 }
 
 run();

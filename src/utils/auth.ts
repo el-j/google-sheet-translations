@@ -1,5 +1,5 @@
-import { GoogleAuth } from "google-auth-library";
-import { validateCredentials } from "./validateEnv";
+import { GoogleAuth } from 'google-auth-library';
+import { validateCredentials } from './validateEnv';
 
 /**
  * Normalizes a private key string from the many different ways secret-storage
@@ -16,28 +16,28 @@ import { validateCredentials } from "./validateEnv";
  * - Windows-style `\r\n` line endings  →  normalised to `\n`
  */
 export function normalizePrivateKey(key: string): string {
-	let normalized = key;
+  let normalized = key;
 
-	// Check for surrounding quotes on the trimmed version so that values like
-	// `  "-----BEGIN…"  ` (spaces outside the quotes) are also handled correctly.
-	// We only use trim() to detect/strip the quotes; we don't trim the whole key
-	// unconditionally to preserve any trailing newline that is part of the PEM.
-	const outer = key.trim();
-	if (
-		(outer.startsWith('"') && outer.endsWith('"')) ||
-		(outer.startsWith("'") && outer.endsWith("'"))
-	) {
-		normalized = outer.slice(1, -1);
-	}
+  // Check for surrounding quotes on the trimmed version so that values like
+  // `  "-----BEGIN…"  ` (spaces outside the quotes) are also handled correctly.
+  // We only use trim() to detect/strip the quotes; we don't trim the whole key
+  // unconditionally to preserve any trailing newline that is part of the PEM.
+  const outer = key.trim();
+  if (
+    (outer.startsWith('"') && outer.endsWith('"')) ||
+    (outer.startsWith("'") && outer.endsWith("'"))
+  ) {
+    normalized = outer.slice(1, -1);
+  }
 
-	// Replace the literal two-character sequence backslash+n with a real newline.
-	// GitHub Actions (and many CI systems) store multi-line secrets this way.
-	normalized = normalized.replace(/\\n/g, "\n");
+  // Replace the literal two-character sequence backslash+n with a real newline.
+  // GitHub Actions (and many CI systems) store multi-line secrets this way.
+  normalized = normalized.replace(/\\n/g, '\n');
 
-	// Normalise Windows-style CRLF line endings.
-	normalized = normalized.replace(/\r\n/g, "\n");
+  // Normalise Windows-style CRLF line endings.
+  normalized = normalized.replace(/\r\n/g, '\n');
 
-	return normalized;
+  return normalized;
 }
 
 /**
@@ -52,13 +52,13 @@ export function normalizePrivateKey(key: string): string {
  *   `createAuthClient()` for the standard Sheets use-case.
  */
 export function buildGoogleAuth(
-	scopes: string[],
-	credentials?: { client_email: string; private_key: string },
+  scopes: string[],
+  credentials?: { client_email: string; private_key: string },
 ): GoogleAuth {
-	if (credentials) {
-		return new GoogleAuth({ credentials, scopes });
-	}
-	return new GoogleAuth({ scopes });
+  if (credentials) {
+    return new GoogleAuth({ credentials, scopes });
+  }
+  return new GoogleAuth({ scopes });
 }
 
 /**
@@ -76,24 +76,24 @@ export function buildGoogleAuth(
  * @returns GoogleAuth client usable with google-spreadsheet and other Google APIs
  */
 export function createAuthClient(): GoogleAuth {
-	// ── WIF / ADC path ─────────────────────────────────────────────────────
-	// GOOGLE_APPLICATION_CREDENTIALS is set automatically by google-github-actions/auth
-	// when using Workload Identity Federation. google-auth-library picks up the
-	// federation credential file and exchanges the OIDC token for a short-lived
-	// Google access token transparently.
-	if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-		return buildGoogleAuth(["https://www.googleapis.com/auth/spreadsheets"]);
-	}
+  // ── WIF / ADC path ─────────────────────────────────────────────────────
+  // GOOGLE_APPLICATION_CREDENTIALS is set automatically by google-github-actions/auth
+  // when using Workload Identity Federation. google-auth-library picks up the
+  // federation credential file and exchanges the OIDC token for a short-lived
+  // Google access token transparently.
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return buildGoogleAuth(['https://www.googleapis.com/auth/spreadsheets']);
+  }
 
-	// ── Classic service-account key path ───────────────────────────────────
-	const { GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY } = validateCredentials();
+  // ── Classic service-account key path ───────────────────────────────────
+  const { GOOGLE_CLIENT_EMAIL, GOOGLE_PRIVATE_KEY } = validateCredentials();
 
-	const normalizedKey = normalizePrivateKey(GOOGLE_PRIVATE_KEY);
+  const normalizedKey = normalizePrivateKey(GOOGLE_PRIVATE_KEY);
 
-	return buildGoogleAuth(["https://www.googleapis.com/auth/spreadsheets"], {
-		client_email: GOOGLE_CLIENT_EMAIL,
-		private_key: normalizedKey,
-	});
+  return buildGoogleAuth(['https://www.googleapis.com/auth/spreadsheets'], {
+    client_email: GOOGLE_CLIENT_EMAIL,
+    private_key: normalizedKey,
+  });
 }
 
 export default createAuthClient;

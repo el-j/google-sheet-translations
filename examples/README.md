@@ -16,8 +16,8 @@ Before running any examples, make sure you:
 Demonstrates basic usage of the package to fetch translations from a Google Sheet.
 
 ```bash
-# Run with ts-node
-npx ts-node basic-usage.ts
+# Run with tsx
+npx tsx basic-usage.ts
 ```
 
 ### Bidirectional Sync (`bidirectional-sync.ts`)
@@ -25,8 +25,8 @@ npx ts-node basic-usage.ts
 Shows how to use the bidirectional sync feature to push local changes back to the spreadsheet.
 
 ```bash
-# Run with ts-node
-npx ts-node bidirectional-sync.ts
+# Run with tsx
+npx tsx bidirectional-sync.ts
 ```
 
 ### Auto-Translation Feature (`auto-translation-example.ts`)
@@ -34,8 +34,8 @@ npx ts-node bidirectional-sync.ts
 Demonstrates the auto-translation feature that automatically adds Google Translate formulas for missing translations.
 
 ```bash
-# Run with ts-node
-npx ts-node auto-translation-example.ts
+# Run with tsx
+npx tsx auto-translation-example.ts
 ```
 
 This example:
@@ -49,6 +49,10 @@ The auto-translation feature will add Google Translate formulas in the spreadshe
 
 Shows how to use Google Sheet Translations in a Next.js project using the instrumentation feature.
 
+### Astro Integration (`astro-integration.ts`)
+
+Shows how to refresh translation files automatically before `astro dev` / `astro build` via a small local Astro integration hooking into `astro:config:setup`. See the full walkthrough in `website/guide/astro.md`, including a plain npm-script alternative and reading translations at build/runtime.
+
 ## Running Examples
 
 To run any example, install the dependencies first:
@@ -58,7 +62,7 @@ To run any example, install the dependencies first:
 npm install
 
 # Then run the example
-npx ts-node examples/auto-translation-example.ts
+npx tsx examples/auto-translation-example.ts
 ```
 
 ## What to Expect

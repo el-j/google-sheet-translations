@@ -75,10 +75,8 @@ export interface DocIngestResult {
 // ── Drive export ──────────────────────────────────────────────────────────────
 
 async function getDriveExportToken(credentials?: GoogleEnvVars): Promise<string> {
-  const clientEmail =
-    credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
-  const privateKey =
-    credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
+  const clientEmail = credentials?.GOOGLE_CLIENT_EMAIL ?? process.env.GOOGLE_CLIENT_EMAIL;
+  const privateKey = credentials?.GOOGLE_PRIVATE_KEY ?? process.env.GOOGLE_PRIVATE_KEY;
 
   if (!clientEmail || !privateKey) {
     throw new Error(
@@ -105,31 +103,24 @@ async function getDriveExportToken(credentials?: GoogleEnvVars): Promise<string>
  * @param docId       - Google Drive file ID of the document.
  * @param credentials - Optional service-account credentials.
  */
-export async function exportDoc(
-  docId: string,
-  credentials?: GoogleEnvVars,
-): Promise<string> {
+export async function exportDoc(docId: string, credentials?: GoogleEnvVars): Promise<string> {
   const token = await getDriveExportToken(credentials);
   const base = `https://www.googleapis.com/drive/v3/files/${docId}/export`;
 
   // Try Markdown first
-  const mdRes = await fetch(
-    `${base}?mimeType=text%2Fmarkdown`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const mdRes = await fetch(`${base}?mimeType=text%2Fmarkdown`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (mdRes.ok) return mdRes.text();
 
   // Fall back to plain text
-  const txtRes = await fetch(
-    `${base}?mimeType=text%2Fplain`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
+  const txtRes = await fetch(`${base}?mimeType=text%2Fplain`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (txtRes.ok) return txtRes.text();
 
   const errText = await txtRes.text();
-  throw new Error(
-    `Failed to export doc ${docId}: HTTP ${txtRes.status} – ${errText}`,
-  );
+  throw new Error(`Failed to export doc ${docId}: HTTP ${txtRes.status} – ${errText}`);
 }
 
 // ── Data converters ───────────────────────────────────────────────────────────
@@ -145,9 +136,7 @@ export async function exportDoc(
  * entriesToSeedKeys([{ sheetName: 'hero', key: 'title', value: 'Hello' }])
  * // → { 'hero.title': 'Hello' }
  */
-export function entriesToSeedKeys(
-  entries: ParsedDocEntry[],
-): Record<string, string> {
+export function entriesToSeedKeys(entries: ParsedDocEntry[]): Record<string, string> {
   const keys: Record<string, string> = {};
   const counts = new Map<string, number>();
 
@@ -173,11 +162,7 @@ export function entriesToTranslationData(
   entries: ParsedDocEntry[],
   locale: string,
 ): TranslationData {
-  if (
-    locale === '__proto__' ||
-    locale === 'constructor' ||
-    locale === 'prototype'
-  ) {
+  if (locale === '__proto__' || locale === 'constructor' || locale === 'prototype') {
     return {};
   }
 
@@ -223,9 +208,7 @@ export function entriesToTranslationData(
 
 /** Strips the `_[lang]` suffix from a doc name to get a clean project title. */
 function docTitle(name: string): string {
-  return (
-    name.replace(/_[a-zA-Z]{2,3}(?:[-_][a-zA-Z]{2,4})?$/, '').trim() || name
-  );
+  return name.replace(/_[a-zA-Z]{2,3}(?:[-_][a-zA-Z]{2,4})?$/, '').trim() || name;
 }
 
 // ── Main ingestion function ───────────────────────────────────────────────────
@@ -295,9 +278,7 @@ export async function ingestDoc(
   }
 
   // ── Export and parse ────────────────────────────────────────────────────────
-  console.log(
-    `[docIngester] Exporting doc "${docFile.name}" (id: ${docFile.id})…`,
-  );
+  console.log(`[docIngester] Exporting doc "${docFile.name}" (id: ${docFile.id})…`);
   const content = await exportDoc(docFile.id, credentials);
 
   const sheetBaseName = slugifyKey(docTitle(docFile.name)) || 'content';
@@ -307,9 +288,7 @@ export async function ingestDoc(
   });
 
   if (entries.length === 0) {
-    console.warn(
-      `[docIngester] Doc "${docFile.name}" produced no translation entries – skipping.`,
-    );
+    console.warn(`[docIngester] Doc "${docFile.name}" produced no translation entries – skipping.`);
     return { action: 'skipped', entry };
   }
 
@@ -329,9 +308,7 @@ export async function ingestDoc(
     entry.linkedSpreadsheetId = spreadsheetId;
     entry.lastIngestedAt = new Date().toISOString();
 
-    console.log(
-      `[docIngester] Created spreadsheet ${spreadsheetId} from doc "${docFile.name}".`,
-    );
+    console.log(`[docIngester] Created spreadsheet ${spreadsheetId} from doc "${docFile.name}".`);
     return { action: 'created', entry };
   }
 
@@ -354,8 +331,6 @@ export async function ingestDoc(
 
   entry.lastIngestedAt = new Date().toISOString();
 
-  console.log(
-    `[docIngester] Refreshed spreadsheet ${spreadsheetId} from doc "${docFile.name}".`,
-  );
+  console.log(`[docIngester] Refreshed spreadsheet ${spreadsheetId} from doc "${docFile.name}".`);
   return { action: 'refreshed', entry };
 }

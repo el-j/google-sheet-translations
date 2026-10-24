@@ -1,4 +1,8 @@
-import { walkDirectory, validateImageDirectory, DEFAULT_IMAGE_EXTENSIONS } from '../../src/utils/localImageUtils';
+import {
+  walkDirectory,
+  validateImageDirectory,
+  DEFAULT_IMAGE_EXTENSIONS,
+} from '../../src/utils/localImageUtils';
 import type { ImageDirectoryValidationOptions } from '../../src/utils/localImageUtils';
 import * as nodeFs from 'node:fs';
 
@@ -54,10 +58,7 @@ describe('DEFAULT_IMAGE_EXTENSIONS', () => {
 
 describe('walkDirectory', () => {
   it('returns all files in a flat directory', async () => {
-    fsp.readdir.mockResolvedValueOnce([
-      makeDirent('a.jpg', false),
-      makeDirent('b.png', false),
-    ]);
+    fsp.readdir.mockResolvedValueOnce([makeDirent('a.jpg', false), makeDirent('b.png', false)]);
 
     const result = await walkDirectory('/root');
     expect(result).toEqual(['/root/a.jpg', '/root/b.png']);
@@ -65,10 +66,7 @@ describe('walkDirectory', () => {
 
   it('recurses into sub-directories', async () => {
     // Root: one sub-dir + one file
-    fsp.readdir.mockResolvedValueOnce([
-      makeDirent('sub', true),
-      makeDirent('root.jpg', false),
-    ]);
+    fsp.readdir.mockResolvedValueOnce([makeDirent('sub', true), makeDirent('root.jpg', false)]);
     // Sub dir contents
     fsp.readdir.mockResolvedValueOnce([makeDirent('nested.png', false)]);
 
@@ -130,7 +128,9 @@ describe('walkDirectory', () => {
 // ---------------------------------------------------------------------------
 
 describe('validateImageDirectory', () => {
-  function opts(overrides: Partial<ImageDirectoryValidationOptions> = {}): ImageDirectoryValidationOptions {
+  function opts(
+    overrides: Partial<ImageDirectoryValidationOptions> = {},
+  ): ImageDirectoryValidationOptions {
     return { rootDir: '/images', ...overrides };
   }
 
@@ -188,13 +188,13 @@ describe('validateImageDirectory', () => {
   });
 
   it('warns about missing expectedSubfolders', async () => {
-    fsp.readdir.mockResolvedValueOnce([
-      makeDirent('projects', true),
-    ]);
+    fsp.readdir.mockResolvedValueOnce([makeDirent('projects', true)]);
 
-    const result = await validateImageDirectory(opts({
-      expectedSubfolders: ['projects', 'performances', 'workshops'],
-    }));
+    const result = await validateImageDirectory(
+      opts({
+        expectedSubfolders: ['projects', 'performances', 'workshops'],
+      }),
+    );
     expect(result.valid).toBe(true);
     expect(result.warnings.length).toBeGreaterThan(0);
     expect(result.warnings[0]).toMatch(/performances|workshops/i);
@@ -207,9 +207,11 @@ describe('validateImageDirectory', () => {
       makeDirent('workshops', true),
     ]);
 
-    const result = await validateImageDirectory(opts({
-      expectedSubfolders: ['projects', 'performances', 'workshops'],
-    }));
+    const result = await validateImageDirectory(
+      opts({
+        expectedSubfolders: ['projects', 'performances', 'workshops'],
+      }),
+    );
     expect(result.valid).toBe(true);
     expect(result.warnings).toHaveLength(0);
   });
@@ -248,7 +250,9 @@ describe('validateImageDirectory', () => {
   });
 
   it('returns valid:false with an error message when rootDir does not exist', async () => {
-    fsp.readdir.mockRejectedValueOnce(new Error('ENOENT: no such file or directory, scandir \'/images\''));
+    fsp.readdir.mockRejectedValueOnce(
+      new Error("ENOENT: no such file or directory, scandir '/images'"),
+    );
 
     const result = await validateImageDirectory(opts());
     expect(result.valid).toBe(false);

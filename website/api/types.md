@@ -100,3 +100,12 @@ interface GoogleEnvVars {
   GOOGLE_SPREADSHEET_ID: string;
 }
 ```
+
+---
+
+## Provider Platform (v3) Types
+
+For complete contracts and types supporting the v3 provider platform, see:
+- [Provider Contracts](/api/provider-contracts): `TranslationInputProvider`, `TranslationOutputProvider`, `TranslationSyncProvider`, `AssetSyncProvider`, `CanonicalTableInput`, `CanonicalAssetEntry`, `ProviderRegistry`
+- [Provider Platform](/api/provider-platform): `ProviderCapability`, `ProviderCapabilitySet`, `ProviderRuntimeConfig`, `ProviderPipelineOptions`, `ProviderPipelineResult`, `SyncConflictPolicy`, `SyncPlan`
+

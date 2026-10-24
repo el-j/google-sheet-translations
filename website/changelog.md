@@ -12,6 +12,29 @@ Every commit to `main` that contains a releasable change type automatically:
 
 ---
 
+## 🚀 What's new in v3.0 (Universal Provider Platform)
+
+Version 3.0 evolves `@el-j/google-sheet-translations` into an extensible, provider-first localization platform supporting both **Google Sheets** and privacy-first **CryptPad**:
+
+### Universal Provider Architecture
+- Decoupled `input`, `output`, `sync`, and `assetSync` providers with explicit capability checks.
+- Zero vendor lock-in: easily implement custom providers for Airtable, Notion, CSV, or custom backends.
+
+### Native End-to-End Encrypted (E2EE) CryptPad Integration
+- **Full Bidirectional Sync**: Pull and push translations directly to password-protected CryptPad OnlyOffice spreadsheets via pure Netflux WebSockets and TweetNaCl decryption.
+- **Zero Browser Required**: Headless RT-channel auto-initialization allows creating and updating CryptPad spreadsheets without ever opening a browser.
+- **Workbook Multi-Sheet Support**: Read and write individual tabs (`common`, `auth`, `pricing`).
+- **CryptPad Drive Folder Discovery & Asset Sync**: Scan encrypted Drive folders and mirror localized image/media assets locally.
+- **Dedicated CLI**: `gst-cryptpad` binary for `pull`, `push`, `sync`, `inspect`, and `drive-scan`.
+
+### In-Place Reactive Website Translation
+- Interactive multi-language documentation powered by live Google Spreadsheet translation datasets across 8 languages.
+
+### Frictionless v2 to v3 Migration
+- `gst-migrate-v3` CLI automatically inspects v2 setups, runs parity checks, generates `provider.config.json`, and rewrites GitHub Action workflow files.
+
+---
+
 ## 🚀 What's new in v2.2.0
 
 v2.2.0 is the **Google Drive release** — the biggest feature drop since the

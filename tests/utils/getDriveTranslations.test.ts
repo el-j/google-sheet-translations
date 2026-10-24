@@ -22,8 +22,12 @@ import { createAuthClient, buildGoogleAuth } from '../../src/utils/auth';
 import { scanDriveFolderForDocs } from '../../src/utils/driveDocScanner';
 import { ingestDoc } from '../../src/utils/docIngester';
 
-const mockGetMultiple = getMultipleSpreadSheetsData as MockedFunction<typeof getMultipleSpreadSheetsData>;
-const mockScanDrive = scanDriveFolderForSpreadsheets as MockedFunction<typeof scanDriveFolderForSpreadsheets>;
+const mockGetMultiple = getMultipleSpreadSheetsData as MockedFunction<
+  typeof getMultipleSpreadSheetsData
+>;
+const mockScanDrive = scanDriveFolderForSpreadsheets as MockedFunction<
+  typeof scanDriveFolderForSpreadsheets
+>;
 const mockSyncImages = syncDriveImages as MockedFunction<typeof syncDriveImages>;
 const mockBuildManifest = buildManifest as MockedFunction<typeof buildManifest>;
 const mockWriteManifest = writeManifest as MockedFunction<typeof writeManifest>;
@@ -47,7 +51,8 @@ function makeSpreadsheet(id: string, name: string) {
 /** Returns a fresh mock Drive auth client whose request() resolves correctly for bootstrap. */
 function makeDriveAuthMock() {
   return {
-    request: vi.fn()
+    request: vi
+      .fn()
       .mockResolvedValueOnce({ data: { parents: ['root'] } }) // GET file parents
       .mockResolvedValueOnce({ data: { id: BOOTSTRAP_ID, parents: ['folder-123'] } }), // PATCH move
   };
@@ -58,7 +63,14 @@ beforeEach(() => {
   mockGetMultiple.mockResolvedValue(MOCK_TRANSLATIONS);
   mockScanDrive.mockResolvedValue([]);
   mockSyncImages.mockResolvedValue(MOCK_IMAGE_RESULT);
-  const MOCK_MANIFEST = { version: '1' as const, generatedAt: '2026-01-01T00:00:00.000Z', locales: ['en'], spreadsheets: [], outputDirectory: 'translations', flatten: true };
+  const MOCK_MANIFEST = {
+    version: '1' as const,
+    generatedAt: '2026-01-01T00:00:00.000Z',
+    locales: ['en'],
+    spreadsheets: [],
+    outputDirectory: 'translations',
+    flatten: true,
+  };
   mockBuildManifest.mockReturnValue(MOCK_MANIFEST);
   mockWriteManifest.mockImplementation(() => {});
   mockReadManifest.mockReturnValue(undefined);
@@ -231,7 +243,8 @@ describe('manageDriveTranslations', () => {
   it('continues with new spreadsheet ID even when Drive move fails', async () => {
     mockScanDrive.mockResolvedValue([]);
     // Simulate Drive API failure on the PATCH move step
-    const failingRequest = vi.fn()
+    const failingRequest = vi
+      .fn()
       .mockResolvedValueOnce({ data: { parents: ['root'] } }) // GET parents succeeds
       .mockRejectedValueOnce(new Error('Drive API error 403: Forbidden')); // PATCH fails
     mockBuildGoogleAuth.mockReturnValue({ request: failingRequest } as any);
@@ -320,7 +333,11 @@ describe('manageDriveTranslations', () => {
 describe('flatten option', () => {
   it('flatten: true (default) uses getMultipleSpreadSheetsData as before', async () => {
     mockScanDrive.mockResolvedValue([makeSpreadsheet('s1', 'Sheet')]);
-    await manageDriveTranslations({ driveFolderId: 'f1', flatten: true, translationOptions: { translationsOutputDir: './tr' } });
+    await manageDriveTranslations({
+      driveFolderId: 'f1',
+      flatten: true,
+      translationOptions: { translationsOutputDir: './tr' },
+    });
     expect(mockGetMultiple).toHaveBeenCalled();
     expect(mockGetSpreadSheetData).not.toHaveBeenCalled();
   });
@@ -337,14 +354,20 @@ describe('flatten option', () => {
       translationOptions: { translationsOutputDir: './translations' },
     });
     expect(mockGetSpreadSheetData).toHaveBeenCalledTimes(2);
-    expect(mockGetSpreadSheetData).toHaveBeenCalledWith(undefined, expect.objectContaining({
-      spreadsheetId: 's1',
-      translationsOutputDir: expect.stringContaining('app-i18n'),
-    }));
-    expect(mockGetSpreadSheetData).toHaveBeenCalledWith(undefined, expect.objectContaining({
-      spreadsheetId: 's2',
-      translationsOutputDir: expect.stringContaining('marketing'),
-    }));
+    expect(mockGetSpreadSheetData).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        spreadsheetId: 's1',
+        translationsOutputDir: expect.stringContaining('app-i18n'),
+      }),
+    );
+    expect(mockGetSpreadSheetData).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        spreadsheetId: 's2',
+        translationsOutputDir: expect.stringContaining('marketing'),
+      }),
+    );
     expect(mockGetMultiple).not.toHaveBeenCalled();
   });
 
@@ -356,9 +379,12 @@ describe('flatten option', () => {
       createManifest: false,
       translationOptions: { translationsOutputDir: './tr' },
     });
-    expect(mockGetSpreadSheetData).toHaveBeenCalledWith(undefined, expect.objectContaining({
-      translationsOutputDir: expect.stringMatching(/my-app-2026-main|my-app.*main/),
-    }));
+    expect(mockGetSpreadSheetData).toHaveBeenCalledWith(
+      undefined,
+      expect.objectContaining({
+        translationsOutputDir: expect.stringMatching(/my-app-2026-main|my-app.*main/),
+      }),
+    );
   });
 
   it('flatten: false still returns merged translations', async () => {
@@ -415,12 +441,14 @@ describe('manifest / createManifest', () => {
       defaultLocale: 'en',
       projectMetadata: { owner: 'team-a' },
     });
-    expect(mockBuildManifest).toHaveBeenCalledWith(expect.objectContaining({
-      projectName: 'my-app',
-      domain: 'https://example.com',
-      defaultLocale: 'en',
-      projectMetadata: { owner: 'team-a' },
-    }));
+    expect(mockBuildManifest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectName: 'my-app',
+        domain: 'https://example.com',
+        defaultLocale: 'en',
+        projectMetadata: { owner: 'team-a' },
+      }),
+    );
   });
 
   it('result.manifest is the value returned by buildManifest', async () => {
@@ -437,7 +465,6 @@ describe('manifest / createManifest', () => {
 });
 
 // ── Doc ingestion integration ─────────────────────────────────────────────────
-
 
 describe('manageDriveTranslations – scanForDocs', () => {
   beforeEach(() => {
@@ -462,7 +489,13 @@ describe('manageDriveTranslations – scanForDocs', () => {
 
   it('scans for docs when scanForDocs: true', async () => {
     mockScanDocs.mockResolvedValue([
-      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+      {
+        id: 'doc1',
+        name: 'content_en',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: 'en',
+      },
     ]);
 
     const result = await manageDriveTranslations({
@@ -478,8 +511,20 @@ describe('manageDriveTranslations – scanForDocs', () => {
 
   it('applies docNameFilter when provided', async () => {
     mockScanDocs.mockResolvedValue([
-      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
-      { id: 'doc2', name: 'draft_de', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'de' },
+      {
+        id: 'doc1',
+        name: 'content_en',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: 'en',
+      },
+      {
+        id: 'doc2',
+        name: 'draft_de',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: 'de',
+      },
     ]);
 
     await manageDriveTranslations({
@@ -498,7 +543,13 @@ describe('manageDriveTranslations – scanForDocs', () => {
 
   it('applies docSourceLocale fallback when doc has no sourceLocale', async () => {
     mockScanDocs.mockResolvedValue([
-      { id: 'doc1', name: 'content', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: undefined },
+      {
+        id: 'doc1',
+        name: 'content',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: undefined,
+      },
     ]);
 
     await manageDriveTranslations({
@@ -513,12 +564,32 @@ describe('manageDriveTranslations – scanForDocs', () => {
 
   it('continues processing other docs when one fails', async () => {
     mockScanDocs.mockResolvedValue([
-      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
-      { id: 'doc2', name: 'content_de', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'de' },
+      {
+        id: 'doc1',
+        name: 'content_en',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: 'en',
+      },
+      {
+        id: 'doc2',
+        name: 'content_de',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: 'de',
+      },
     ]);
-    mockIngestDoc
-      .mockRejectedValueOnce(new Error('Export failed'))
-      .mockResolvedValueOnce({ action: 'created', entry: { id: 'doc2', name: 'content_de', folderPath: '', generatedFromDoc: true, sourceLocale: 'de', linkedSpreadsheetId: 'sheet-de' } });
+    mockIngestDoc.mockRejectedValueOnce(new Error('Export failed')).mockResolvedValueOnce({
+      action: 'created',
+      entry: {
+        id: 'doc2',
+        name: 'content_de',
+        folderPath: '',
+        generatedFromDoc: true,
+        sourceLocale: 'de',
+        linkedSpreadsheetId: 'sheet-de',
+      },
+    });
 
     const result = await manageDriveTranslations({
       driveFolderId: 'folder-id',
@@ -555,7 +626,13 @@ describe('manageDriveTranslations – scanForDocs', () => {
       docs: [existingDocEntry],
     });
     mockScanDocs.mockResolvedValue([
-      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+      {
+        id: 'doc1',
+        name: 'content_en',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: 'en',
+      },
     ]);
 
     await manageDriveTranslations({
@@ -587,7 +664,13 @@ describe('manageDriveTranslations – scanForDocs', () => {
       docs: [existingDocEntry],
     });
     mockScanDocs.mockResolvedValue([
-      { id: 'doc1', name: 'content_en', folderPath: '', mimeType: 'application/vnd.google-apps.document', sourceLocale: 'en' },
+      {
+        id: 'doc1',
+        name: 'content_en',
+        folderPath: '',
+        mimeType: 'application/vnd.google-apps.document',
+        sourceLocale: 'en',
+      },
     ]);
     mockIngestDoc.mockRejectedValueOnce(new Error('Ingestion crash'));
 
@@ -600,14 +683,24 @@ describe('manageDriveTranslations – scanForDocs', () => {
     expect(mockBuildManifest).toHaveBeenCalledWith(
       expect.objectContaining({
         docs: [existingDocEntry],
-      })
+      }),
     );
   });
 
   it('supports flatten: false to write spreadsheets to per-spreadsheet subdirectories', async () => {
     mockScanDrive.mockResolvedValue([
-      { id: 'sheet-1', name: 'UI / Common', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
-      { id: 'sheet-2', name: 'Marketing', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
+      {
+        id: 'sheet-1',
+        name: 'UI / Common',
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+        folderPath: '',
+      },
+      {
+        id: 'sheet-2',
+        name: 'Marketing',
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+        folderPath: '',
+      },
     ]);
     mockGetSpreadSheetData
       .mockResolvedValueOnce({ en: { common: { title: 'Hello' } } })
@@ -626,15 +719,25 @@ describe('manageDriveTranslations – scanForDocs', () => {
       expect.objectContaining({
         spreadsheetId: 'sheet-1',
         translationsOutputDir: path.join('translations', 'ui-common'),
-      })
+      }),
     );
     expect(result.manifest).toBeDefined();
   });
 
   it('allows explicit spreadsheet IDs to pass through when spreadsheetNameFilter is set', async () => {
     mockScanDrive.mockResolvedValue([
-      { id: 'discovered-1', name: 'prod-sheet', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
-      { id: 'discovered-2', name: 'draft-sheet', mimeType: 'application/vnd.google-apps.spreadsheet', folderPath: '' },
+      {
+        id: 'discovered-1',
+        name: 'prod-sheet',
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+        folderPath: '',
+      },
+      {
+        id: 'discovered-2',
+        name: 'draft-sheet',
+        mimeType: 'application/vnd.google-apps.spreadsheet',
+        folderPath: '',
+      },
     ]);
 
     const result = await manageDriveTranslations({

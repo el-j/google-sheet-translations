@@ -14,19 +14,35 @@ const TRANSLATIONS: TranslationData = {
 };
 
 const SPREADSHEETS = [
-  { id: 'ss-1', name: 'app-i18n', folderPath: '', sheets: ['home'], modifiedTime: '2026-01-01T00:00:00.000Z' },
+  {
+    id: 'ss-1',
+    name: 'app-i18n',
+    folderPath: '',
+    sheets: ['home'],
+    modifiedTime: '2026-01-01T00:00:00.000Z',
+  },
   { id: 'ss-2', name: 'marketing', folderPath: 'campaigns', sheets: ['landing'] },
 ];
 
 describe('buildManifest', () => {
   it('includes version "1"', () => {
-    const manifest = buildManifest({ translations: TRANSLATIONS, spreadsheets: SPREADSHEETS, outputDirectory: './translations', flatten: true });
+    const manifest = buildManifest({
+      translations: TRANSLATIONS,
+      spreadsheets: SPREADSHEETS,
+      outputDirectory: './translations',
+      flatten: true,
+    });
     expect(manifest.version).toBe('1');
   });
 
   it('sets generatedAt to a valid ISO timestamp', () => {
     const before = Date.now();
-    const manifest = buildManifest({ translations: TRANSLATIONS, spreadsheets: SPREADSHEETS, outputDirectory: './t', flatten: true });
+    const manifest = buildManifest({
+      translations: TRANSLATIONS,
+      spreadsheets: SPREADSHEETS,
+      outputDirectory: './t',
+      flatten: true,
+    });
     const after = Date.now();
     const ts = new Date(manifest.generatedAt).getTime();
     expect(ts).toBeGreaterThanOrEqual(before);
@@ -34,12 +50,22 @@ describe('buildManifest', () => {
   });
 
   it('sorts locales alphabetically', () => {
-    const manifest = buildManifest({ translations: TRANSLATIONS, spreadsheets: SPREADSHEETS, outputDirectory: './t', flatten: true });
+    const manifest = buildManifest({
+      translations: TRANSLATIONS,
+      spreadsheets: SPREADSHEETS,
+      outputDirectory: './t',
+      flatten: true,
+    });
     expect(manifest.locales).toEqual(['de', 'en', 'fr']);
   });
 
   it('returns empty locales array when translations is empty', () => {
-    const manifest = buildManifest({ translations: {}, spreadsheets: [], outputDirectory: './t', flatten: true });
+    const manifest = buildManifest({
+      translations: {},
+      spreadsheets: [],
+      outputDirectory: './t',
+      flatten: true,
+    });
     expect(manifest.locales).toEqual([]);
   });
 
@@ -61,7 +87,12 @@ describe('buildManifest', () => {
   });
 
   it('leaves optional fields undefined when not provided', () => {
-    const manifest = buildManifest({ translations: {}, spreadsheets: [], outputDirectory: './t', flatten: true });
+    const manifest = buildManifest({
+      translations: {},
+      spreadsheets: [],
+      outputDirectory: './t',
+      flatten: true,
+    });
     expect(manifest.projectName).toBeUndefined();
     expect(manifest.domain).toBeUndefined();
     expect(manifest.defaultLocale).toBeUndefined();
@@ -69,17 +100,32 @@ describe('buildManifest', () => {
   });
 
   it('reflects flatten: false in the manifest', () => {
-    const manifest = buildManifest({ translations: {}, spreadsheets: [], outputDirectory: './t', flatten: false });
+    const manifest = buildManifest({
+      translations: {},
+      spreadsheets: [],
+      outputDirectory: './t',
+      flatten: false,
+    });
     expect(manifest.flatten).toBe(false);
   });
 
   it('includes spreadsheets array verbatim', () => {
-    const manifest = buildManifest({ translations: TRANSLATIONS, spreadsheets: SPREADSHEETS, outputDirectory: './t', flatten: true });
+    const manifest = buildManifest({
+      translations: TRANSLATIONS,
+      spreadsheets: SPREADSHEETS,
+      outputDirectory: './t',
+      flatten: true,
+    });
     expect(manifest.spreadsheets).toBe(SPREADSHEETS);
   });
 
   it('sets outputDirectory', () => {
-    const manifest = buildManifest({ translations: {}, spreadsheets: [], outputDirectory: './custom/path', flatten: true });
+    const manifest = buildManifest({
+      translations: {},
+      spreadsheets: [],
+      outputDirectory: './custom/path',
+      flatten: true,
+    });
     expect(manifest.outputDirectory).toBe('./custom/path');
   });
 });
