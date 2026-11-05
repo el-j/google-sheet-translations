@@ -40590,6 +40590,10 @@ var require_util = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.removeUndefinedValuesInObject = removeUndefinedValuesInObject;
 	exports.isValidFile = isValidFile;
 	exports.getWellKnownCertificateConfigFileLocation = getWellKnownCertificateConfigFileLocation;
+	exports.isAdcWarningSuppressed = isAdcWarningSuppressed;
+	exports.suppressAdcWarning = suppressAdcWarning;
+	exports.isFromJsonWarningSuppressed = isFromJsonWarningSuppressed;
+	exports.suppressFromJsonWarning = suppressFromJsonWarning;
 	const fs = __require("fs");
 	const os = __require("os");
 	const path = __require("path");
@@ -40732,12 +40736,52 @@ var require_util = /* @__PURE__ */ __commonJSMin(((exports) => {
 	function _isWindows() {
 		return os.platform().startsWith("win");
 	}
+	let adcWarningSuppressionDepth = 0;
+	let fromJsonWarningSuppressionDepth = 0;
+	/**
+	* Returns true if ADC deprecation/validation warnings are currently suppressed.
+	* @internal
+	*/
+	function isAdcWarningSuppressed() {
+		return adcWarningSuppressionDepth > 0;
+	}
+	/**
+	* Runs a synchronous callback while suppressing ADC deprecation/validation warnings.
+	* @internal
+	*/
+	function suppressAdcWarning(fn) {
+		adcWarningSuppressionDepth++;
+		try {
+			return fn();
+		} finally {
+			adcWarningSuppressionDepth--;
+		}
+	}
+	/**
+	* Returns true if the `GoogleAuth.fromJSON` deprecation warning is currently suppressed.
+	* @internal
+	*/
+	function isFromJsonWarningSuppressed() {
+		return adcWarningSuppressionDepth > 0 || fromJsonWarningSuppressionDepth > 0;
+	}
+	/**
+	* Runs a synchronous callback while suppressing the `GoogleAuth.fromJSON` deprecation warning.
+	* @internal
+	*/
+	function suppressFromJsonWarning(fn) {
+		fromJsonWarningSuppressionDepth++;
+		try {
+			return fn();
+		} finally {
+			fromJsonWarningSuppressionDepth--;
+		}
+	}
 }));
 // node_modules/google-auth-library/package.json
 var require_package = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	module.exports = {
 		"name": "google-auth-library",
-		"version": "11.3.1",
+		"version": "11.3.2",
 		"author": "Google Inc.",
 		"description": "Google APIs Authentication Client Library for Node.js",
 		"engines": { "node": ">=22" },
@@ -40758,9 +40802,9 @@ var require_package = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 		"dependencies": {
 			"base64-js": "^1.3.0",
 			"ecdsa-sig-formatter": "^1.0.11",
-			"gaxios": "^8.3.0",
-			"gcp-metadata": "^9.0.0",
-			"google-logging-utils": "^2.0.0",
+			"gaxios": "^8.3.1",
+			"gcp-metadata": "^9.2.1",
+			"google-logging-utils": "^2.1.0",
 			"jws": "^4.0.0"
 		},
 		"devDependencies": {
@@ -40777,8 +40821,8 @@ var require_package = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 			"gts": "^6.0.2",
 			"is-docker": "^3.0.0",
 			"jsdoc": "^4.0.4",
-			"jsdoc-fresh": "^6.0.0",
-			"jsdoc-region-tag": "^5.0.0",
+			"jsdoc-fresh": "^6.1.0",
+			"jsdoc-region-tag": "^5.1.0",
 			"karma": "^6.0.0",
 			"karma-chrome-launcher": "^3.0.0",
 			"karma-coverage": "^2.0.0",
@@ -40980,8 +41024,8 @@ var require_authclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 					url: config.url,
 					headers: config.headers
 				};
-				if (methodName) AuthClient.log.info("%s [%s] request %j", methodName, logId, logObject);
-				else AuthClient.log.info("[%s] request %j", logId, logObject);
+				if (methodName) AuthClient.log.debug("%s [%s] request %j", methodName, logId, logObject);
+				else AuthClient.log.debug("[%s] request %j", logId, logObject);
 			} catch (e) {}
 			return config;
 		} };
@@ -40991,8 +41035,8 @@ var require_authclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 					const symbols = response.config;
 					const methodName = symbols[AuthClient.RequestMethodNameSymbol];
 					const logId = symbols[AuthClient.RequestLogIdSymbol];
-					if (methodName) AuthClient.log.info("%s [%s] response %j", methodName, logId, response.data);
-					else AuthClient.log.info("[%s] response %j", logId, response.data);
+					if (methodName) AuthClient.log.debug("%s [%s] response %j", methodName, logId, response.data);
+					else AuthClient.log.debug("[%s] response %j", logId, response.data);
 				} catch (e) {}
 				return response;
 			},
@@ -41001,8 +41045,8 @@ var require_authclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 					const symbols = error.config;
 					const methodName = symbols[AuthClient.RequestMethodNameSymbol];
 					const logId = symbols[AuthClient.RequestLogIdSymbol];
-					if (methodName) AuthClient.log.info("%s [%s] error %j", methodName, logId, error.response?.data);
-					else AuthClient.log.error("[%s] error %j", logId, error.response?.data);
+					if (methodName) AuthClient.log.debug("%s [%s] error %j", methodName, logId, error.response?.data);
+					else AuthClient.log.debug("[%s] error %j", logId, error.response?.data);
 				} catch (e) {}
 				throw error;
 			}
@@ -43243,6 +43287,7 @@ var require_impersonated = /* @__PURE__ */ __commonJSMin(((exports) => {
 		*/
 		constructor(options = {}) {
 			super(options);
+			if (!(0, util_1.isAdcWarningSuppressed)()) console.warn("The `Impersonated` constructor does not validate the credential configuration. A security risk occurs when a credential configuration configured with malicious URLs is used. When the credential configuration is accepted from an untrusted source, you should validate it before using it with this method. For more details, see https://cloud.google.com/docs/authentication/external/externally-sourced-credentials.");
 			this.credentials = {
 				expiry_date: 1,
 				refresh_token: "impersonated-placeholder"
@@ -45135,6 +45180,7 @@ var require_externalclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	const identitypoolclient_1 = require_identitypoolclient();
 	const awsclient_1 = require_awsclient();
 	const pluggable_auth_client_1 = require_pluggable_auth_client();
+	const util_1 = require_util();
 	/**
 	* Dummy class with no constructor. Developers are expected to use fromJSON.
 	*/
@@ -45160,6 +45206,7 @@ var require_externalclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		*   provided do not correspond to an external account credential.
 		*/
 		static fromJSON(options) {
+			if (!(0, util_1.isAdcWarningSuppressed)()) console.warn("The `fromJSON` method does not validate the credential configuration. A security risk occurs when a credential configuration configured with malicious URLs is used. When the credential configuration is accepted from an untrusted source, you should validate it before using it with this method. For more details, see https://cloud.google.com/docs/authentication/external/externally-sourced-credentials.");
 			if (options && options.type === baseexternalclient_1.EXTERNAL_ACCOUNT_TYPE) {
 				if (options.credential_source?.environment_id) return new awsclient_1.AwsClient(options);
 				else if (options.credential_source?.executable) return new pluggable_auth_client_1.PluggableAuthClient(options);
@@ -45655,17 +45702,19 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 			this._cachedProjectId = opts.projectId || null;
 			this.cachedCredential = opts.authClient || null;
 			this.keyFilename = opts.keyFilename || opts.keyFile;
+			if (this.keyFilename) console.warn("The `keyFilename` option is deprecated. Please use the `auth` object constructor instead. For more details, see https://cloud.google.com/docs/authentication/external/externally-sourced-credentials.");
 			this.scopes = opts.scopes;
 			this.clientOptions = opts.clientOptions || {};
 			this.jsonContent = opts.credentials || null;
+			if (this.jsonContent) console.warn("The `credentials` option is deprecated. Please use the `auth` object constructor instead. For more details, see https://cloud.google.com/docs/authentication/external/externally-sourced-credentials.");
 			this.apiKey = opts.apiKey || this.clientOptions.apiKey || null;
 			if (this.apiKey && (this.jsonContent || this.clientOptions.credentials)) throw new RangeError(exports.GoogleAuthExceptionMessages.API_KEY_WITH_CREDENTIALS);
 			if (opts.universeDomain) this.clientOptions.universeDomain = opts.universeDomain;
 		}
 		setGapicJWTValues(client) {
-			client.defaultServicePath = this.defaultServicePath;
-			client.useJWTAccessWithScope = this.useJWTAccessWithScope;
-			client.defaultScopes = this.defaultScopes;
+			client.defaultServicePath ??= this.defaultServicePath;
+			client.useJWTAccessWithScope ??= this.useJWTAccessWithScope;
+			client.defaultScopes ??= this.defaultScopes;
 		}
 		getProjectId(callback) {
 			if (callback) this.getProjectIdAsync().then((r) => callback(null, r), callback);
@@ -45857,7 +45906,7 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 				throw err;
 			}
 			const readStream = fs.createReadStream(filePath);
-			return this.fromStream(readStream, options);
+			return (0, util_1.suppressAdcWarning)(() => this.fromStream(readStream, options));
 		}
 		/**
 		* Create a credentials instance using a given impersonated input options.
@@ -45869,7 +45918,7 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 			if (json.type !== impersonated_1.IMPERSONATED_ACCOUNT_TYPE) throw new Error(`The incoming JSON object does not have the "${impersonated_1.IMPERSONATED_ACCOUNT_TYPE}" type`);
 			if (!json.source_credentials) throw new Error("The incoming JSON object does not contain a source_credentials field");
 			if (!json.service_account_impersonation_url) throw new Error("The incoming JSON object does not contain a service_account_impersonation_url field");
-			const sourceClient = this.fromJSON(json.source_credentials);
+			const sourceClient = (0, util_1.suppressFromJsonWarning)(() => this.fromJSON(json.source_credentials));
 			if (json.service_account_impersonation_url?.length > 256)
  /**
 			* Prevents DOS attacks.
@@ -45930,6 +45979,7 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 		*/
 		fromJSON(json, options = {}) {
 			let client;
+			if (!(0, util_1.isFromJsonWarningSuppressed)()) console.warn("The `fromJSON` method is deprecated. Please use the `JWT` constructor instead. For more details, see https://cloud.google.com/docs/authentication/external/externally-sourced-credentials.");
 			const preferredUniverseDomain = (0, util_1.originalOrCamelOptions)(options).get("universe_domain");
 			if (json.type === refreshclient_1.USER_REFRESH_ACCOUNT_TYPE) {
 				client = new refreshclient_1.UserRefreshClient(options);
@@ -45965,19 +46015,21 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 		* @returns JWT or UserRefresh Client with data
 		*/
 		_cacheClientFromJSON(json, options) {
-			const client = this.fromJSON(json, options);
+			const client = (0, util_1.suppressFromJsonWarning)(() => this.fromJSON(json, options));
 			this.jsonContent = json;
 			this.cachedCredential = client;
 			return client;
 		}
 		fromStream(inputStream, optionsOrCallback = {}, callback) {
+			const isADC = (0, util_1.isAdcWarningSuppressed)();
+			if (!isADC) console.warn("The `fromStream` method is deprecated. Please use the `JWT` constructor with a parsed stream instead. For more details, see https://cloud.google.com/docs/authentication/external/externally-sourced-credentials.");
 			let options = {};
 			if (typeof optionsOrCallback === "function") callback = optionsOrCallback;
 			else options = optionsOrCallback;
-			if (callback) this.fromStreamAsync(inputStream, options).then((r) => callback(null, r), callback);
-			else return this.fromStreamAsync(inputStream, options);
+			if (callback) this.fromStreamAsync(inputStream, options, isADC).then((r) => callback(null, r), callback);
+			else return this.fromStreamAsync(inputStream, options, isADC);
 		}
-		fromStreamAsync(inputStream, options) {
+		fromStreamAsync(inputStream, options, isADC = false) {
 			return new Promise((resolve, reject) => {
 				if (!inputStream) throw new Error("Must pass in a stream containing the Google auth settings.");
 				const chunks = [];
@@ -45985,7 +46037,7 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 					try {
 						try {
 							const data = JSON.parse(chunks.join(""));
-							return resolve(this._cacheClientFromJSON(data, options));
+							return resolve(isADC ? (0, util_1.suppressAdcWarning)(() => this._cacheClientFromJSON(data, options)) : this._cacheClientFromJSON(data, options));
 						} catch (err) {
 							if (!this.keyFilename) throw err;
 							const client = new jwtclient_1.JWT({
@@ -46114,10 +46166,14 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 		* Default Credentials.
 		*/
 		async getClient() {
-			if (this.cachedCredential) return this.cachedCredential;
+			if (this.cachedCredential) {
+				if (this.cachedCredential instanceof jwtclient_1.JWT) this.setGapicJWTValues(this.cachedCredential);
+				return this.cachedCredential;
+			}
 			this.#pendingAuthClient = this.#pendingAuthClient || this.#determineClient();
 			try {
 				const client = await this.#pendingAuthClient;
+				if (client instanceof jwtclient_1.JWT) this.setGapicJWTValues(client);
 				if (client instanceof gdchclient_1.GdchClient && !client.apiAudience) {
 					const opts = this.clientOptions;
 					const endpoint = opts.apiEndpoint || opts.servicePath;
