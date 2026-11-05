@@ -2,6 +2,16 @@
 
 Thank you for your interest in contributing! This guide covers the conventions and workflow for this project.
 
+## Repository Layout (npm workspaces)
+
+| Path | Package | Purpose |
+|------|---------|---------|
+| `packages/google-sheet-translations/` | `@el-j/google-sheet-translations` | Published library, CLIs and GitHub Action bundle (`src/`, `tests/`, `dist*/`) |
+| `apps/docs/` | `@el-j/google-sheet-translations-docs` (private) | VitePress documentation site |
+| `action.yml` | – | GitHub Action manifest; must stay at the repo root, points at the bundle in the package |
+
+Run `npm install` once at the repo root. Common root commands: `npm run build`, `npm test`, `npm run lint`, `npm run format:check`, `npm run docs:build` (build the library first). Target a single workspace with `npm run <script> -w <workspace-name>`. Releases are driven by semantic-release from the repo root and publish only the library package.
+
 ## Conventional Commits
 
 This project uses [Conventional Commits](https://www.conventionalcommits.org/) to automate semantic versioning and changelog generation via [semantic-release](https://semantic-release.gitbook.io/).
@@ -120,9 +130,9 @@ This runs `semantic-release --dry-run` and prints the planned release notes with
 Documentation is automatically rebuilt and deployed to [GitHub Pages](https://el-j.github.io/google-sheet-translations/) on every:
 
 - Successful release (via `workflow_run` trigger in `docs.yml`)
-- Push to `main` that changes `website/**`, `README.md`, or `CHANGELOG.md`
+- Push to `main` that changes `apps/docs/**`, `README.md`, or `CHANGELOG.md`
 - Manual dispatch of the **Deploy Documentation** workflow
 
-The `website/changelog.md` page automatically includes the root `CHANGELOG.md` via VitePress file includes — no manual sync needed.
+The `apps/docs/changelog.md` page automatically includes the root `CHANGELOG.md` via VitePress file includes — no manual sync needed.
 
 See [Release Process guide](https://el-j.github.io/google-sheet-translations/guide/release-process) for the full pipeline.

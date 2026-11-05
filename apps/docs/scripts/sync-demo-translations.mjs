@@ -30,10 +30,10 @@ if (!process.env.GOOGLE_CLIENT_EMAIL || !process.env.GOOGLE_PRIVATE_KEY) {
 
 // ── Load English source translations ────────────────────────────────────────
 const landingPageEn = JSON.parse(
-  readFileSync(path.join(repoRoot, 'website/i18n/landingPage.en.json'), 'utf8')
+  readFileSync(path.join(repoRoot, 'i18n/landingPage.en.json'), 'utf8')
 );
 const uiEn = JSON.parse(
-  readFileSync(path.join(repoRoot, 'website/i18n/ui.en.json'), 'utf8')
+  readFileSync(path.join(repoRoot, 'i18n/ui.en.json'), 'utf8')
 );
 
 // ── Build the languageData.json array the package expects ────────────────────
@@ -55,9 +55,7 @@ writeFileSync(dataJsonPath, JSON.stringify(languageData, null, 2), 'utf8');
 console.log(`[sync] Wrote source languageData.json → ${dataJsonPath}`);
 
 // ── Import the built package and run authenticated sync ──────────────────────
-const { getSpreadSheetData } = await import(
-  path.join(repoRoot, 'dist/index.js')
-);
+const { getSpreadSheetData } = await import('@el-j/google-sheet-translations');
 
 const DEMO_SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID || '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0';
 // Use a fresh, empty output dir so isDataJsonNewer() always returns true

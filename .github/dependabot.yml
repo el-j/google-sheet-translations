@@ -6,7 +6,10 @@ version: 2
 updates:
   # ── npm ─────────────────────────────────────────────────────────────────────
   - package-ecosystem: "npm"
-    directory: "/"
+    directories:
+      - "/"
+      - "/packages/*"
+      - "/apps/*"
     schedule:
       interval: "weekly"
       day: "monday"

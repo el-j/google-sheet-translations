@@ -2,16 +2,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, '../..');
 const DEMO_SPREADSHEET_ID = '1QPT1wGSN5knfmXDlN1UKYr3nVUYl4-wDGipaPNurwC0';
 const DEMO_SHEETS = ['landingPage', 'ui', 'i18n'];
 
 export default {
   async load() {
     try {
-      // Import from the pre-built dist (docs:build always runs after npm run build)
+      // Resolved through the npm workspace link; the library must be built first
       const { getSpreadSheetData, getTranslationSummary, getLocaleDisplayName } = await import(
-        path.join(repoRoot, 'dist/index.js')
+        '@el-j/google-sheet-translations'
       );
 
       const translations = await getSpreadSheetData(DEMO_SHEETS, {

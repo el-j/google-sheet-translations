@@ -20,7 +20,7 @@ on:
       - main
       - develop
     paths:
-      - 'website/**'
+      - 'apps/docs/**'
       - 'scripts/**'
       - '.github/workflows/docs.yml'
       - 'README.md'
@@ -96,14 +96,14 @@ jobs:
           GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
-        run: node scripts/sync-demo-translations.mjs
+        run: npm run sync:translations
 
       - name: Verify translations were pushed
         if: steps.sync_creds.outputs.has_creds == 'true'
         env:
           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
           GOOGLE_SPREADSHEET_ID: ${{ secrets.GOOGLE_SPREADSHEET_ID }}
-        run: node scripts/verify-demo-translations.mjs
+        run: npm run verify:translations -w @el-j/google-sheet-translations-docs
 
       - name: Download existing gh-pages artifact for version archival
         uses: actions/checkout@v7
@@ -121,7 +121,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: website/.vitepress/dist
+          path: apps/docs/.vitepress/dist
 
   deploy:
     name: Deploy to GitHub Pages

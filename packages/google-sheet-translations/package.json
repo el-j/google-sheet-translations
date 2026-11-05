@@ -1,0 +1,101 @@
+{
+  "name": "@el-j/google-sheet-translations",
+  "version": "3.0.0-beta.16",
+  "description": "A package to manage translations stored in Google Spreadsheets",
+  "main": "dist/index.js",
+  "module": "dist/esm/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "gst-setup-wif": "dist-cli/setup-wif.mjs",
+    "gst-run-provider": "dist-cli/run-provider.mjs",
+    "gst-migrate-v3": "dist-cli/migrate-v3.mjs",
+    "gst-cryptpad": "dist-cli/cryptpad.mjs"
+  },
+  "files": [
+    "dist",
+    "dist-cli",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build:action": "node scripts/clean.mjs dist-action && rolldown -c --environment BUILD_TARGET:action && node scripts/patch-action-bundle.mjs",
+    "build:cli": "node scripts/clean.mjs dist-cli && rolldown -c --environment BUILD_TARGET:cli && chmod +x dist-cli/*.mjs",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build:cjs": "rolldown -c --environment BUILD_TARGET:cjs",
+    "build:esm": "rolldown -c --environment BUILD_TARGET:esm && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",
+    "build": "npm run build:types && npm run build:cjs && npm run build:esm && npm run build:cli && npm run build:action",
+    "test": "vitest run --coverage",
+    "test:integration": "INTEGRATION=true vitest run tests/integration --testTimeout=60000",
+    "test:provider-matrix": "vitest run tests/providers --testTimeout=60000",
+    "test:mutation": "node scripts/patch-stryker.mjs && stryker run",
+    "clean": "node scripts/clean.mjs dist dist-cli dist-action",
+    "prebuild": "npm run clean",
+    "prepack": "node ../../scripts/copy-package-docs.mjs",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "translations",
+    "i18n",
+    "nextjs",
+    "typescript",
+    "auto-translation",
+    "machine-translation",
+    "localization",
+    "internationalization",
+    "cryptpad",
+    "spreadsheet",
+    "google-sheets",
+    "google-translate",
+    "google-api",
+    "google-spreadsheet"
+  ],
+  "author": "el-j",
+  "license": "MIT",
+  "dependencies": {
+    "csv-parse": "^7.0.3",
+    "google-auth-library": "^11.3.3",
+    "google-spreadsheet": "^5.3.0",
+    "tweetnacl": "^1.0.3",
+    "ws": "^8.22.1"
+  },
+  "peerDependencies": {
+    "typescript": ">=4.0.0"
+  },
+  "devDependencies": {
+    "@actions/core": "^3.0.1",
+    "@stryker-mutator/core": "^10.1.1",
+    "@stryker-mutator/vitest-runner": "^10.1.1",
+    "@types/node": "^26.6.6",
+    "@vitest/coverage-v8": "^5.1.0",
+    "dotenv": "18.0.9",
+    "rolldown": "^1.3.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0",
+    "vitest-mock-extended": "^5.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/el-j/google-sheet-translations.git",
+    "directory": "packages/google-sheet-translations"
+  },
+  "homepage": "https://el-j.github.io/google-sheet-translations/",
+  "bugs": {
+    "url": "https://github.com/el-j/google-sheet-translations/issues"
+  }
+}
