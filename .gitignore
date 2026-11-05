@@ -43,12 +43,16 @@ reports/
 .releaserc.local.json
 
 # VitePress build output
-website/.vitepress/dist
-website/.vitepress/cache
-website/public/translations/
+apps/docs/.vitepress/dist
+apps/docs/.vitepress/cache
+apps/docs/public/translations/
 
 # Sync script temp output
 tmp/
 
 /.vitepress
 
+
+# Copied from the repo root by the package `prepack` script
+packages/*/README.md
+packages/*/LICENSE

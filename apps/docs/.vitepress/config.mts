@@ -1,8 +1,13 @@
-import { createRequire } from 'node:module'
+import { existsSync, readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { defineConfig, type HeadConfig } from 'vitepress'
 
-const require = createRequire(import.meta.url)
-const pkg = require('../../package.json') as { version: string }
+// The library lives in packages/ (monorepo); the first candidate also covers
+// pre-monorepo checkouts, where this config is overlaid onto website/.vitepress.
+const pkgPath = ['../../../packages/google-sheet-translations/package.json', '../../package.json']
+  .map((rel) => fileURLToPath(new URL(rel, import.meta.url)))
+  .find((candidate) => existsSync(candidate))!
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version: string }
 
 const base = (process.env.DOCS_BASE || '/google-sheet-translations/').replace(/\/?$/, '/')
 const outDir = process.env.DOCS_OUT_DIR || undefined

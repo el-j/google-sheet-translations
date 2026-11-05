@@ -7,10 +7,10 @@
     "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }]
   },
   "ignorePatterns": [
-    "dist/**",
-    "dist-cli/**",
-    "dist-action/**",
-    "coverage/**",
-    "node_modules/**"
+    "**/dist/**",
+    "**/dist-cli/**",
+    "**/dist-action/**",
+    "**/coverage/**",
+    "**/node_modules/**"
   ]
 }

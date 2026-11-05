@@ -397,7 +397,7 @@ Operational notes:
 - `spreadsheetNameFilter` only applies to discovered sheets in the programmatic API. Explicit `spreadsheet-ids` are never filtered out.
 - `sync-images` supports incremental freshness checks and optional `cleanSync` deletion in the programmatic API. See the Drive Folder guide for those semantics before enabling destructive cleanup.
 
-See the full Drive Folder guide in `website/guide/drive-folder.md` for the complete API surface, image sync semantics, and Google Doc ingestion details.
+See the full Drive Folder guide in `apps/docs/guide/drive-folder.md` for the complete API surface, image sync semantics, and Google Doc ingestion details.
 
 ### Outputs
 

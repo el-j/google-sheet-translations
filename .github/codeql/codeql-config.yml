@@ -4,6 +4,6 @@
 paths-ignore:
   # dist-action/ is a bundled build artifact (esbuild output) committed for the
   # GitHub Action runner (node20 requires it in-repo). Only scan source files.
-  - 'dist-action/**'
+  - '**/dist-action/**'
   # dist/ is the published npm package build artifact; not source code.
-  - 'dist/**'
+  - '**/dist/**'
