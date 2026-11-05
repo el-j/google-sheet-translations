@@ -28,9 +28,14 @@
   "techStack": {
     "language": "TypeScript",
     "runtime": "Node.js >=18.0.0",
-    "testFramework": "Jest + ts-jest",
-    "buildTool": "tsc",
-    "packageManager": "npm",
+    "testFramework": "Vitest",
+    "buildTool": "rolldown + tsc (types)",
+    "packageManager": "npm (workspaces)",
+    "workspaces": {
+      "root": "private orchestrator: lint, format, release, husky",
+      "packages/google-sheet-translations": "published library, CLIs, GitHub Action bundle (src/, tests/)",
+      "apps/docs": "private VitePress docs site"
+    },
     "keyDependencies": [
       "google-spreadsheet@^4.1.5",
       "google-auth-library@^10.1.0"
@@ -213,7 +218,7 @@
     {
       "id": "test-coverage-improver",
       "name": "Test Coverage Improver",
-      "description": "Writes missing Jest tests following ts-jest patterns; targets edge cases and error paths.",
+      "description": "Writes missing Vitest tests following existing patterns; targets edge cases and error paths.",
       "definitionFile": "agents/test-coverage-improver.json",
       "modelHint": "claude-sonnet-4-5",
       "tools": [
@@ -544,7 +549,7 @@
         ],
         "onFailure": "stop",
         "outputArtifacts": [
-          "coverage/lcov.info"
+          "packages/google-sheet-translations/coverage/lcov.info"
         ]
       },
       {
@@ -571,8 +576,8 @@
         "agents": [],
         "dependsOn": ["document"],
         "commands": [
-          "node scripts/sync-demo-translations.mjs",
-          "node scripts/verify-demo-translations.mjs"
+          "npm run sync:translations",
+          "npm run verify:translations -w @el-j/google-sheet-translations-docs"
         ],
         "secrets": {
           "GOOGLE_CLIENT_EMAIL": "mail",
@@ -593,7 +598,7 @@
         ],
         "commands": [
           "npm run build",
-          "npm publish --access public"
+          "npm publish -w @el-j/google-sheet-translations --access public"
         ],
         "onFailure": "stop",
         "conditions": [
@@ -688,14 +693,14 @@
         "title": "Fixed wrong version number in docs (v2.0.0 → v1.3.0)",
         "status": "done",
         "priority": "medium",
-        "detail": "website/changelog.md incorrectly listed v2.0.0 as current. Fixed to v1.3.0 with correct feature list. src/index.ts wrong v2.0.0 comment also fixed."
+        "detail": "apps/docs/changelog.md incorrectly listed v2.0.0 as current. Fixed to v1.3.0 with correct feature list. packages/google-sheet-translations/src/index.ts wrong v2.0.0 comment also fixed."
       },
       {
         "id": "T-005",
         "title": "Add global language switcher to VitePress nav bar",
         "status": "done",
         "priority": "high",
-        "detail": "Created website/.vitepress/theme/index.ts + LangSwitcher.vue. Injects a locale dropdown into the nav-bar-content-after slot. Synced with translations from the spreadsheet at build time. Selection persisted in localStorage."
+        "detail": "Created apps/docs/.vitepress/theme/index.ts + LangSwitcher.vue. Injects a locale dropdown into the nav-bar-content-after slot. Synced with translations from the spreadsheet at build time. Selection persisted in localStorage."
       },
       {
         "id": "T-006",
@@ -720,10 +725,10 @@
       },
       {
         "id": "T-009",
-        "title": "Remove duplicate tests in tests/basic.test.js",
+        "title": "Remove duplicate tests in packages/google-sheet-translations/tests/basic.test.js",
         "status": "open",
         "priority": "low",
-        "detail": "Deferred from v2: tests/basic.test.js has duplicate test cases that should be deduplicated or migrated to the TypeScript test files."
+        "detail": "Deferred from v2: packages/google-sheet-translations/tests/basic.test.js has duplicate test cases that should be deduplicated or migrated to the TypeScript test files."
       },
       {
         "id": "T-010",

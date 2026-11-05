@@ -31,20 +31,20 @@ One sentence describing what success looks like.
 
 ```markdown
 ## Goal
-Export `resolveLocaleWithFallback` from `src/index.ts`.
+Export `resolveLocaleWithFallback` from `packages/google-sheet-translations/src/index.ts`.
 
 ## Context
-- File: `src/utils/localeNormalizer.ts` – function already exists
-- Pattern: see how `getLanguagePrefix` is exported in `src/index.ts` line 34
-- Tests live in: `tests/utils/localeNormalizer.test.ts`
+- File: `packages/google-sheet-translations/src/utils/localeNormalizer.ts` – function already exists
+- Pattern: see how `getLanguagePrefix` is exported in `packages/google-sheet-translations/src/index.ts` line 34
+- Tests live in: `packages/google-sheet-translations/tests/utils/localeNormalizer.test.ts`
 
 ## Steps
-1. Add `resolveLocaleWithFallback` to the export block in `src/index.ts`
-2. Add 5+ test cases to `tests/utils/localeNormalizer.test.ts`
-3. Run: `npm run build && npm test tests/utils/localeNormalizer.test.ts`
+1. Add `resolveLocaleWithFallback` to the export block in `packages/google-sheet-translations/src/index.ts`
+2. Add 5+ test cases to `packages/google-sheet-translations/tests/utils/localeNormalizer.test.ts`
+3. Run: `npm run build && npm test`
 
 ## Acceptance criteria
-- [ ] `dist/index.js` contains `resolveLocaleWithFallback`
+- [ ] `packages/google-sheet-translations/dist/index.js` contains `resolveLocaleWithFallback`
 - [ ] 5+ new test cases pass
 - [ ] TypeScript compiles without errors
 ```
@@ -57,7 +57,7 @@ task({
   description: "Export resolveLocaleWithFallback",
   prompt: `
     <task>
-    Goal: Export resolveLocaleWithFallback from src/index.ts
+    Goal: Export resolveLocaleWithFallback from packages/google-sheet-translations/src/index.ts
     Context: ...
     Steps: ...
     </task>
@@ -65,7 +65,7 @@ task({
     Working directory: /home/runner/work/google-sheet-translations/...
     
     Do the task and verify it passes:
-    npm run build && npx jest tests/utils/localeNormalizer.test.ts --no-coverage
+    npm run build && npm test -w @el-j/google-sheet-translations -- tests/utils/localeNormalizer.test.ts
   `
 })
 ```

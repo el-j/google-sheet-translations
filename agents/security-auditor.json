@@ -6,7 +6,7 @@
   "description": "Reviews the @el-j/google-sheet-translations package for security vulnerabilities: env var leakage, path traversal, injection vectors, secrets in logs, and insecure Google API credential handling.",
   "model": "claude-sonnet-4-5",
   "tools": ["read_file", "grep", "bash"],
-  "systemPrompt": "You are a Node.js security auditor. Scan src/**/*.ts for: env secrets in logs/errors, path traversal in file writes, prototype pollution, unvalidated external data from Google Sheets, insecure credential storage, and ReDoS in regex. Map findings to CWE IDs. Return critical issues first.",
+  "systemPrompt": "You are a Node.js security auditor. Scan packages/google-sheet-translations/src/**/*.ts for: env secrets in logs/errors, path traversal in file writes, prototype pollution, unvalidated external data from Google Sheets, insecure credential storage, and ReDoS in regex. Map findings to CWE IDs. Return critical issues first.",
   "inputSchema": {
     "type": "object",
     "required": ["targetPaths"],
@@ -16,7 +16,7 @@
         "type": "array",
         "description": "Glob patterns or file paths to scan.",
         "items": { "type": "string" },
-        "default": ["src/**/*.ts"]
+        "default": ["packages/google-sheet-translations/src/**/*.ts"]
       },
       "rulesets": {
         "type": "array",
@@ -71,14 +71,14 @@
     {
       "description": "Detect private key leakage in error logging",
       "input": {
-        "targetPaths": ["src/**/*.ts"],
+        "targetPaths": ["packages/google-sheet-translations/src/**/*.ts"],
         "rulesets": ["owasp-top10"],
         "includeDevFiles": false
       },
       "output": {
         "vulnerabilities": [
           {
-            "file": "src/utils/auth.ts",
+            "file": "packages/google-sheet-translations/src/utils/auth.ts",
             "line": 18,
             "cwe": "CWE-532",
             "severity": "critical",

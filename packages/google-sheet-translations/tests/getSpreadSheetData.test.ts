@@ -294,17 +294,17 @@ describe('getSpreadSheetData', () => {
   test('should throw when autoCreate is disabled and no spreadsheet ID exists', async () => {
     delete process.env.GOOGLE_SPREADSHEET_ID;
 
-    await expect(getSpreadSheetData(['home'], { autoCreate: false })).rejects.toThrow(
-      /No spreadsheet ID provided/,
-    );
+    await expect(getSpreadSheetData(['home'], { autoCreate: false })).rejects.toMatchObject({
+      message: expect.stringMatching(/No spreadsheet ID provided/),
+    });
   });
 
   test('should throw a descriptive error when spreadsheet metadata cannot be loaded', async () => {
     (mockDoc.loadInfo as Mock).mockRejectedValueOnce(new Error('boom'));
 
-    await expect(getSpreadSheetData(['home'])).rejects.toThrow(
-      'Failed to load spreadsheet "test-spreadsheet-id"',
-    );
+    await expect(getSpreadSheetData(['home'])).rejects.toMatchObject({
+      message: 'Failed to load spreadsheet "test-spreadsheet-id"',
+    });
   });
 });
 
@@ -384,9 +384,9 @@ describe('getSpreadSheetData (publicSheet mode)', () => {
     const original = process.env.GOOGLE_SPREADSHEET_ID;
     delete process.env.GOOGLE_SPREADSHEET_ID;
 
-    await expect(getSpreadSheetData(['home'], { publicSheet: true })).rejects.toThrow(
-      /No spreadsheet ID provided/,
-    );
+    await expect(getSpreadSheetData(['home'], { publicSheet: true })).rejects.toMatchObject({
+      message: expect.stringMatching(/No spreadsheet ID provided/),
+    });
 
     process.env.GOOGLE_SPREADSHEET_ID = original;
   });

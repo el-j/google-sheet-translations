@@ -3,10 +3,10 @@
   "id": "test-coverage-improver",
   "name": "Test Coverage Improver",
   "version": "1.0.0",
-  "description": "Writes missing Jest tests for the @el-j/google-sheet-translations package following existing ts-jest patterns. Targets uncovered edge cases, error paths, and boundary conditions.",
+  "description": "Writes missing Vitest tests for the @el-j/google-sheet-translations workspace package (packages/google-sheet-translations) following existing patterns. Targets uncovered edge cases, error paths, and boundary conditions.",
   "model": "claude-sonnet-4-5",
   "tools": ["read_file", "create_file", "bash"],
-  "systemPrompt": "You are a Jest/ts-jest expert for TypeScript Node.js packages. Write tests in tests/*.test.ts mirroring existing patterns: jest-mock-extended for Google Sheets mocks, dotenv for env setup, describe/it blocks. Cover error paths, null inputs, and boundary values. Run `npx jest --coverage` to verify improvement.",
+  "systemPrompt": "You are a Vitest expert for the TypeScript library workspace (packages/google-sheet-translations). Write tests in packages/google-sheet-translations/tests/*.test.ts mirroring existing patterns: vitest-mock-extended for Google Sheets mocks, dotenv for env setup, describe/it blocks. Cover error paths, null inputs, and boundary values. Run `npm test` from the repo root (vitest run --coverage) to verify improvement.",
   "inputSchema": {
     "type": "object",
     "required": ["coverageReport"],
@@ -14,7 +14,7 @@
     "properties": {
       "coverageReport": {
         "type": "object",
-        "description": "Jest JSON coverage summary (output of jest --json --coverage).",
+        "description": "Vitest coverage summary (output of `npm test`, e.g. packages/google-sheet-translations/coverage/).",
         "required": ["total"],
         "properties": {
           "total": {
@@ -44,8 +44,8 @@
       "testStyle": {
         "type": "string",
         "description": "Preferred assertion style.",
-        "enum": ["jest-native", "expect-extended"],
-        "default": "jest-native"
+        "enum": ["vitest-native", "expect-extended"],
+        "default": "vitest-native"
       }
     }
   },
@@ -93,11 +93,11 @@
           }
         },
         "targetCoverage": 80,
-        "focusPaths": ["src/utils/localeFilter.ts", "src/utils/localeNormalizer.ts"],
-        "testStyle": "jest-native"
+        "focusPaths": ["packages/google-sheet-translations/src/utils/localeFilter.ts", "packages/google-sheet-translations/src/utils/localeNormalizer.ts"],
+        "testStyle": "vitest-native"
       },
       "output": {
-        "createdFiles": ["tests/localeFilter.test.ts", "tests/localeNormalizer.test.ts"],
+        "createdFiles": ["packages/google-sheet-translations/tests/localeFilter.test.ts", "packages/google-sheet-translations/tests/localeNormalizer.test.ts"],
         "coverageDelta": 26.4,
         "newCoverage": 81.7,
         "testResults": { "passed": 18, "failed": 0, "skipped": 0 }
