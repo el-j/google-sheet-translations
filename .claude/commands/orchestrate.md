@@ -40,8 +40,8 @@ task(general-purpose): "Add resolveLocaleWithFallback to localeNormalizer.ts and
 task(general-purpose): "Create Vue composable useLocaleSwitcher.ts"
 
 # Sequential example:
-# 1. First update src/index.ts exports
-# 2. Then build + verify dist/index.js contains new exports
+# 1. First update packages/google-sheet-translations/src/index.ts exports
+# 2. Then build + verify packages/google-sheet-translations/dist/index.js contains new exports
 ```
 
 ### 4. Verify phase

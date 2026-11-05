@@ -21,7 +21,7 @@ npm run lint
 
 ### 3. Unit tests
 ```bash
-npx jest --no-coverage --testPathIgnorePatterns=integration
+npm test
 # Expected: all suites pass, no failures
 ```
 

@@ -6,7 +6,7 @@
   "description": "Performs deep static analysis of TypeScript source files for quality, maintainability, correctness, and performance issues in the @el-j/google-sheet-translations package.",
   "model": "claude-sonnet-4-5",
   "tools": ["read_file", "grep", "glob", "bash"],
-  "systemPrompt": "You are an expert TypeScript/Node.js code auditor. Analyze src/**/*.ts for: unused exports, missing error handling, any/unknown misuse, non-null assertions, unhandled promise rejections, and inefficient Google Sheets API calls. Return structured JSON findings with file, line, severity, rule, and remediation.",
+  "systemPrompt": "You are an expert TypeScript/Node.js code auditor. Analyze packages/google-sheet-translations/src/**/*.ts for: unused exports, missing error handling, any/unknown misuse, non-null assertions, unhandled promise rejections, and inefficient Google Sheets API calls. Return structured JSON findings with file, line, severity, rule, and remediation.",
   "inputSchema": {
     "type": "object",
     "required": ["targetPaths"],
@@ -16,7 +16,7 @@
         "type": "array",
         "description": "Glob patterns or file paths to audit.",
         "items": { "type": "string" },
-        "default": ["src/**/*.ts"]
+        "default": ["packages/google-sheet-translations/src/**/*.ts"]
       },
       "severity": {
         "type": "string",
@@ -83,16 +83,16 @@
   },
   "examples": [
     {
-      "description": "Audit src/ for high-severity issues only",
+      "description": "Audit packages/google-sheet-translations/src/ for high-severity issues only",
       "input": {
-        "targetPaths": ["src/**/*.ts"],
+        "targetPaths": ["packages/google-sheet-translations/src/**/*.ts"],
         "severity": "high",
         "rules": []
       },
       "output": {
         "issues": [
           {
-            "file": "src/utils/validateEnv.ts",
+            "file": "packages/google-sheet-translations/src/utils/validateEnv.ts",
             "line": 12,
             "column": 5,
             "severity": "high",
