@@ -38,14 +38,14 @@ var __esmMin = (fn, res, err) => () => {
 	}
 };
 var __commonJSMin = (cb, mod) => () => (mod || (cb((mod = { exports: {} }).exports, mod, mod.exports), cb = null), mod.exports);
-var __exportAll = (all, no_symbols) => {
-	let target = {};
+var __exportAll = (all, flags) => {
+	let target = Object.setPrototypeOf({}, null);
 	for (var name in all) __defProp(target, name, {
 		get: all[name],
 		enumerable: true
 	});
-	if (!no_symbols) __defProp(target, Symbol.toStringTag, { value: "Module" });
-	return target;
+	if (!(flags & 1)) __defProp(target, Symbol.toStringTag, { value: "Module" });
+	return flags & 2 ? target : Object.preventExtensions(target);
 };
 var __copyProps = (to, from, except, desc) => {
 	if (from && typeof from === "object" || typeof from === "function") for (var keys = __getOwnPropNames(from), i = 0, n = keys.length, key; i < n; i++) {
@@ -40223,7 +40223,7 @@ var require_base64_js = /* @__PURE__ */ __commonJSMin(((exports) => {
 		return parts.join("");
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/crypto/shared.js
+// node_modules/google-auth-library/build/src/crypto/shared.js
 var require_shared$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.fromArrayBufferToHex = fromArrayBufferToHex;
@@ -40238,7 +40238,7 @@ var require_shared$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}).join("");
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/crypto/browser/crypto.js
+// node_modules/google-auth-library/build/src/crypto/browser/crypto.js
 var require_crypto$2 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.BrowserCrypto = void 0;
@@ -40320,7 +40320,7 @@ var require_crypto$2 = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/crypto/node/crypto.js
+// node_modules/google-auth-library/build/src/crypto/node/crypto.js
 var require_crypto$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.NodeCrypto = void 0;
@@ -40394,7 +40394,7 @@ var require_crypto$1 = /* @__PURE__ */ __commonJSMin(((exports) => {
 		return Buffer.from(arrayBuffer);
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/crypto/crypto.js
+// node_modules/google-auth-library/build/src/crypto/crypto.js
 var require_crypto = /* @__PURE__ */ __commonJSMin(((exports, module, this$2) => {
 	var __createBinding = this$2 && this$2.__createBinding || (Object.create ? (function(o, m, k, k2) {
 		if (k2 === void 0) k2 = k;
@@ -40581,7 +40581,7 @@ var require_ecdsa_sig_formatter = /* @__PURE__ */ __commonJSMin(((exports, modul
 		joseToDer
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/util.js
+// node_modules/google-auth-library/build/src/util.js
 var require_util = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.LRUCache = void 0;
@@ -40777,11 +40777,11 @@ var require_util = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	}
 }));
-// ../../node_modules/google-auth-library/package.json
+// node_modules/google-auth-library/package.json
 var require_package = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 	module.exports = {
 		"name": "google-auth-library",
-		"version": "11.3.2",
+		"version": "11.3.3",
 		"author": "Google Inc.",
 		"description": "Google APIs Authentication Client Library for Node.js",
 		"engines": { "node": ">=22" },
@@ -40863,7 +40863,7 @@ var require_package = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/shared.cjs
+// node_modules/google-auth-library/build/src/shared.cjs
 var require_shared = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.USER_AGENT = exports.PRODUCT_NAME = exports.pkg = void 0;
@@ -40873,7 +40873,7 @@ var require_shared = /* @__PURE__ */ __commonJSMin(((exports) => {
 	exports.PRODUCT_NAME = PRODUCT_NAME;
 	exports.USER_AGENT = `${PRODUCT_NAME}/${pkg.version}`;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/authclient.js
+// node_modules/google-auth-library/build/src/auth/authclient.js
 var require_authclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.AuthClient = exports.DEFAULT_EAGER_REFRESH_THRESHOLD_MILLIS = exports.DEFAULT_UNIVERSE = void 0;
@@ -41087,7 +41087,7 @@ var require_authclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/loginticket.js
+// node_modules/google-auth-library/build/src/auth/loginticket.js
 var require_loginticket = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.LoginTicket = void 0;
@@ -41136,7 +41136,7 @@ var require_loginticket = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.LoginTicket = LoginTicket;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/oauth2client.js
+// node_modules/google-auth-library/build/src/auth/oauth2client.js
 var require_oauth2client = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.OAuth2Client = exports.ClientAuthentication = exports.CertificateFormat = exports.CodeChallengeMethod = void 0;
@@ -41709,7 +41709,7 @@ var require_oauth2client = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/computeclient.js
+// node_modules/google-auth-library/build/src/auth/computeclient.js
 var require_computeclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.Compute = void 0;
@@ -41790,7 +41790,7 @@ var require_computeclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.Compute = Compute;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/idtokenclient.js
+// node_modules/google-auth-library/build/src/auth/idtokenclient.js
 var require_idtokenclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.IdTokenClient = void 0;
@@ -41826,7 +41826,7 @@ var require_idtokenclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.IdTokenClient = IdTokenClient;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/envDetect.js
+// node_modules/google-auth-library/build/src/auth/envDetect.js
 var require_envDetect = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.GCPEnv = void 0;
@@ -42345,7 +42345,7 @@ var require_jws = /* @__PURE__ */ __commonJSMin(((exports) => {
 		return new VerifyStream(opts);
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/gtoken/jwsSign.js
+// node_modules/google-auth-library/build/src/gtoken/jwsSign.js
 var require_jwsSign = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.buildPayloadForJwsSign = buildPayloadForJwsSign;
@@ -42386,7 +42386,7 @@ var require_jwsSign = /* @__PURE__ */ __commonJSMin(((exports) => {
 		});
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/gtoken/getToken.js
+// node_modules/google-auth-library/build/src/gtoken/getToken.js
 var require_getToken = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.getToken = getToken;
@@ -42430,7 +42430,7 @@ var require_getToken = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/gtoken/errorWithCode.js
+// node_modules/google-auth-library/build/src/gtoken/errorWithCode.js
 var require_errorWithCode = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.ErrorWithCode = void 0;
@@ -42443,7 +42443,7 @@ var require_errorWithCode = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.ErrorWithCode = ErrorWithCode;
 }));
-// ../../node_modules/google-auth-library/build/src/gtoken/getCredentials.js
+// node_modules/google-auth-library/build/src/gtoken/getCredentials.js
 var require_getCredentials = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.getCredentials = getCredentials;
@@ -42550,7 +42550,7 @@ var require_getCredentials = /* @__PURE__ */ __commonJSMin(((exports) => {
 		return CredentialsProviderFactory.create(keyFilePath).getCredentials();
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/gtoken/tokenHandler.js
+// node_modules/google-auth-library/build/src/gtoken/tokenHandler.js
 var require_tokenHandler = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.TokenHandler = void 0;
@@ -42629,7 +42629,7 @@ var require_tokenHandler = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.TokenHandler = TokenHandler;
 }));
-// ../../node_modules/google-auth-library/build/src/gtoken/revokeToken.js
+// node_modules/google-auth-library/build/src/gtoken/revokeToken.js
 var require_revokeToken = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.revokeToken = revokeToken;
@@ -42651,7 +42651,7 @@ var require_revokeToken = /* @__PURE__ */ __commonJSMin(((exports) => {
 		});
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/gtoken/googleToken.js
+// node_modules/google-auth-library/build/src/gtoken/googleToken.js
 var require_googleToken = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.GoogleToken = void 0;
@@ -42742,7 +42742,7 @@ var require_googleToken = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.GoogleToken = GoogleToken;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/jwtaccess.js
+// node_modules/google-auth-library/build/src/auth/jwtaccess.js
 var require_jwtaccess = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.JWTAccess = void 0;
@@ -42886,7 +42886,7 @@ var require_jwtaccess = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/jwtclient.js
+// node_modules/google-auth-library/build/src/auth/jwtclient.js
 var require_jwtclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.JWT = void 0;
@@ -43112,7 +43112,7 @@ var require_jwtclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/refreshclient.js
+// node_modules/google-auth-library/build/src/auth/refreshclient.js
 var require_refreshclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.UserRefreshClient = exports.USER_REFRESH_ACCOUNT_TYPE = void 0;
@@ -43216,7 +43216,7 @@ var require_refreshclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/impersonated.js
+// node_modules/google-auth-library/build/src/auth/impersonated.js
 var require_impersonated = /* @__PURE__ */ __commonJSMin(((exports) => {
 	/**
 	* Copyright 2021 Google LLC
@@ -43399,7 +43399,7 @@ var require_impersonated = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/oauth2common.js
+// node_modules/google-auth-library/build/src/auth/oauth2common.js
 var require_oauth2common = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.OAuthClientAuthHandler = void 0;
@@ -43547,7 +43547,7 @@ var require_oauth2common = /* @__PURE__ */ __commonJSMin(((exports) => {
 		return newError;
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/auth/stscredentials.js
+// node_modules/google-auth-library/build/src/auth/stscredentials.js
 var require_stscredentials = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.StsCredentials = void 0;
@@ -43619,7 +43619,7 @@ var require_stscredentials = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/baseexternalclient.js
+// node_modules/google-auth-library/build/src/auth/baseexternalclient.js
 var require_baseexternalclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.BaseExternalAccountClient = exports.CLOUD_RESOURCE_MANAGER = exports.EXTERNAL_ACCOUNT_TYPE = exports.EXPIRATION_TIME_OFFSET = void 0;
@@ -43985,7 +43985,7 @@ var require_baseexternalclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/filesubjecttokensupplier.js
+// node_modules/google-auth-library/build/src/auth/filesubjecttokensupplier.js
 var require_filesubjecttokensupplier = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.FileSubjectTokenSupplier = void 0;
@@ -44037,7 +44037,7 @@ var require_filesubjecttokensupplier = /* @__PURE__ */ __commonJSMin(((exports) 
 	};
 	exports.FileSubjectTokenSupplier = FileSubjectTokenSupplier;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/urlsubjecttokensupplier.js
+// node_modules/google-auth-library/build/src/auth/urlsubjecttokensupplier.js
 var require_urlsubjecttokensupplier = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.UrlSubjectTokenSupplier = void 0;
@@ -44088,7 +44088,7 @@ var require_urlsubjecttokensupplier = /* @__PURE__ */ __commonJSMin(((exports) =
 	};
 	exports.UrlSubjectTokenSupplier = UrlSubjectTokenSupplier;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/certificatesubjecttokensupplier.js
+// node_modules/google-auth-library/build/src/auth/certificatesubjecttokensupplier.js
 var require_certificatesubjecttokensupplier = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.CertificateSubjectTokenSupplier = exports.InvalidConfigurationError = exports.CertificateSourceUnavailableError = exports.CERTIFICATE_CONFIGURATION_ENV_VARIABLE = void 0;
@@ -44261,7 +44261,7 @@ var require_certificatesubjecttokensupplier = /* @__PURE__ */ __commonJSMin(((ex
 	};
 	exports.CertificateSubjectTokenSupplier = CertificateSubjectTokenSupplier;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/identitypoolclient.js
+// node_modules/google-auth-library/build/src/auth/identitypoolclient.js
 var require_identitypoolclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.IdentityPoolClient = void 0;
@@ -44357,7 +44357,7 @@ var require_identitypoolclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/awsrequestsigner.js
+// node_modules/google-auth-library/build/src/auth/awsrequestsigner.js
 var require_awsrequestsigner = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.AwsRequestSigner = void 0;
@@ -44477,7 +44477,7 @@ var require_awsrequestsigner = /* @__PURE__ */ __commonJSMin(((exports) => {
 	async function generateAuthenticationHeaderMap(options) {
 		const additionalAmzHeaders = gaxios_1.Gaxios.mergeHeaders(options.additionalAmzHeaders);
 		const requestPayload = options.requestPayload || "";
-		const serviceName = options.host.split(".")[0];
+		const serviceName = options.host.split(".")[0].replace(/-fips$/, "");
 		const now = /* @__PURE__ */ new Date();
 		const amzDate = now.toISOString().replace(/[-:]/g, "").replace(/\.[0-9]+/, "");
 		const dateStamp = now.toISOString().replace(/[-]/g, "").replace(/T.*/, "");
@@ -44503,7 +44503,7 @@ var require_awsrequestsigner = /* @__PURE__ */ __commonJSMin(((exports) => {
 		};
 	}
 }));
-// ../../node_modules/google-auth-library/build/src/auth/defaultawssecuritycredentialssupplier.js
+// node_modules/google-auth-library/build/src/auth/defaultawssecuritycredentialssupplier.js
 var require_defaultawssecuritycredentialssupplier = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.DefaultAwsSecurityCredentialsSupplier = void 0;
@@ -44656,7 +44656,7 @@ var require_defaultawssecuritycredentialssupplier = /* @__PURE__ */ __commonJSMi
 	};
 	exports.DefaultAwsSecurityCredentialsSupplier = DefaultAwsSecurityCredentialsSupplier;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/awsclient.js
+// node_modules/google-auth-library/build/src/auth/awsclient.js
 var require_awsclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.AwsClient = void 0;
@@ -44754,7 +44754,7 @@ var require_awsclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/executable-response.js
+// node_modules/google-auth-library/build/src/auth/executable-response.js
 var require_executable_response = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.InvalidSubjectTokenError = exports.InvalidMessageFieldError = exports.InvalidCodeFieldError = exports.InvalidTokenTypeFieldError = exports.InvalidExpirationTimeFieldError = exports.InvalidSuccessFieldError = exports.InvalidVersionFieldError = exports.ExecutableResponseError = exports.ExecutableResponse = void 0;
@@ -44887,7 +44887,7 @@ var require_executable_response = /* @__PURE__ */ __commonJSMin(((exports) => {
 	var InvalidSubjectTokenError = class extends ExecutableResponseError {};
 	exports.InvalidSubjectTokenError = InvalidSubjectTokenError;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/pluggable-auth-handler.js
+// node_modules/google-auth-library/build/src/auth/pluggable-auth-handler.js
 var require_pluggable_auth_handler = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.PluggableAuthHandler = exports.ExecutableError = void 0;
@@ -44998,7 +44998,7 @@ var require_pluggable_auth_handler = /* @__PURE__ */ __commonJSMin(((exports) =>
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/pluggable-auth-client.js
+// node_modules/google-auth-library/build/src/auth/pluggable-auth-client.js
 var require_pluggable_auth_client = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.PluggableAuthClient = exports.ExecutableError = void 0;
@@ -45172,7 +45172,7 @@ var require_pluggable_auth_client = /* @__PURE__ */ __commonJSMin(((exports) => 
 	};
 	exports.PluggableAuthClient = PluggableAuthClient;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/externalclient.js
+// node_modules/google-auth-library/build/src/auth/externalclient.js
 var require_externalclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.ExternalAccountClient = void 0;
@@ -45216,7 +45216,7 @@ var require_externalclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.ExternalAccountClient = ExternalAccountClient;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/externalAccountAuthorizedUserClient.js
+// node_modules/google-auth-library/build/src/auth/externalAccountAuthorizedUserClient.js
 var require_externalAccountAuthorizedUserClient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.ExternalAccountAuthorizedUserClient = exports.EXTERNAL_ACCOUNT_AUTHORIZED_USER_TYPE = void 0;
@@ -45391,7 +45391,7 @@ var require_externalAccountAuthorizedUserClient = /* @__PURE__ */ __commonJSMin(
 	};
 	exports.ExternalAccountAuthorizedUserClient = ExternalAccountAuthorizedUserClient;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/gdchclient.js
+// node_modules/google-auth-library/build/src/auth/gdchclient.js
 var require_gdchclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.GdchClient = exports.GDCH_SERVICE_ACCOUNT_TYPE = void 0;
@@ -45628,7 +45628,7 @@ var require_gdchclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 		}
 	};
 }));
-// ../../node_modules/google-auth-library/build/src/auth/googleauth.js
+// node_modules/google-auth-library/build/src/auth/googleauth.js
 var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.GoogleAuth = exports.GoogleAuthExceptionMessages = void 0;
@@ -46318,7 +46318,7 @@ var require_googleauth = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.GoogleAuth = GoogleAuth;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/iam.js
+// node_modules/google-auth-library/build/src/auth/iam.js
 var require_iam = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.IAMAuth = void 0;
@@ -46350,7 +46350,7 @@ var require_iam = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.IAMAuth = IAMAuth;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/downscopedclient.js
+// node_modules/google-auth-library/build/src/auth/downscopedclient.js
 var require_downscopedclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.DownscopedClient = exports.EXPIRATION_TIME_OFFSET = exports.MAX_ACCESS_BOUNDARY_RULES_COUNT = void 0;
@@ -46541,7 +46541,7 @@ var require_downscopedclient = /* @__PURE__ */ __commonJSMin(((exports) => {
 	};
 	exports.DownscopedClient = DownscopedClient;
 }));
-// ../../node_modules/google-auth-library/build/src/auth/passthrough.js
+// node_modules/google-auth-library/build/src/auth/passthrough.js
 var require_passthrough = /* @__PURE__ */ __commonJSMin(((exports) => {
 	Object.defineProperty(exports, "__esModule", { value: true });
 	exports.PassThroughClient = void 0;
@@ -52991,6 +52991,7 @@ var require_constants = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 }));
 // ../../node_modules/ws/lib/buffer-util.js
 var require_buffer_util = /* @__PURE__ */ __commonJSMin(((exports, module) => {
+	const { websocketMask, websocketUnmask } = __require("http");
 	const { EMPTY_BUFFER } = require_constants();
 	const FastBuffer = Buffer[Symbol.species];
 	/**
@@ -53075,8 +53076,16 @@ var require_buffer_util = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 		toBuffer,
 		unmask: _unmask
 	};
-	/* istanbul ignore else  */
-	if (!process.env.WS_NO_BUFFER_UTIL) try {
+	if (websocketMask) {
+		module.exports.mask = function(source, mask, output, offset, length) {
+			if (length < 24) _mask(source, mask, output, offset, length);
+			else websocketMask(source, mask, output, offset, length);
+		};
+		module.exports.unmask = function(buffer, mask) {
+			if (buffer.length < 24) _unmask(buffer, mask);
+			else websocketUnmask(buffer, mask);
+		};
+	} else if (!process.env.WS_NO_BUFFER_UTIL) try {
 		const bufferUtil = __require("bufferutil");
 		module.exports.mask = function(source, mask, output, offset, length) {
 			if (length < 48) _mask(source, mask, output, offset, length);
@@ -54243,12 +54252,13 @@ var require_sender = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 				target[2] = target[3] = 0;
 				target.writeUIntBE(dataLength, 4, 6);
 			}
-			if (!options.mask) return [target, data];
+			if (!options.mask) return dataLength ? [target, data] : [target];
 			target[1] |= 128;
 			target[offset - 4] = mask[0];
 			target[offset - 3] = mask[1];
 			target[offset - 2] = mask[2];
 			target[offset - 1] = mask[3];
+			if (!dataLength) return [target];
 			if (skipMasking) return [target, data];
 			if (merge) {
 				applyMask(data, mask, target, offset, dataLength);
@@ -55622,9 +55632,14 @@ var require_websocket = /* @__PURE__ */ __commonJSMin(((exports, module) => {
 		}
 		if (parsedUrl.username || parsedUrl.password) opts.auth = `${parsedUrl.username}:${parsedUrl.password}`;
 		if (isIpcUrl) {
-			const parts = opts.path.split(":");
-			opts.socketPath = parts[0];
-			opts.path = parts[1];
+			const i = opts.path.indexOf(":");
+			if (i === -1) {
+				opts.socketPath = opts.path;
+				opts.path = "";
+			} else {
+				opts.socketPath = opts.path.slice(0, i);
+				opts.path = opts.path.slice(i + 1);
+			}
 		}
 		let req;
 		if (opts.followRedirects) {
