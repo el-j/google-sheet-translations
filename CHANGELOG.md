@@ -1,3 +1,13 @@
+## [3.0.0-beta.16](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.15...v3.0.0-beta.16) (2026-11-05)
+
+### 🐛 Bug Fixes
+
+* **release:** pin conventionalcommits preset to ^8 and block major bumps in dependabot ([34c459a](https://github.com/el-j/google-sheet-translations/commit/34c459a3f76c7d95b1c7e654aa59b3fcb63d966b))
+
+### ♻️ Refactoring
+
+* replace ts-node with tsx, add cleanup script, and update dependencies ([1089ae3](https://github.com/el-j/google-sheet-translations/commit/1089ae3ffaf73b74ba7457bb73df015e644ae39f))
+
 ## [3.0.0-beta.15](https://github.com/el-j/google-sheet-translations/compare/v3.0.0-beta.14...v3.0.0-beta.15) (2026-09-13)
 
 ### 🐛 Bug Fixes

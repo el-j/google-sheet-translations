@@ -26,6 +26,10 @@ updates:
     # and are not reachable from the published package. They require the npm
     # CLI itself to ship patched tar/minimatch — which is outside our control.
     ignore:
+      # v9+/v10 require conventional-changelog-writer@9+, which the
+      # @semantic-release/* plugins don't use yet -> release-notes step fails.
+      - dependency-name: "conventional-changelog-conventionalcommits"
+        update-types: ["version-update:semver-major"]
       # tar bundled inside npm CLI – drive-relative path traversal (Windows only)
       - dependency-name: "tar"
         update-types: ["version-update:semver-patch"]
