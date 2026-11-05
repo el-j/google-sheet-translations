@@ -180,4 +180,4 @@ outputs:
 
 runs:
   using: 'node20'
-  main: 'dist-action/index.mjs'
+  main: 'packages/google-sheet-translations/dist-action/index.mjs'

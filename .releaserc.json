@@ -49,14 +49,20 @@
       "changelogFile": "CHANGELOG.md"
     }],
     ["@semantic-release/npm", {
-      "npmPublish": true
+      "npmPublish": true,
+      "pkgRoot": "packages/google-sheet-translations"
     }],
     ["@semantic-release/github", {
       "successComment": "🎉 This issue has been resolved in version ${nextRelease.version}! See the [CHANGELOG](https://github.com/el-j/google-sheet-translations/blob/main/CHANGELOG.md) for details.",
       "labels": ["released"]
     }],
     ["@semantic-release/git", {
-      "assets": ["CHANGELOG.md", "package.json", "package-lock.json", "dist-action/index.mjs"],
+      "assets": [
+        "CHANGELOG.md",
+        "packages/google-sheet-translations/package.json",
+        "package-lock.json",
+        "packages/google-sheet-translations/dist-action/index.mjs"
+      ],
       "message": "chore(release): ${nextRelease.version}\n\n${nextRelease.notes}"
     }]
   ]

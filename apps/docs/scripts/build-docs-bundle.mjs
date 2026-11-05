@@ -7,8 +7,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(__dirname, '..');
-const distDir = path.join(repoRoot, 'website/.vitepress/dist');
+const docsDir = path.resolve(__dirname, '..');
+const repoRoot = path.resolve(docsDir, '../..');
+const LIB_WORKSPACE = '@el-j/google-sheet-translations';
+const pkgDir = path.join(repoRoot, 'packages/google-sheet-translations');
+const distDir = path.join(docsDir, '.vitepress/dist');
 const nextDistDir = path.join(distDir, 'next');
 
 function run(cmd, opts = {}) {
@@ -38,6 +41,29 @@ function resolveGitRef(candidates) {
   return null;
 }
 
+// Older refs (v2 / pre-monorepo) keep the site in `website/` and the library at the repo root.
+function layoutOf(dir) {
+  if (fs.existsSync(path.join(dir, 'apps/docs'))) {
+    return { docs: 'apps/docs', pkg: 'packages/google-sheet-translations' };
+  }
+  return { docs: 'website', pkg: '.' };
+}
+
+function prepareRefCheckout(tmpDir) {
+  const layout = layoutOf(tmpDir);
+  const tmpNodeModules = path.join(tmpDir, 'node_modules');
+  if (!fs.existsSync(tmpNodeModules)) {
+    try {
+      fs.symlinkSync(path.join(repoRoot, 'node_modules'), tmpNodeModules, 'junction');
+    } catch { /* ignore */ }
+  }
+  // Pre-monorepo refs import the library from their own ./dist
+  if (layout.pkg === '.' && !fs.existsSync(path.join(tmpDir, 'dist'))) {
+    fs.cpSync(path.join(pkgDir, 'dist'), path.join(tmpDir, 'dist'), { recursive: true });
+  }
+  return layout;
+}
+
 function getPackageVersion(dir) {
   try {
     const pkgPath = path.join(dir, 'package.json');
@@ -61,12 +87,12 @@ async function main() {
   console.log('=== Building Multi-Version Documentation Bundle ===');
 
   // 1. Build main library code first so data loaders have access to dist/
-  if (!fs.existsSync(path.join(repoRoot, 'dist/index.js'))) {
+  if (!fs.existsSync(path.join(pkgDir, 'dist/index.js'))) {
     console.log('[build] Building library package first...');
-    run('npm run build');
+    run(`npm run build -w ${LIB_WORKSPACE}`);
   }
 
-  // 2. Clean previous build artifact in website/.vitepress/dist
+  // 2. Clean previous build artifact in apps/docs/.vitepress/dist
   if (fs.existsSync(distDir)) {
     fs.rmSync(distDir, { recursive: true, force: true });
   }
@@ -78,7 +104,7 @@ async function main() {
   const stableRef = resolveGitRef(['origin/main', 'main']);
   const previewRef = resolveGitRef(['origin/develop', 'develop']);
 
-  const currentPkgVersion = getPackageVersion(repoRoot) || '2.2.0';
+  const currentPkgVersion = getPackageVersion(pkgDir) || '2.2.0';
   let stableVersion = 'v2.2.0';
   let previewVersion = 'v3.0.0-beta.3';
 
@@ -86,7 +112,7 @@ async function main() {
   if (currentBranch === 'main' || !stableRef) {
     console.log('[build:stable] Building stable docs directly from current workspace...');
     stableVersion = `v${currentPkgVersion}`;
-    run('npx vitepress build website', {
+    run('npx vitepress build apps/docs', {
       cwd: repoRoot,
       env: {
         ...process.env,
@@ -102,34 +128,23 @@ async function main() {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gst-docs-stable-'));
     try {
       execSync(`git archive ${stableRef} | tar -x -C "${tmpDir}"`, { cwd: repoRoot });
-      stableVersion = `v${getPackageVersion(tmpDir) || '2.2.0'}`;
-
-      // Link node_modules and dist
-      const tmpNodeModules = path.join(tmpDir, 'node_modules');
-      if (!fs.existsSync(tmpNodeModules)) {
-        try {
-          fs.symlinkSync(path.join(repoRoot, 'node_modules'), tmpNodeModules, 'junction');
-        } catch { /* ignore */ }
-      }
-      const tmpDist = path.join(tmpDir, 'dist');
-      if (!fs.existsSync(tmpDist)) {
-        fs.cpSync(path.join(repoRoot, 'dist'), tmpDist, { recursive: true });
-      }
+      const layout = prepareRefCheckout(tmpDir);
+      stableVersion = `v${getPackageVersion(path.join(tmpDir, layout.pkg)) || '2.2.0'}`;
 
       // Overlay theme & config
-      const vitepressDir = path.join(tmpDir, 'website/.vitepress');
+      const vitepressDir = path.join(tmpDir, layout.docs, '.vitepress');
       fs.mkdirSync(vitepressDir, { recursive: true });
       fs.cpSync(
-        path.join(repoRoot, 'website/.vitepress/config.mts'),
+        path.join(docsDir, '.vitepress/config.mts'),
         path.join(vitepressDir, 'config.mts'),
       );
       fs.cpSync(
-        path.join(repoRoot, 'website/.vitepress/theme'),
+        path.join(docsDir, '.vitepress/theme'),
         path.join(vitepressDir, 'theme'),
         { recursive: true },
       );
 
-      run('npx vitepress build website', {
+      run(`npx vitepress build ${layout.docs}`, {
         cwd: tmpDir,
         env: {
           ...process.env,
@@ -156,7 +171,7 @@ async function main() {
       ? `v${currentPkgVersion}`
       : 'v3.0.0-beta.3';
 
-    run('npx vitepress build website', {
+    run('npx vitepress build apps/docs', {
       cwd: repoRoot,
       env: {
         ...process.env,
@@ -173,21 +188,10 @@ async function main() {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gst-docs-preview-'));
     try {
       execSync(`git archive ${previewRef} | tar -x -C "${tmpDir}"`, { cwd: repoRoot });
-      previewVersion = `v${getPackageVersion(tmpDir) || '3.0.0-beta.3'}`;
+      const layout = prepareRefCheckout(tmpDir);
+      previewVersion = `v${getPackageVersion(path.join(tmpDir, layout.pkg)) || '3.0.0-beta.3'}`;
 
-      // Link node_modules and dist
-      const tmpNodeModules = path.join(tmpDir, 'node_modules');
-      if (!fs.existsSync(tmpNodeModules)) {
-        try {
-          fs.symlinkSync(path.join(repoRoot, 'node_modules'), tmpNodeModules, 'junction');
-        } catch { /* ignore */ }
-      }
-      const tmpDist = path.join(tmpDir, 'dist');
-      if (!fs.existsSync(tmpDist)) {
-        fs.cpSync(path.join(repoRoot, 'dist'), tmpDist, { recursive: true });
-      }
-
-      run('npx vitepress build website', {
+      run(`npx vitepress build ${layout.docs}`, {
         cwd: tmpDir,
         env: {
           ...process.env,

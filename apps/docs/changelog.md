@@ -105,4 +105,4 @@ See the [GitHub Actions guide](/guide/github-actions) and the
 
 ## Full history
 
-<!--@include: ../CHANGELOG.md-->
+<!--@include: ../../CHANGELOG.md-->

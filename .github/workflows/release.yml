@@ -91,7 +91,8 @@ jobs:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          PKG_DIR=packages/google-sheet-translations
+          CURRENT_VERSION=$(node -p "require('./$PKG_DIR/package.json').version")
           NEXT_VERSION=$(npx semver "$CURRENT_VERSION" -i prerelease --preid beta)
 
           while git ls-remote --tags origin "refs/tags/v${NEXT_VERSION}" | grep -q .; do
@@ -101,15 +102,15 @@ jobs:
           echo "Current version: $CURRENT_VERSION"
           echo "Forced beta version: $NEXT_VERSION"
 
-          npm version "$NEXT_VERSION" --no-git-tag-version
+          (cd "$PKG_DIR" && npm version "$NEXT_VERSION" --no-git-tag-version)
           npm config set //registry.npmjs.org/:_authToken "$NPM_TOKEN"
-          npm publish --access public --tag beta --dry-run
-          npm publish --access public --tag beta
+          npm publish -w @el-j/google-sheet-translations --access public --tag beta --dry-run
+          npm publish -w @el-j/google-sheet-translations --access public --tag beta
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
-          git add package.json package-lock.json dist-action/index.mjs
+          git add packages/google-sheet-translations/package.json package-lock.json packages/google-sheet-translations/dist-action/index.mjs
           git commit -m "chore(beta): publish v${NEXT_VERSION} to npm [skip ci]" || true
           git tag -a "v${NEXT_VERSION}" -m "v${NEXT_VERSION}" || true
           git notes --ref="semantic-release-v${NEXT_VERSION}" add -f -m "{\"channels\":[\"${TARGET_BRANCH}\"]}" "v${NEXT_VERSION}" || true
@@ -155,7 +156,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -p "require('./packages/google-sheet-translations/package.json').version")
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
@@ -164,9 +165,9 @@ jobs:
           git checkout develop
           git merge main -m "chore(sync): back-merge release v${VERSION} into develop [skip ci]" || {
             echo "Merge conflict detected during back-merge. Preserving develop dependencies and syncing changelog..."
-            git checkout --ours package.json package-lock.json 2>/dev/null || true
+            git checkout --ours packages/google-sheet-translations/package.json package-lock.json 2>/dev/null || true
             git checkout --theirs CHANGELOG.md 2>/dev/null || true
-            git add CHANGELOG.md package.json package-lock.json 2>/dev/null || true
+            git add CHANGELOG.md packages/google-sheet-translations/package.json package-lock.json 2>/dev/null || true
             git commit -m "chore(sync): back-merge release v${VERSION} into develop (resolved) [skip ci]" || true
           }
           git push origin develop || echo "Skipping push if develop is already up to date"

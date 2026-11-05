@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root = process.cwd();
+// Workspace installs hoist dependencies to the monorepo root (two levels above the package).
+const root = path.resolve(process.cwd(), '../..');
 
 // 1. Patch @stryker-mutator/core ts-config-preprocessor.js for TS 7 compatibility
 const tsConfigPreprocessorPath = path.join(

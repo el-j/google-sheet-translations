@@ -1,114 +1,51 @@
 {
-  "name": "@el-j/google-sheet-translations",
-  "version": "3.0.0-beta.16",
-  "description": "A package to manage translations stored in Google Spreadsheets",
-  "main": "dist/index.js",
-  "module": "dist/esm/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
-    }
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "bin": {
-    "gst-setup-wif": "dist-cli/setup-wif.mjs",
-    "gst-run-provider": "dist-cli/run-provider.mjs",
-    "gst-migrate-v3": "dist-cli/migrate-v3.mjs",
-    "gst-cryptpad": "dist-cli/cryptpad.mjs"
-  },
-  "files": [
-    "dist",
-    "dist-cli",
-    "LICENSE",
-    "README.md"
+  "name": "google-sheet-translations-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Monorepo for @el-j/google-sheet-translations and its documentation site",
+  "license": "MIT",
+  "author": "el-j",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
-    "build:action": "node scripts/clean.mjs dist-action && rolldown -c --environment BUILD_TARGET:action && node scripts/patch-action-bundle.mjs",
-    "build:cli": "node scripts/clean.mjs dist-cli && rolldown -c --environment BUILD_TARGET:cli && chmod +x dist-cli/*.mjs",
-    "build:types": "tsc --emitDeclarationOnly",
-    "build:cjs": "rolldown -c --environment BUILD_TARGET:cjs",
-    "build:esm": "rolldown -c --environment BUILD_TARGET:esm && node -e \"require('fs').writeFileSync('dist/esm/package.json', JSON.stringify({type:'module'}))\"",
-    "build": "npm run build:types && npm run build:cjs && npm run build:esm && npm run build:cli && npm run build:action",
-    "clean": "node scripts/clean.mjs dist dist-cli dist-action",
-    "prebuild": "npm run clean",
-    "prepare": "npm run build && (husky || true)",
-    "test": "vitest run --coverage",
-    "lint": "oxlint src/ --deny-warnings",
-    "lint:fix": "oxlint src/ --fix",
-    "format": "oxfmt --write src/ tests/",
-    "format:check": "oxfmt --check src/ tests/",
+    "prepare": "husky || true",
+    "build": "npm run build -w @el-j/google-sheet-translations",
+    "build:action": "npm run build:action -w @el-j/google-sheet-translations",
+    "test": "npm test -w @el-j/google-sheet-translations",
+    "test:integration": "npm run test:integration -w @el-j/google-sheet-translations",
+    "test:provider-matrix": "npm run test:provider-matrix -w @el-j/google-sheet-translations",
+    "test:mutation": "npm run test:mutation -w @el-j/google-sheet-translations",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "oxlint packages/*/src --deny-warnings",
+    "lint:fix": "oxlint packages/*/src --fix",
+    "format": "oxfmt --write packages/*/src packages/*/tests",
+    "format:check": "oxfmt --check packages/*/src packages/*/tests",
     "fix": "npm run lint:fix && npm run format",
-    "dev": "tsc --watch",
+    "clean": "npm run clean --workspaces --if-present",
+    "docs:dev": "npm run dev -w @el-j/google-sheet-translations-docs",
+    "docs:build": "npm run build -w @el-j/google-sheet-translations-docs",
+    "docs:bundle": "npm run bundle -w @el-j/google-sheet-translations-docs",
+    "docs:preview": "npm run preview -w @el-j/google-sheet-translations-docs",
+    "sync:translations": "npm run sync:translations -w @el-j/google-sheet-translations-docs",
+    "changelog:preview": "node scripts/changelog-preview.mjs",
     "release": "semantic-release",
-    "release:dry-run": "semantic-release --dry-run",
-    "docs:dev": "vitepress dev website",
-    "docs:build": "vitepress build website",
-    "docs:bundle": "node scripts/build-docs-bundle.mjs",
-    "docs:preview": "vitepress preview website",
-    "test:integration": "INTEGRATION=true vitest run tests/integration --testTimeout=60000",
-    "test:provider-matrix": "vitest run tests/providers --testTimeout=60000",
-    "test:mutation": "node scripts/patch-stryker.mjs && stryker run",
-    "sync:translations": "node scripts/sync-demo-translations.mjs",
-    "changelog:preview": "node scripts/changelog-preview.mjs"
-  },
-  "keywords": [
-    "translations",
-    "i18n",
-    "nextjs",
-    "typescript",
-    "auto-translation",
-    "machine-translation",
-    "localization",
-    "internationalization",
-    "cryptpad",
-    "spreadsheet",
-    "google-sheets",
-    "google-translate",
-    "google-api",
-    "google-spreadsheet"
-  ],
-  "author": "el-j",
-  "license": "MIT",
-  "dependencies": {
-    "csv-parse": "^7.0.3",
-    "google-auth-library": "^11.3.1",
-    "google-spreadsheet": "^5.3.0",
-    "tweetnacl": "^1.0.3",
-    "ws": "^8.22.0"
-  },
-  "peerDependencies": {
-    "typescript": ">=4.0.0"
+    "release:dry-run": "semantic-release --dry-run"
   },
   "devDependencies": {
-    "@actions/core": "^3.0.1",
     "@semantic-release/changelog": "^7.0.0",
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/git": "^11.0.1",
     "@semantic-release/github": "^12.0.10",
     "@semantic-release/npm": "^13.2.0",
     "@semantic-release/release-notes-generator": "^14.1.1",
-    "@stryker-mutator/core": "^10.1.1",
-    "@stryker-mutator/vitest-runner": "^10.1.1",
-    "@types/node": "^26.6.5",
-    "@vitest/coverage-v8": "^5.0.5",
     "conventional-changelog-conventionalcommits": "^8.0.0",
-    "dotenv": "18.0.9",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
     "oxfmt": "^0.75.0",
     "oxlint": "^1.89.0",
-    "rolldown": "^1.2.15",
-    "semantic-release": "^25.0.9",
-    "typescript": "^7.0.2",
-    "vitepress": "2.0.0-alpha.21",
-    "vitest": "^5.0.5",
-    "vitest-mock-extended": "^5.1.1"
+    "semantic-release": "^25.0.9"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -129,11 +66,11 @@
     "fsevents@2.3.3": true
   },
   "lint-staged": {
-    "src/**/*.{js,ts,mjs}": [
+    "packages/*/src/**/*.{js,ts,mjs}": [
       "oxlint --fix",
       "oxfmt --write"
     ],
-    "tests/**/*.{js,ts,mjs}": [
+    "packages/*/tests/**/*.{js,ts,mjs}": [
       "oxfmt --write"
     ]
   }

@@ -10,10 +10,10 @@
   "bracketSpacing": true,
   "endOfLine": "lf",
   "ignorePatterns": [
-    "dist/**",
-    "dist-cli/**",
-    "dist-action/**",
-    "coverage/**",
-    "node_modules/**"
+    "**/dist/**",
+    "**/dist-cli/**",
+    "**/dist-action/**",
+    "**/coverage/**",
+    "**/node_modules/**"
   ]
 }

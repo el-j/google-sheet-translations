@@ -21,14 +21,14 @@ const DEMO_SPREADSHEET_ID =
 
 // ── Expected keys (source of truth) ─────────────────────────────────────────
 const landingPageKeys = Object.keys(
-  JSON.parse(readFileSync(path.join(repoRoot, 'website/i18n/landingPage.en.json'), 'utf8')),
+  JSON.parse(readFileSync(path.join(repoRoot, 'i18n/landingPage.en.json'), 'utf8')),
 );
 const uiKeys = Object.keys(
-  JSON.parse(readFileSync(path.join(repoRoot, 'website/i18n/ui.en.json'), 'utf8')),
+  JSON.parse(readFileSync(path.join(repoRoot, 'i18n/ui.en.json'), 'utf8')),
 );
 
 // ── Import built package ──────────────────────────────────────────────────────
-const { getSpreadSheetData } = await import(path.join(repoRoot, 'dist/index.js'));
+const { getSpreadSheetData } = await import('@el-j/google-sheet-translations');
 
 console.log(`[verify] Reading back translations from spreadsheet ${DEMO_SPREADSHEET_ID}…`);
 

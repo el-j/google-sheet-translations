@@ -1,0 +1,20 @@
+{
+  "name": "@el-j/google-sheet-translations-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "VitePress documentation site for @el-j/google-sheet-translations",
+  "scripts": {
+    "dev": "vitepress dev .",
+    "build": "vitepress build .",
+    "preview": "vitepress preview .",
+    "bundle": "node scripts/build-docs-bundle.mjs",
+    "sync:translations": "node scripts/sync-demo-translations.mjs",
+    "verify:translations": "node scripts/verify-demo-translations.mjs"
+  },
+  "dependencies": {
+    "@el-j/google-sheet-translations": "*"
+  },
+  "devDependencies": {
+    "vitepress": "2.0.0-alpha.21"
+  }
+}
